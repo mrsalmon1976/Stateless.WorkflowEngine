@@ -44,11 +44,8 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            IEnumerable<T> workflows = _workflowStore.GetAllByType<T>();
-            T wf = workflows.SingleOrDefault();
-            if (wf == null) return false;
-            if (!wf.IsSingleInstance) throw new WorkflowException(String.Format("A workflow of type {0} is registered, but not as a single instance workflow.", typeof(T).FullName));
-            return true;
+            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
+            return regService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
         }
 
         /// <summary>

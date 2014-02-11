@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MongoDB.Driver;
 
 namespace Test.Stateless.WorkflowEngine.Example
 {
@@ -17,10 +18,10 @@ namespace Test.Stateless.WorkflowEngine.Example
     {
         public static void Boot()
         {
-            WorkflowEngineBootStrapper.Boot();
-
+            //// IN MEMORY DATA STORE
             //// the following is the in-memory test configuration - this is the one to use usually
             //// configure the document store and the session
+            //WorkflowEngineBootStrapper.Boot(WorkflowStoreType.InMemory);
             //ObjectFactory.Configure(x => x.ForSingletonOf<IDocumentStore>().Use(() =>
             //{
 
@@ -35,21 +36,37 @@ namespace Test.Stateless.WorkflowEngine.Example
             //    return ctx.GetInstance<IDocumentStore>().OpenSession();
             //}));
 
-            // the following is the running server configuration - use this if you want to play around with documents
-            const string WorkflowDatabase = "Workflows";
+            //// RAVENDB DATA STORE
+            //// the following is the running server configuration - use this if you want to play around with documents
+            //WorkflowEngineBootStrapper.Boot(WorkflowStoreType.RavenDb);
+            //const string WorkflowDatabase = "Workflows";
 
-            // configure the document store and the session
-            ObjectFactory.Configure(x => x.ForSingletonOf<IDocumentStore>().Use(() =>
+            //// configure the document store and the session
+            //ObjectFactory.Configure(x => x.ForSingletonOf<IDocumentStore>().Use(() =>
+            //{
+            //    var ds = new DocumentStore { ConnectionStringName = "RavenDb" };
+            //    ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
+            //    ds.Initialize();
+            //    ds.DatabaseCommands.EnsureDatabaseExists(WorkflowDatabase);
+            //    return ds;
+            //}));
+            //ObjectFactory.Configure(x => x.For<IDocumentSession>().Use(ctx =>
+            //{
+            //    return ctx.GetInstance<IDocumentStore>().OpenSession(WorkflowDatabase);
+            //}));
+
+            // MONGODB DATA STORE
+            WorkflowEngineBootStrapper.Boot(WorkflowStoreType.MongoDb);
+
+            ObjectFactory.Configure(x => x.ForSingletonOf<MongoServer>().Use(() =>
             {
-                var ds = new DocumentStore { ConnectionStringName = "RavenDb" };
-                ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
-                ds.Initialize();
-                ds.DatabaseCommands.EnsureDatabaseExists(WorkflowDatabase);
-                return ds;
+                var client = new MongoClient("mongodb://localhost");
+                return client.GetServer();
             }));
-            ObjectFactory.Configure(x => x.For<IDocumentSession>().Use(ctx =>
+            ObjectFactory.Configure(x => x.For<MongoDatabase>().Use(ctx =>
             {
-                return ctx.GetInstance<IDocumentStore>().OpenSession(WorkflowDatabase);
+                var server = ObjectFactory.GetInstance<MongoServer>();
+                return server.GetDatabase("StatelessWorkflowTest");
             }));
         }
     }

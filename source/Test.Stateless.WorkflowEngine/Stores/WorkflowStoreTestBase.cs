@@ -101,14 +101,15 @@ namespace Test.Stateless.WorkflowEngine.Stores
         public void GetActive_WorkflowResumeDateInFuture_NotReturned()
         {
             // factory method for workflows
-            Func<bool, DateTime?, BasicWorkflow> createWorkflow = (isSuspended, resumeOn) => {
+            Func<bool, DateTime, BasicWorkflow> createWorkflow = (isSuspended, resumeOn) => {
                 BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
                 wf.IsSuspended = isSuspended;
                 wf.ResumeOn = resumeOn;
+                wf.BasicMetaData = Guid.NewGuid().ToString();
                 return wf;
             };
 
-            Workflow noResumeDateWorkflow = createWorkflow(false, null);
+            Workflow noResumeDateWorkflow = createWorkflow(false, DateTime.MinValue);
             Workflow resumeDateActiveWorkflow = createWorkflow(false, DateTime.UtcNow.AddMilliseconds(-1));
             Workflow futureDatedWorkflow = createWorkflow(false, DateTime.UtcNow.AddMinutes(3));
 

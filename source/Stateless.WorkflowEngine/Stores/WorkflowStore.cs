@@ -74,13 +74,13 @@ namespace Stateless.WorkflowEngine.Stores
         IEnumerable<Workflow> GetActive(int count);
 
         /// <summary>
-        /// Saves a workflow to the persistence store.
+        /// Saves an existing workflow to the persistence store.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
         void Save(Workflow workflowInfo);
 
         /// <summary>
-        /// Stores a collection of new workflows.
+        /// Saves a collection of existing workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         void Save(IEnumerable<Workflow> workflows);
@@ -190,13 +190,13 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract IEnumerable<Workflow> GetActive(int count);
 
         /// <summary>
-        /// Saves a workflow to the persistence store.
+        /// Saves an existing workflow to the persistence store.
         /// </summary>
-        /// <param name="workflow">The workflow.</param>
+        /// <param name="workflowInfo"></param>
         public abstract void Save(Workflow workflowInfo);
 
         /// <summary>
-        /// Stores a collection of new workflows.
+        /// Saves a collection of existing workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         public abstract void Save(IEnumerable<Workflow> workflows);

@@ -50,5 +50,7 @@ namespace Test.Stateless.WorkflowEngine.Workflows.Basic
             this.Configure(State.Complete)
                 .OnEntry(() => this.IsComplete = true);
         }
+
+        public string BasicMetaData { get; set; }
     }
 }

@@ -44,6 +44,25 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
+        public void ExecuteWorkflow_OnSuccessfulExecution_RetryCountIsZero()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            workflowEngine.ExecuteWorkflow(workflow);
+
+            Assert.AreEqual(0, workflow.RetryCount);
+
+        }
+
+        [Test]
         public void ExecuteWorkflow_OnCompletion_MovesWorkflowIntoCompletedArchive()
         {
             // set up the store and the workflows
@@ -64,7 +83,7 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void ExecuteWorkflow_OnStepException_IncrementsRetryCountAndContinues()
+        public void ExecuteWorkflow_OnStepExceptionAndSingleInstanceWorkflow_CorrectMethodCalled()
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -73,22 +92,20 @@ namespace Test.Stateless.WorkflowEngine
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
             workflow.RetryIntervals = new int[] { 10, 10, 10 };
+            workflow.IsSingleInstance = true;
             workflowStore.Save(workflow);
+
+            IWorkflowExceptionHandler exceptionHandler = MockUtils.CreateAndRegister<IWorkflowExceptionHandler>();
 
             // execute
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
-            Thread.Sleep(100);
 
-            Workflow info = workflowStore.Get(workflow.Id);
-            Assert.IsNotNullOrEmpty(info.LastException);
-            Assert.IsTrue(info.ResumeOn > DateTime.UtcNow);
-            Assert.IsTrue(info.ResumeOn < DateTime.UtcNow.AddSeconds(10));
-            Assert.IsFalse(info.IsSuspended);
+            exceptionHandler.Received(1).HandleSingleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
         }
 
         [Test]
-        public void ExecuteWorkflow_OnStepException_RetriesCorrectNumberOfTimesAndThenSuspends()
+        public void ExecuteWorkflow_OnStepExceptionAndMultipleInstanceWorkflow_CorrectMethodCalled()
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -96,24 +113,17 @@ namespace Test.Stateless.WorkflowEngine
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-            workflow.RetryIntervals = new int[] { 0, 0, 0 };
+            workflow.RetryIntervals = new int[] { 10, 10, 10 };
+            workflow.IsSingleInstance = false;
             workflowStore.Save(workflow);
+
+            IWorkflowExceptionHandler exceptionHandler = MockUtils.CreateAndRegister<IWorkflowExceptionHandler>();
 
             // execute
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            workflowEngine.ExecuteWorkflow(workflow);
 
-            for (int i = 0; i < workflow.RetryIntervals.Length; i++)
-            {
-                workflowEngine.ExecuteWorkflow(workflow);
-                if (i >= workflow.RetryIntervals.Length - 1)
-                {
-                    Assert.IsTrue(workflow.IsSuspended);
-                }
-                else
-                {
-                    Assert.IsFalse(workflow.IsSuspended);
-                }
-            }
+            exceptionHandler.Received(1).HandleMultipleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
 
         }
 
@@ -173,6 +183,22 @@ namespace Test.Stateless.WorkflowEngine
 
 
         #endregion
+
+        #region IsSingleInstanceWorkflowRegistered Tests
+
+        [Test]
+        public void IsSingleInstanceWorkflowRegistered_OnExecute_UsesService()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            IWorkflowRegistrationService regService = MockUtils.CreateAndRegister<IWorkflowRegistrationService>();
+            workflowServer.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
+            regService.Received(1).IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+        }
+
+        #endregion
+
 
         #region OnWorkflowStateEntry Tests
 

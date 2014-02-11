@@ -28,11 +28,24 @@ namespace Stateless.WorkflowEngine
         void ExecuteWorkflows(int count);
 
         /// <summary>
+        /// Checks to see if a single-instance workflow has already been registered.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow;
+
+        /// <summary>
         /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in 
         /// an exception being raised.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
         void RegisterWorkflow(Workflow workflow);
+
+        /// <summary>
+        /// Registers a workflow type for processing.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        void RegisterWorkflowType<T>() where T : Workflow;
 
     }
 
@@ -51,36 +64,39 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflow"></param>
         public void ExecuteWorkflow(Workflow workflow)
         {
-            bool exceptionRaised = false;
-
+            string initialState = workflow.CurrentState;
             try
             {
                 workflow.LastException = null;
                 workflow.RetryCount += 1;
 
                 workflow.Fire(workflow.ResumeTrigger);
+
+                workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
             }
             catch (Exception ex)
             {
-                exceptionRaised = true;
-                workflow.LastException = ex.ToString();
+                IWorkflowExceptionHandler workflowExceptionHandler = ObjectFactory.GetInstance<IWorkflowExceptionHandler>();
+                //workflow.IsSingleInstance ? workflowExceptionHandler.
 
-                // if an error occurred running the workflow, we need to set a resume trigger
-                if (workflow.RetryIntervals.Length > workflow.RetryCount)
+                if (workflow.IsSingleInstance)
                 {
-                    workflow.ResumeOn = DateTime.UtcNow.AddSeconds(workflow.RetryIntervals[workflow.RetryCount]);
+                    workflowExceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
                 }
                 else
                 {
-                    // we've run out of retry intervals, suspend the workflow
-                    workflow.IsSuspended = true;
+                    workflowExceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
                 }
+                workflow.CurrentState = initialState;
 
+                // exit out, nothing else to do here
+                return;
             }
-
-            // save the workflow, making sure the state is correct for the workflow
-            _workflowStore.Save(workflow);
-
+            finally
+            {
+                // the workflow should always save, no matter what happens
+                _workflowStore.Save(workflow);
+            }
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
@@ -89,9 +105,7 @@ namespace Stateless.WorkflowEngine
             }
 
             // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling
-            if (!String.IsNullOrWhiteSpace(workflow.ResumeTrigger) &&
-                !exceptionRaised &&
-                (!workflow.ResumeOn.HasValue || workflow.ResumeOn.Value <= DateTime.UtcNow))
+            if (!String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow)
             {
                 this.ExecuteWorkflow(workflow);
             }
@@ -109,6 +123,17 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Checks to see if a single-instance workflow has already been registered.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
+        {
+            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
+            return regService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+        }
+
+        /// <summary>
         /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in 
         /// an exception being raised.
         /// </summary>
@@ -118,6 +143,19 @@ namespace Stateless.WorkflowEngine
         {
             IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
             regService.RegisterWorkflow(_workflowStore, workflow);
+        }
+
+        /// <summary>
+        /// Registers a workflow type for processing.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        public void RegisterWorkflowType<T>() where T : Workflow
+        {
+            IWorkflowStore store = ObjectFactory.GetInstance<IWorkflowStore>();
+            if (store is MongoDbWorkflowStore)
+            {
+                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(typeof(T));
+            }
         }
 
     }

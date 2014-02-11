@@ -21,6 +21,57 @@ namespace Test.Stateless.WorkflowEngine
     public class WorkflowRegistrationServiceTest
     {
 
+        #region IsSingleInstanceWorkflowRegistered Tests
+
+        [Test]
+        public void IsSingleInstanceWorkflowRegistered_WorkflowNotRegistered_ReturnsFalse()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            // execute
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+            Assert.IsFalse(result);
+
+        }
+
+        [Test]
+        [ExpectedException(ExpectedException = typeof(WorkflowException))]
+        public void IsSingleInstanceWorkflowRegistered_WorkflowRegisteredNotSingleInstance_ThrowsException()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSingleInstance = false;
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+
+        }
+
+        [Test]
+        public void IsSingleInstanceWorkflowRegistered_WorkflowRegistered_ReturnsTrue()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSingleInstance = true;
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+            Assert.IsTrue(result);
+
+        }
+
+        #endregion
+
         #region RegisterWorkflow Tests
 
         [Test]

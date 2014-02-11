@@ -104,7 +104,7 @@ namespace Stateless.WorkflowEngine.Stores
             using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
             {
                 return from s in session.Query<WorkflowContainer>()
-                    .Where(x => x.Workflow.IsSuspended == false && (!x.Workflow.ResumeOn.HasValue || x.Workflow.ResumeOn.Value <= DateTime.UtcNow))
+                    .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)
                     .OrderByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)

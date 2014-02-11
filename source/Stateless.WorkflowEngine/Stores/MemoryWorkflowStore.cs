@@ -77,7 +77,7 @@ namespace Stateless.WorkflowEngine.Stores
         public override IEnumerable<Workflow> GetActive(int count)
         {
             return _activeWorkflows.Values
-                .Where(x => !x.IsSuspended && (!x.ResumeOn.HasValue || x.ResumeOn.Value <= DateTime.UtcNow))
+                .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow)
                 .OrderByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);

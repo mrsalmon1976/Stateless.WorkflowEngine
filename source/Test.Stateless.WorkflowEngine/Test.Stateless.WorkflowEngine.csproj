@@ -48,6 +48,12 @@
     <Reference Include="Microsoft.WindowsAzure.Storage">
       <HintPath>..\packages\WindowsAzure.Storage.2.0.6.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
     </Reference>
+    <Reference Include="MongoDB.Bson">
+      <HintPath>..\packages\mongocsharpdriver.1.8.3\lib\net35\MongoDB.Bson.dll</HintPath>
+    </Reference>
+    <Reference Include="MongoDB.Driver">
+      <HintPath>..\packages\mongocsharpdriver.1.8.3\lib\net35\MongoDB.Driver.dll</HintPath>
+    </Reference>
     <Reference Include="NSubstitute">
       <HintPath>..\packages\NSubstitute.1.6.1.0\lib\NET40\NSubstitute.dll</HintPath>
     </Reference>
@@ -89,11 +95,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MockUtils.cs" />
+    <Compile Include="Stores\MongoDbWorkflowStoreTest.cs" />
     <Compile Include="WorkflowClientTest.cs" />
     <Compile Include="Services\WorkflowRegistrationServiceTest.cs" />
     <Compile Include="Stores\RavenDbWorkflowStoreTest.cs" />
     <Compile Include="Stores\MemoryWorkflowStoreTest.cs" />
     <Compile Include="Stores\WorkflowStoreTestBase.cs" />
+    <Compile Include="WorkflowEngineExceptionHandlerTest.cs" />
     <Compile Include="WorkflowServerTest.cs" />
     <Compile Include="Workflows\Basic\Actions\DoingStuffAction.cs" />
     <Compile Include="Workflows\Basic\BasicWorkflow.cs" />

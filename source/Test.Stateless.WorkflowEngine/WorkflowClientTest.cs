@@ -25,50 +25,14 @@ namespace Test.Stateless.WorkflowEngine
         #region IsSingleInstanceWorkflowRegistered Tests
 
         [Test]
-        public void IsSingleInstanceWorkflowRegistered_WorkflowNotRegistered_ReturnsFalse()
+        public void IsSingleInstanceWorkflowRegistered_OnExecute_UsesService()
         {
             // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-
-            // execute
+            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore);
-            bool result = workflowClient.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
-            Assert.IsFalse(result);
-
-        }
-
-        [Test]
-        [ExpectedException(ExpectedException = typeof(WorkflowException))]
-        public void IsSingleInstanceWorkflowRegistered_WorkflowRegisteredNotSingleInstance_ThrowsException()
-        {
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.IsSingleInstance = false;
-            workflowStore.Save(workflow);
-
-            // execute
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore);
+            IWorkflowRegistrationService regService = MockUtils.CreateAndRegister<IWorkflowRegistrationService>();
             workflowClient.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
-
-        }
-
-        [Test]
-        public void IsSingleInstanceWorkflowRegistered_WorkflowRegistered_ReturnsTrue()
-        {
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.IsSingleInstance = true;
-            workflowStore.Save(workflow);
-
-            // execute
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore);
-            bool result = workflowClient.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
-            Assert.IsTrue(result);
-
+            regService.Received(1).IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
         }
 
         #endregion

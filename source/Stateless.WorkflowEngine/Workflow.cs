@@ -55,9 +55,10 @@ namespace Stateless.WorkflowEngine
         public string LastException { get; set; }
 
         /// <summary>
-        /// Gets/sets the time the workflow can be resumed.
+        /// Gets/sets the time the workflow can be resumed.  Set to DateTime.Min to ensure workflows are picked up - nullable 
+        /// properties are not used here as MongoDb's QUery does not support it.
         /// </summary>
-        public DateTime? ResumeOn { get; set; }
+        public DateTime ResumeOn { get; set; }
 
         /// <summary>
         /// Gets or sets the trigger to be fire when the workflow resumes.
