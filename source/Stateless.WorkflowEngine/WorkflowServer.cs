@@ -9,6 +9,7 @@ using Stateless;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using StructureMap;
+using NLog;
 
 namespace Stateless.WorkflowEngine
 {
@@ -52,6 +53,7 @@ namespace Stateless.WorkflowEngine
     public class WorkflowServer : IWorkflowServer
     {
         private readonly IWorkflowStore _workflowStore;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public WorkflowServer(IWorkflowStore workflowStore)
         {
@@ -64,18 +66,20 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflow"></param>
         public void ExecuteWorkflow(Workflow workflow)
         {
+            logger.Info("Executing workflow {0}", workflow.Id);
             string initialState = workflow.CurrentState;
             try
             {
                 workflow.LastException = null;
                 workflow.RetryCount += 1;
-
+                logger.Info("Firing trigger {0} for workflow {1} (Type: {2}, Current state: {3})", workflow.ResumeTrigger, workflow.Id, workflow.GetType().FullName, workflow.CurrentState);
                 workflow.Fire(workflow.ResumeTrigger);
 
                 workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
             }
             catch (Exception ex)
             {
+                logger.ErrorException(ex.Message, ex);
                 IWorkflowExceptionHandler workflowExceptionHandler = ObjectFactory.GetInstance<IWorkflowExceptionHandler>();
                 //workflow.IsSingleInstance ? workflowExceptionHandler.
 
@@ -95,11 +99,13 @@ namespace Stateless.WorkflowEngine
             finally
             {
                 // the workflow should always save, no matter what happens
+                logger.Info("Persisting workflow {0} with store {1}", workflow.Id, _workflowStore.GetType().FullName);
                 _workflowStore.Save(workflow);
             }
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
+                logger.Info("Archiving workflow {0}", workflow.Id);
                 _workflowStore.Archive(workflow);
                 return;
             }
@@ -119,6 +125,7 @@ namespace Stateless.WorkflowEngine
         public void ExecuteWorkflows(int count)
         {
             IEnumerable<Workflow> workflows = _workflowStore.GetActive(count);
+            logger.Info("Retrieved {0} workflows for execution from the data store", workflows.Count());
             Parallel.ForEach(workflows, ExecuteWorkflow);
         }
 
@@ -142,6 +149,7 @@ namespace Stateless.WorkflowEngine
         public void RegisterWorkflow(Workflow workflow)
         {
             IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
+            logger.Info("Registering workflow {0}", workflow.GetType().FullName);
             regService.RegisterWorkflow(_workflowStore, workflow);
         }
 
@@ -154,7 +162,9 @@ namespace Stateless.WorkflowEngine
             IWorkflowStore store = ObjectFactory.GetInstance<IWorkflowStore>();
             if (store is MongoDbWorkflowStore)
             {
-                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(typeof(T));
+                Type t = typeof(T);
+                logger.Info("Registering workflow type {0}", t.FullName);
+                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(t);
             }
         }
 

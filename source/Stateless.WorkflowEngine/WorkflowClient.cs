@@ -1,4 +1,5 @@
-﻿using Stateless.WorkflowEngine.Exceptions;
+﻿using NLog;
+using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
@@ -31,6 +32,7 @@ namespace Stateless.WorkflowEngine
     public class WorkflowClient : IWorkflowClient
     {
         private readonly IWorkflowStore _workflowStore;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public WorkflowClient(IWorkflowStore workflowStore)
         {
@@ -57,6 +59,7 @@ namespace Stateless.WorkflowEngine
         public void RegisterWorkflow(Workflow workflow)
         {
             IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
+            logger.Info("Registering workflow {0}", workflow.GetType().FullName);
             regService.RegisterWorkflow(_workflowStore, workflow);
         }
     }

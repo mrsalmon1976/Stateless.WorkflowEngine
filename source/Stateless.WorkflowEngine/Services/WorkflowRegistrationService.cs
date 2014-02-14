@@ -1,4 +1,5 @@
-﻿using Stateless.WorkflowEngine.Exceptions;
+﻿using NLog;
+using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Stores;
 using System;

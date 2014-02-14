@@ -7,11 +7,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using NLog;
 
 namespace Stateless.WorkflowEngine
 {
     public abstract class Workflow
     {
+
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
         public Workflow() : this("Start")
         {
         }
@@ -120,6 +124,7 @@ namespace Stateless.WorkflowEngine
             {
                 workflowAction = Activator.CreateInstance<T>();
             }
+            logger.Info("Executing workflow action {0}", workflowAction.GetType().FullName);
             workflowAction.Execute(this);
 
         }
