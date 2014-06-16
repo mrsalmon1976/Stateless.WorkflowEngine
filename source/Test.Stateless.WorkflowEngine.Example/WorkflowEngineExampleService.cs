@@ -76,7 +76,7 @@ namespace Test.Stateless.WorkflowEngine.Example
                 {
                     workflowServer.ExecuteWorkflows(5);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     //Logger.Error<CPSBankingFTPService>(ex.Message, ex);
                     Thread.Sleep(1000);

@@ -79,7 +79,7 @@ namespace Stateless.WorkflowEngine
             }
             catch (Exception ex)
             {
-                logger.ErrorException(ex.Message, ex);
+                logger.Error(ex.Message, ex);
                 IWorkflowExceptionHandler workflowExceptionHandler = ObjectFactory.GetInstance<IWorkflowExceptionHandler>();
                 //workflow.IsSingleInstance ? workflowExceptionHandler.
 
