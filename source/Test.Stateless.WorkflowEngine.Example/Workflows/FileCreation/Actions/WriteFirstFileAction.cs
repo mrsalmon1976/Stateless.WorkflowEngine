@@ -11,7 +11,7 @@ namespace Test.Stateless.WorkflowEngine.Example.Workflows.FileCreation.Actions
         {
             FileCreationWorkflow fcw = (FileCreationWorkflow)workflow;
             File.WriteAllText(fcw.GetFilePath("__FirstFile"), "Example workflow");
-            workflow.ResumeTrigger = FileCreationWorkflow.Trigger.SendSecondEmail.ToString();
+            workflow.ResumeTrigger = FileCreationWorkflow.Trigger.WriteSecondFile.ToString();
         }
     }
 }

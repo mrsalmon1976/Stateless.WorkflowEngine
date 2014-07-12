@@ -1,7 +1,6 @@
 ﻿using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using Stateless;
-using StructureMap;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -119,14 +118,9 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         protected virtual void ExecuteWorkflowAction<T>() where T : IWorkflowAction
         {
-            IWorkflowAction workflowAction = ObjectFactory.TryGetInstance<T>();
-            if (workflowAction == null)
-            {
-                workflowAction = Activator.CreateInstance<T>();
-            }
+            IWorkflowAction workflowAction = Activator.CreateInstance<T>();
             logger.Info("Executing workflow action {0}", workflowAction.GetType().FullName);
             workflowAction.Execute(this);
-
         }
 
     }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
-using StructureMap;
 using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
@@ -20,26 +19,24 @@ namespace Stateless.WorkflowEngine.MongoDb
         private Func<Guid, IMongoQuery> _queryCompletedById = delegate(Guid id) { return Query<CompletedWorkflow>.EQ(x => x.Id, id); };
 
 
-        public MongoDbWorkflowStore()
+        public MongoDbWorkflowStore(MongoDatabase mongoDatabase)
         {
-            try
-            {
-                ObjectFactory.GetInstance<MongoDatabase>();
-            }
-            catch (Exception ex)
-            {
-                throw new WorkflowEngineException("A MongoDatabase instance needs to be configured before using the MongoDbWorkflowStore", ex);
-            }
+            this.MongoDatabase = mongoDatabase;
         }
 
-        public static MongoCollection<WorkflowContainer> GetCollection()
+        /// <summary>
+        /// Gets/sets the mongo database associated with the store.
+        /// </summary>
+        public MongoDatabase MongoDatabase { get; set; }
+
+        public MongoCollection<WorkflowContainer> GetCollection()
         {
-            return ObjectFactory.GetInstance<MongoDatabase>().GetCollection<WorkflowContainer>("Workflows");
+            return this.MongoDatabase.GetCollection<WorkflowContainer>("Workflows");
         }
 
-        public static MongoCollection<CompletedWorkflow> GetCompletedCollection()
+        public MongoCollection<CompletedWorkflow> GetCompletedCollection()
         {
-            return ObjectFactory.GetInstance<MongoDatabase>().GetCollection<CompletedWorkflow>("CompletedWorkflows");
+            return this.MongoDatabase.GetCollection<CompletedWorkflow>("CompletedWorkflows");
         }
 
         /// <summary>
@@ -115,6 +112,17 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .Take(count)
                    select s.Workflow;
         }
+
+        /// <summary>
+        /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
+        /// on the store, but some applications require specific type registration (e.g. MongoDb).
+        /// </summary>
+        public override void RegisterType(Type t)
+        {
+                //logger.Info("Registering workflow type {0}", t.FullName);
+                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(t);
+        }
+
 
         /// <summary>
         /// Updates the specified workflow.

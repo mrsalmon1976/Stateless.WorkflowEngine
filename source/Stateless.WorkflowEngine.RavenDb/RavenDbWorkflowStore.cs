@@ -3,26 +3,39 @@ using System.Collections.Generic;
 using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
 using Raven.Client;
-using StructureMap;
 using Stateless.WorkflowEngine.Models;
+using Stateless.WorkflowEngine.Stores;
 
-namespace Stateless.WorkflowEngine.Stores
+namespace Stateless.WorkflowEngine.RavenDb
 {
     /// <summary>
     /// Stores workflows in Raven Db.  
     /// </summary>
     public class RavenDbWorkflowStore : WorkflowStore
     {
-        public RavenDbWorkflowStore()
+        private readonly IDocumentStore _documentStore;
+        private readonly string _database;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="documentStore"></param>
+        /// <param name="database">The RavenDb database name.  For embedded databases, specify null or empty string.</param>
+        public RavenDbWorkflowStore(IDocumentStore documentStore, string database)
         {
-            try
+            this._documentStore = documentStore;
+            this._database = database;
+        }
+
+        private IDocumentSession OpenSession()
+        {
+            // if no database is specified, we're assuming it's embedded so we can't use the 
+            // override
+            if (String.IsNullOrWhiteSpace(this._database))
             {
-                ObjectFactory.GetInstance<IDocumentStore>();
+                return this._documentStore.OpenSession();
             }
-            catch (Exception ex)
-            {
-                throw new WorkflowEngineException("An IDocumentStore needs to be configured before using the RavenDbWorkflowStore", ex);
-            }
+            return this._documentStore.OpenSession(this._database);
         }
 
         /// <summary>
@@ -31,7 +44,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="workflow">The workflow to archive.</param>
         public override void Archive(Workflow workflow)
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 WorkflowContainer wf = session.Load<WorkflowContainer>(workflow.Id);
                 session.Delete<WorkflowContainer>(wf);
@@ -48,7 +61,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 return from s in session.Query<WorkflowContainer>()
                     .Where(x => x.WorkflowType == workflowType)
@@ -67,7 +80,7 @@ namespace Stateless.WorkflowEngine.Stores
         public override CompletedWorkflow GetCompletedOrDefault(Guid id)
         {
             CompletedWorkflow workflow = null;
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 workflow = session.Load<CompletedWorkflow>(id);
             }
@@ -83,7 +96,7 @@ namespace Stateless.WorkflowEngine.Stores
         public override Workflow GetOrDefault(Guid id)
         {
             Workflow workflow = null;
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 WorkflowContainer wc = session.Load<WorkflowContainer>(id);
                 if (wc != null)
@@ -101,7 +114,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<Workflow> GetActive(int count)
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 return from s in session.Query<WorkflowContainer>()
                     .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)
@@ -113,12 +126,21 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
+        /// on the store, but some applications require specific type registration (e.g. MongoDb).
+        /// </summary>
+        public override void RegisterType(Type t)
+        {
+            // no registration needed
+        }
+
+        /// <summary>
         /// Stores a new workflow.
         /// </summary>
         /// <param name="workflow"></param>
         public override void Save(Workflow workflow)
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 WorkflowContainer wc = new WorkflowContainer(workflow);
                 session.Store(wc);  
@@ -132,7 +154,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="workflows">The workflows.</param>
         public override void Save(IEnumerable<Workflow> workflows)
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = this.OpenSession())
             {
                 foreach (Workflow w in workflows)
                 {

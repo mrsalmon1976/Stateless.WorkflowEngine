@@ -1,5 +1,4 @@
 ﻿using Stateless.WorkflowEngine;
-using StructureMap;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +12,7 @@ namespace Test.Stateless.WorkflowEngine.Example
     {
         static void Main(string[] args)
         {
-            BootStrapper.Boot();
+            //BootStrapper.Boot();
             ProjectInstaller.ServiceName = "Workflow Engine Example";
 
             if (!Environment.UserInteractive && args.Length == 0)

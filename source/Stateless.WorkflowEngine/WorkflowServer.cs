@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Stateless;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
-using StructureMap;
 using NLog;
 
 namespace Stateless.WorkflowEngine
@@ -53,11 +52,21 @@ namespace Stateless.WorkflowEngine
     public class WorkflowServer : IWorkflowServer
     {
         private readonly IWorkflowStore _workflowStore;
+        private readonly IWorkflowRegistrationService _workflowRegistrationService;
+        private readonly IWorkflowExceptionHandler _exceptionHandler;
+
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public WorkflowServer(IWorkflowStore workflowStore)
+        public WorkflowServer(IWorkflowStore workflowStore): this(workflowStore, new WorkflowRegistrationService(), new WorkflowExceptionHandler())
+        {
+
+        }
+
+        public WorkflowServer(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService, IWorkflowExceptionHandler exceptionHandler)
         {
             _workflowStore = workflowStore;
+            _workflowRegistrationService = workflowRegistrationService;
+            _exceptionHandler = exceptionHandler;
         }
 
         /// <summary>
@@ -80,16 +89,14 @@ namespace Stateless.WorkflowEngine
             catch (Exception ex)
             {
                 logger.Error(ex.Message, ex);
-                IWorkflowExceptionHandler workflowExceptionHandler = ObjectFactory.GetInstance<IWorkflowExceptionHandler>();
-                //workflow.IsSingleInstance ? workflowExceptionHandler.
 
                 if (workflow.IsSingleInstance)
                 {
-                    workflowExceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
+                    _exceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
                 }
                 else
                 {
-                    workflowExceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
+                    _exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
                 }
                 workflow.CurrentState = initialState;
 
@@ -136,8 +143,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
-            return regService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+            return _workflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
         }
 
         /// <summary>
@@ -148,9 +154,8 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
             logger.Info("Registering workflow {0}", workflow.GetType().FullName);
-            regService.RegisterWorkflow(_workflowStore, workflow);
+            _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
         }
 
         /// <summary>
@@ -159,13 +164,7 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         public void RegisterWorkflowType<T>() where T : Workflow
         {
-            IWorkflowStore store = ObjectFactory.GetInstance<IWorkflowStore>();
-            if (store is MongoDbWorkflowStore)
-            {
-                Type t = typeof(T);
-                logger.Info("Registering workflow type {0}", t.FullName);
-                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(t);
-            }
+            this._workflowStore.RegisterType(typeof(T));
         }
 
     }

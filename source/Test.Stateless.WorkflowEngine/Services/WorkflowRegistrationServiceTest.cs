@@ -93,7 +93,7 @@ namespace Test.Stateless.WorkflowEngine
         public void RegisterWorkflow_SingleInstanceWorkflowRegistered_RegistersIfDoesNotAlreadyExist()
         {
             // set up the store and the workflows
-            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetAllByType(Arg.Any<string>()).Returns(new List<Workflow>());
 
             SingleInstanceWorkflow workflow = new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start);
@@ -109,7 +109,7 @@ namespace Test.Stateless.WorkflowEngine
         public void RegisterWorkflow_MultipleInstanceWorkflowRegistered_Registers()
         {
             // set up the store and the workflows
-            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
 
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
 

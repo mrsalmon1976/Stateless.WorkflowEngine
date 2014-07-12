@@ -3,7 +3,6 @@ using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
-using StructureMap;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,11 +31,17 @@ namespace Stateless.WorkflowEngine
     public class WorkflowClient : IWorkflowClient
     {
         private readonly IWorkflowStore _workflowStore;
+        private readonly IWorkflowRegistrationService _workflowRegistrationService;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public WorkflowClient(IWorkflowStore workflowStore)
+        public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService())
+        {
+        }
+
+        public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService)
         {
             _workflowStore = workflowStore;
+            _workflowRegistrationService = workflowRegistrationService;
         }
 
         /// <summary>
@@ -46,8 +51,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
-            return regService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+            return _workflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
         }
 
         /// <summary>
@@ -58,9 +62,8 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            IWorkflowRegistrationService regService = ObjectFactory.GetInstance<IWorkflowRegistrationService>();
             logger.Info("Registering workflow {0}", workflow.GetType().FullName);
-            regService.RegisterWorkflow(_workflowStore, workflow);
+            _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
         }
     }
 }

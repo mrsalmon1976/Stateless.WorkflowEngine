@@ -74,6 +74,12 @@ namespace Stateless.WorkflowEngine.Stores
         IEnumerable<Workflow> GetActive(int count);
 
         /// <summary>
+        /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
+        /// on the store, but some applications require specific type registration (e.g. MongoDb).
+        /// </summary>
+        void RegisterType(Type t);
+
+        /// <summary>
         /// Saves an existing workflow to the persistence store.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
@@ -188,6 +194,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         public abstract IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
+        /// on the store, but some applications require specific type registration (e.g. MongoDb).
+        /// </summary>
+        public abstract void RegisterType(Type t);
 
         /// <summary>
         /// Saves an existing workflow to the persistence store.

@@ -5,7 +5,6 @@ using System.Text;
 using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
-using StructureMap;
 using System.IO;
 using Stateless.WorkflowEngine.Models;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
@@ -13,8 +12,10 @@ using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using MongoDB.Driver;
+using Test.Stateless.WorkflowEngine.Stores;
+using Stateless.WorkflowEngine.MongoDb;
 
-namespace Test.Stateless.WorkflowEngine.Stores
+namespace Test.Stateless.WorkflowEngine.MongoDb
 {
     /// <summary>
     /// Test fixture for MongoDbWorkflowStoreTest.  Note that this class should contain no tests - all the tests 
@@ -23,24 +24,17 @@ namespace Test.Stateless.WorkflowEngine.Stores
     [TestFixture]
     public class MongoDbWorkflowStoreTest : WorkflowStoreTestBase
     {
+        private MongoDatabase _database = null;
 
         #region SetUp and TearDown
 
         [TestFixtureSetUp]
         public void MongoDbWorkflowStoreTest_FixtureSetUp()
         {
-            ObjectFactory.Configure(x => x.ForSingletonOf<MongoServer>().Use(() =>
-            {
-                var connectionString = "mongodb://localhost";
-                var client = new MongoClient(connectionString);
-                return client.GetServer();
-            }));
-            ObjectFactory.Configure(x => x.For<MongoDatabase>().Use(ctx =>
-            {
-                var server = ObjectFactory.GetInstance<MongoServer>();
-                return server.GetDatabase("StatelessWorkflowTest");
-            }));
-
+            var connectionString = "mongodb://localhost";
+            var client = new MongoClient(connectionString);
+            var server = client.GetServer();
+            _database = server.GetDatabase("StatelessWorkflowTest");
         }
 
         [TestFixtureTearDown]
@@ -68,8 +62,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         private void ClearTestData()
         {
-            var db = ObjectFactory.GetInstance<MongoDatabase>();
-            var collection = db.GetCollection<WorkflowContainer>("Workflows");
+            var collection = _database.GetCollection<WorkflowContainer>("Workflows");
             collection.RemoveAll();
         }
 
@@ -84,7 +77,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         protected override IWorkflowStore GetStore()
         {
-            return new MongoDbWorkflowStore();
+            return new MongoDbWorkflowStore(_database);
         }
 
         #endregion

@@ -16,13 +16,13 @@ namespace Test.Stateless.WorkflowEngine.Example.Workflows.FileCreation.Actions
 
             if (fcw.SecondFileWriteCount == 5)
             {
-                fcw.ResumeTrigger = FileCreationWorkflow.Trigger.Complete.ToString();
+                fcw.ResumeTrigger = FileCreationWorkflow.Trigger.CleanUp.ToString();
             }
             else
             {
-                fcw.ResumeTrigger = FileCreationWorkflow.Trigger.SendFirstEmail.ToString();
-                fcw.ResumeOn = DateTime.UtcNow.AddSeconds(5);
+                fcw.ResumeTrigger = FileCreationWorkflow.Trigger.WriteFirstFile.ToString();
             }
+            fcw.ResumeOn = DateTime.UtcNow.AddSeconds(5);
         }
     }
 }

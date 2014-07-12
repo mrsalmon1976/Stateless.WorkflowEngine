@@ -7,73 +7,47 @@ using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
 using Raven.Client;
 using Raven.Client.Extensions;
-using StructureMap;
 using Raven.Client.Embedded;
 using System.IO;
-using Raven.Database.Server;
 using Raven.Client.Document;
 using Stateless.WorkflowEngine.Models;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
+using Test.Stateless.WorkflowEngine.Stores;
+using Stateless.WorkflowEngine.RavenDb;
 
-namespace Test.Stateless.WorkflowEngine.Stores
+namespace Test.Stateless.WorkflowEngine.RavenDb
 {
     /// <summary>
-    /// Test fixture for RavenDbWorkflowStoreTest.  Note that this class should contain no tests - all the tests 
+    /// Test fixture for RavenDbWorkflowStore.  Note that this class should contain no tests - all the tests 
     /// are in the base class so all methods of WorkflowStore are tested consistently.
     /// </summary>
     [TestFixture]
     public class RavenDbWorkflowStoreTest : WorkflowStoreTestBase
     {
 
+        private EmbeddableDocumentStore _documentStore;
+
         #region SetUp and TearDown
 
         [TestFixtureSetUp]
         public void RavenDbWorkflowStoreTest_FixtureSetUp()
         {
-            // the following is the in-memory test configuration - this is the one to use usually
-            // configure the document store and the session
-            ObjectFactory.Configure(x => x.ForSingletonOf<IDocumentStore>().Use(() =>
-            {
 
-                // default usage: use an in-mrmory database for unit test.  Make sure you apply the ds.Convenstions.DefaultQueryingConsistency 
-                // line below, otherwise you will randomly get errors when querying the store after a write
-                var ds = new EmbeddableDocumentStore { RunInMemory = true };
-                ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
-                ds.Initialize();
-                return ds;
-            }));
-            ObjectFactory.Configure(x => x.For<IDocumentSession>().Use(ctx =>
-            {
-                return ctx.GetInstance<IDocumentStore>().OpenSession();
-            }));
-
-
-            //// the following is the running server configuration - use this if you want to play around with documents
-            //const string WorkflowDatabase = "Workflows";
-
-            //// configure the document store and the session
-            //ObjectFactory.Configure(x => x.ForSingletonOf<IDocumentStore>().Use(() =>
-            //{
-            //    var ds = new DocumentStore { ConnectionStringName = "RavenDb" };
-            //    ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
-            //    ds.Initialize();
-            //    ds.DatabaseCommands.EnsureDatabaseExists(WorkflowDatabase);
-            //    return ds;
-            //}));
-            //ObjectFactory.Configure(x => x.For<IDocumentSession>().Use(ctx =>
-            //{
-            //    return ctx.GetInstance<IDocumentStore>().OpenSession(WorkflowDatabase);
-            //}));
+            // default usage: use an in-mrmory database for unit test.  Make sure you apply the ds.Convenstions.DefaultQueryingConsistency 
+            // line below, otherwise you will randomly get errors when querying the store after a write
+            _documentStore = new EmbeddableDocumentStore { RunInMemory = true };
+            _documentStore.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
+            _documentStore.Initialize();
 
         }
 
         [TestFixtureTearDown]
         public void RavenDbWorkflowStoreTest_FixtureTearDown()
         {
-            ObjectFactory.GetInstance<IDocumentStore>().Dispose();
+            _documentStore.Dispose();
         }
 
         [SetUp]
@@ -96,7 +70,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         private void ClearTestData()
         {
-            using (IDocumentSession session = ObjectFactory.GetInstance<IDocumentSession>())
+            using (IDocumentSession session = _documentStore.OpenSession())
             {
                 // drop all workflows
                 IEnumerable<WorkflowContainer> workflows = session.Query<WorkflowContainer>().Take(1000);
@@ -126,7 +100,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         protected override IWorkflowStore GetStore()
         {
-            return new RavenDbWorkflowStore();
+            return new RavenDbWorkflowStore(_documentStore, null);
         }
 
         #endregion

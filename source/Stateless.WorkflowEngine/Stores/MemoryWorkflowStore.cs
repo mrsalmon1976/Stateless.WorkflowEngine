@@ -84,6 +84,15 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
+        /// on the store, but some applications require specific type registration (e.g. MongoDb).
+        /// </summary>
+        public override void RegisterType(Type t)
+        {
+            // no registration needed
+        }
+
+        /// <summary>
         /// Stores a new workflow.
         /// </summary>
         /// <param name="workflow"></param>

@@ -1,5 +1,6 @@
 ﻿using Stateless.WorkflowEngine;
-using StructureMap;
+using Stateless.WorkflowEngine.MongoDb;
+using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -38,7 +39,6 @@ namespace Test.Stateless.WorkflowEngine.Example
             _thread.Name = "WorkflowEngine Example Worker";
             _thread.IsBackground = true;
             _thread.Start();
-            //Logger.Info<CPSBankingFTPService>("Service started");
         }
 
         protected override void OnStop()
@@ -50,24 +50,24 @@ namespace Test.Stateless.WorkflowEngine.Example
             {
                 _thread.Abort();
             }
-
-            //Logger.Info<CPSBankingFTPService>("Service stopped");
         }
 
         void WorkerThreadFunc()
         {
-            // invoke the workflow client and create a new example workflow if it hasn't been registered already
-            IWorkflowClient workflowClient = ObjectFactory.GetInstance<IWorkflowClient>();
-            if (!workflowClient.IsSingleInstanceWorkflowRegistered<FileCreationWorkflow>())
-            {
-                FileCreationWorkflow workflow = new FileCreationWorkflow(FileCreationWorkflow.State.Start);
-                workflow.RootFolder = "C:\\Temp\\IUA.Workflow\\";
-                workflow.ResumeTrigger = FileCreationWorkflow.Trigger.SendFirstEmail.ToString();
-                workflowClient.RegisterWorkflow(workflow);
-            }
+            // fire up the server, this will run as part of the service (you can set the workflow store here)
+            //IWorkflowStore workflowStore = BootStrapper.MongoDbStore();
+            //IWorkflowStore workflowStore = BootStrapper.MemoryStore();
+            IWorkflowStore workflowStore = BootStrapper.RavenDbEmbeddedStore();
+            
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.RegisterWorkflowType<FileCreationWorkflow>();
 
-            // fire up the server, this will run as part of the service
-            IWorkflowServer workflowServer = ObjectFactory.GetInstance<IWorkflowServer>();
+            // create a new example workflow if it hasn't been registered already
+            FileCreationWorkflow workflow = new FileCreationWorkflow(FileCreationWorkflow.State.Start);
+            workflow.RootFolder = "C:\\Temp\\";
+            workflow.ResumeTrigger = FileCreationWorkflow.Trigger.WriteFirstFile.ToString();
+            workflowServer.RegisterWorkflow(workflow);
+
 
             while (!_shutdownEvent.WaitOne(0))
             {
@@ -78,7 +78,6 @@ namespace Test.Stateless.WorkflowEngine.Example
                 }
                 catch (Exception)
                 {
-                    //Logger.Error<CPSBankingFTPService>(ex.Message, ex);
                     Thread.Sleep(1000);
                 }
 

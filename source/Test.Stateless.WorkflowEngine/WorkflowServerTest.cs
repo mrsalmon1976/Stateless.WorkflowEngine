@@ -13,7 +13,6 @@ using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
-using StructureMap;
 using NSubstitute;
 
 namespace Test.Stateless.WorkflowEngine
@@ -36,8 +35,8 @@ namespace Test.Stateless.WorkflowEngine
             workflowStore.Save(workflow);
 
             // execute
-            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
-            workflowEngine.ExecuteWorkflow(workflow);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflow(workflow);
 
             Assert.AreEqual(BasicWorkflow.State.Complete.ToString(), workflow.CurrentState);
 
@@ -85,43 +84,51 @@ namespace Test.Stateless.WorkflowEngine
         [Test]
         public void ExecuteWorkflow_OnStepExceptionAndSingleInstanceWorkflow_CorrectMethodCalled()
         {
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-
-            BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
-            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
-            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-            workflow.RetryIntervals = new int[] { 10, 10, 10 };
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
             workflow.IsSingleInstance = true;
-            workflowStore.Save(workflow);
+            workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
 
-            IWorkflowExceptionHandler exceptionHandler = MockUtils.CreateAndRegister<IWorkflowExceptionHandler>();
+            IWorkflowExceptionHandler exceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
 
             // execute
-            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
-            workflowEngine.ExecuteWorkflow(workflow);
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
+            workflowServer.ExecuteWorkflow(workflow);
 
             exceptionHandler.Received(1).HandleSingleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
         }
 
         [Test]
-        public void ExecuteWorkflow_OnStepExceptionAndMultipleInstanceWorkflow_CorrectMethodCalled()
+        public void ExecuteWorkflow_OnStepException_StateReset()
         {
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            string initialState = Guid.NewGuid().ToString();
 
-            BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
-            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
-            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-            workflow.RetryIntervals = new int[] { 10, 10, 10 };
-            workflow.IsSingleInstance = false;
-            workflowStore.Save(workflow);
-
-            IWorkflowExceptionHandler exceptionHandler = MockUtils.CreateAndRegister<IWorkflowExceptionHandler>();
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.CurrentState.Returns(initialState);
+            workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
 
             // execute
-            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
-            workflowEngine.ExecuteWorkflow(workflow);
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
+            workflowServer.ExecuteWorkflow(workflow);
+
+            // make sure the property was set
+            workflow.Received(1).CurrentState = initialState;
+        }
+
+        [Test]
+        public void ExecuteWorkflow_OnStepExceptionAndMultipleInstanceWorkflow_CorrectMethodCalled()
+        {
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.IsSingleInstance = false;
+            workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
+
+            IWorkflowExceptionHandler exceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
+            workflowServer.ExecuteWorkflow(workflow);
 
             exceptionHandler.Received(1).HandleMultipleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
 
@@ -161,26 +168,25 @@ namespace Test.Stateless.WorkflowEngine
             workflow.ResumeTrigger = DelayedWorkflow.Trigger.DoStuff.ToString();
             workflowStore.Save(workflow);
 
-            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
 
             // execute
-            workflowEngine.ExecuteWorkflows(5);
+            workflowServer.ExecuteWorkflows(5);
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
             Assert.AreEqual(DelayedWorkflow.State.DoingStuff.ToString(), workflow.CurrentState);
 
             // execute again - nothing should have changed
-            workflowEngine.ExecuteWorkflows(5);
+            workflowServer.ExecuteWorkflows(5);
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
             Assert.AreEqual(DelayedWorkflow.State.DoingStuff.ToString(), workflow.CurrentState);
 
             // delay and run - should be now be complete
             Thread.Sleep(3100);
-            workflowEngine.ExecuteWorkflows(5);
+            workflowServer.ExecuteWorkflows(5);
             Assert.IsNull(workflowStore.GetOrDefault(workflow.Id));
             Assert.IsNotNull(workflowStore.GetCompletedOrDefault(workflow.Id));
 
         }
-
 
         #endregion
 
@@ -190,9 +196,10 @@ namespace Test.Stateless.WorkflowEngine
         public void IsSingleInstanceWorkflowRegistered_OnExecute_UsesService()
         {
             // set up the store and the workflows
-            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
-            IWorkflowRegistrationService regService = MockUtils.CreateAndRegister<IWorkflowRegistrationService>();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, regService, Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
             regService.Received(1).IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
         }
@@ -209,7 +216,7 @@ namespace Test.Stateless.WorkflowEngine
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
 
             // set up the workflow store
-            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetActive(Arg.Any<int>()).Returns(new[] { workflow });
 
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
@@ -227,11 +234,11 @@ namespace Test.Stateless.WorkflowEngine
         public void RegisterWorkflow_OnRegister_UsesService()
         {
             // set up the store and the workflows
-            IWorkflowStore workflowStore = MockUtils.CreateAndRegister<IWorkflowStore>();
-            IWorkflowRegistrationService regService = MockUtils.CreateAndRegister<IWorkflowRegistrationService>();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
 
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, regService, Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.RegisterWorkflow(workflow);
 
             regService.Received(1).RegisterWorkflow(workflowStore, workflow);
