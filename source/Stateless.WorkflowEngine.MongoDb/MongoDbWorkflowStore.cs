@@ -6,8 +6,9 @@ using StructureMap;
 using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
+using Stateless.WorkflowEngine.Stores;
 
-namespace Stateless.WorkflowEngine.Stores
+namespace Stateless.WorkflowEngine.MongoDb
 {
     /// <summary>
     /// Stores workflows in Raven Db.
