@@ -1,5 +1,4 @@
-﻿using NLog;
-using Stateless.WorkflowEngine.Exceptions;
+﻿using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
@@ -32,7 +31,6 @@ namespace Stateless.WorkflowEngine
     {
         private readonly IWorkflowStore _workflowStore;
         private readonly IWorkflowRegistrationService _workflowRegistrationService;
-        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService())
         {
@@ -62,7 +60,6 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            logger.Info("Registering workflow {0}", workflow.GetType().FullName);
             _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
         }
     }

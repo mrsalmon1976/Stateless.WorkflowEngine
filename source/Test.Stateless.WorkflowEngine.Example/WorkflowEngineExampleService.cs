@@ -55,9 +55,9 @@ namespace Test.Stateless.WorkflowEngine.Example
         void WorkerThreadFunc()
         {
             // fire up the server, this will run as part of the service (you can set the workflow store here)
-            //IWorkflowStore workflowStore = BootStrapper.MongoDbStore();
+            IWorkflowStore workflowStore = BootStrapper.MongoDbStore();
             //IWorkflowStore workflowStore = BootStrapper.MemoryStore();
-            IWorkflowStore workflowStore = BootStrapper.RavenDbEmbeddedStore();
+            //IWorkflowStore workflowStore = BootStrapper.RavenDbEmbeddedStore();
             
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
             workflowServer.RegisterWorkflowType<FileCreationWorkflow>();

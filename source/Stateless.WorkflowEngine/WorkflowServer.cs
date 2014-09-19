@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Stateless;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
-using NLog;
 
 namespace Stateless.WorkflowEngine
 {
@@ -55,8 +54,6 @@ namespace Stateless.WorkflowEngine
         private readonly IWorkflowRegistrationService _workflowRegistrationService;
         private readonly IWorkflowExceptionHandler _exceptionHandler;
 
-        private static Logger logger = LogManager.GetCurrentClassLogger();
-
         public WorkflowServer(IWorkflowStore workflowStore): this(workflowStore, new WorkflowRegistrationService(), new WorkflowExceptionHandler())
         {
 
@@ -75,21 +72,17 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflow"></param>
         public void ExecuteWorkflow(Workflow workflow)
         {
-            logger.Info("Executing workflow {0}", workflow.Id);
             string initialState = workflow.CurrentState;
             try
             {
                 workflow.LastException = null;
                 workflow.RetryCount += 1;
-                logger.Info("Firing trigger {0} for workflow {1} (Type: {2}, Current state: {3})", workflow.ResumeTrigger, workflow.Id, workflow.GetType().FullName, workflow.CurrentState);
                 workflow.Fire(workflow.ResumeTrigger);
 
                 workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
             }
             catch (Exception ex)
             {
-                logger.Error(ex.Message, ex);
-
                 if (workflow.IsSingleInstance)
                 {
                     _exceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
@@ -106,13 +99,11 @@ namespace Stateless.WorkflowEngine
             finally
             {
                 // the workflow should always save, no matter what happens
-                logger.Info("Persisting workflow {0} with store {1}", workflow.Id, _workflowStore.GetType().FullName);
                 _workflowStore.Save(workflow);
             }
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
-                logger.Info("Archiving workflow {0}", workflow.Id);
                 _workflowStore.Archive(workflow);
                 return;
             }
@@ -132,7 +123,6 @@ namespace Stateless.WorkflowEngine
         public void ExecuteWorkflows(int count)
         {
             IEnumerable<Workflow> workflows = _workflowStore.GetActive(count);
-            logger.Info("Retrieved {0} workflows for execution from the data store", workflows.Count());
             Parallel.ForEach(workflows, ExecuteWorkflow);
         }
 
@@ -154,7 +144,6 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            logger.Info("Registering workflow {0}", workflow.GetType().FullName);
             _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
         }
 
