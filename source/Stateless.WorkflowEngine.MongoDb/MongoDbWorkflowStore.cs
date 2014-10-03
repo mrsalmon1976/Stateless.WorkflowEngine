@@ -18,11 +18,29 @@ namespace Stateless.WorkflowEngine.MongoDb
         private Func<Guid, IMongoQuery> _queryById = delegate(Guid id) { return Query<WorkflowContainer>.EQ(x => x.Id, id); };
         private Func<Guid, IMongoQuery> _queryCompletedById = delegate(Guid id) { return Query<CompletedWorkflow>.EQ(x => x.Id, id); };
 
+        public const string DefaultCollectionActive = "Workflows";
+        public const string DefaultCollectionCompleted = "CompletedWorkflows";
 
-        public MongoDbWorkflowStore(MongoDatabase mongoDatabase)
+        public MongoDbWorkflowStore(MongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted)
+        {
+        }
+
+        public MongoDbWorkflowStore(MongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName)
         {
             this.MongoDatabase = mongoDatabase;
+            this.CollectionActive = activeCollectionName;
+            this.CollectionCompleted = completedCollectionName;
         }
+
+        /// <summary>
+        /// Gets/sets the name of the MongoDb collection holding active workflows.  Defaults to "Workflows".
+        /// </summary>
+        public string CollectionActive { get; set; }
+
+        /// <summary>
+        /// Gets/sets the name of the MongoDb collection holding completed workflows.  Defaults to "CompletedWorkflows".
+        /// </summary>
+        public string CollectionCompleted { get; set; }
 
         /// <summary>
         /// Gets/sets the mongo database associated with the store.
@@ -31,12 +49,12 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         public MongoCollection<WorkflowContainer> GetCollection()
         {
-            return this.MongoDatabase.GetCollection<WorkflowContainer>("Workflows");
+            return this.MongoDatabase.GetCollection<WorkflowContainer>(this.CollectionActive);
         }
 
         public MongoCollection<CompletedWorkflow> GetCompletedCollection()
         {
-            return this.MongoDatabase.GetCollection<CompletedWorkflow>("CompletedWorkflows");
+            return this.MongoDatabase.GetCollection<CompletedWorkflow>(this.CollectionCompleted);
         }
 
         /// <summary>
