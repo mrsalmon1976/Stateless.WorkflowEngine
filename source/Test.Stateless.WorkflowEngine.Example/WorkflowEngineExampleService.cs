@@ -68,21 +68,25 @@ namespace Test.Stateless.WorkflowEngine.Example
             workflow.ResumeTrigger = FileCreationWorkflow.Trigger.WriteFirstFile.ToString();
             workflowServer.RegisterWorkflow(workflow);
 
-
             while (!_shutdownEvent.WaitOne(0))
             {
+                int executedCount = 0;
 
                 try
                 {
-                    workflowServer.ExecuteWorkflows(5);
+                    executedCount = workflowServer.ExecuteWorkflows(5);
                 }
                 catch (Exception)
                 {
-                    Thread.Sleep(1000);
+                    // do some logging!
                 }
 
-                // sleepy sleep
-                Thread.Sleep(1000);
+                // if no workflows were found, sleepy sleep - you should create an app setting for the poll 
+                // interval appropriate to you
+                if (executedCount == 0)
+                {
+                    Thread.Sleep(1000);
+                }
             }
 
 

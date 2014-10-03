@@ -188,6 +188,35 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [TestCase(0)]
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(10)]
+        [TestCase(50)]
+        public void ExecuteWorkflows_OnExecution_ReturnsNumberOfWorkflowsExecuted(int activeWorkflowCount)
+        {
+            const int executeCount = 10;
+            int expectedResult = Math.Min(executeCount, activeWorkflowCount);
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            for (int i = 0; i < activeWorkflowCount; i++)
+            {
+                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+                workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-2);
+                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+                workflowStore.Save(workflow);
+            }
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            // execute
+            int result = workflowServer.ExecuteWorkflows(10);
+            Assert.AreEqual(expectedResult, result);
+
+        }
+
         #endregion
 
         #region IsSingleInstanceWorkflowRegistered Tests

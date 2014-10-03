@@ -23,8 +23,9 @@ namespace Stateless.WorkflowEngine
         /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
         /// by CreationDate.
         /// </summary>
-        /// <param name="count"></param>
-        void ExecuteWorkflows(int count);
+        /// <param name="count">The number of workflows that can be executed.</param>
+        /// <returns>The number of workflows that were actually executed.</returns>
+        int ExecuteWorkflows(int count);
 
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
@@ -119,11 +120,14 @@ namespace Stateless.WorkflowEngine
         /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
         /// by CreationDate.
         /// </summary>
-        /// <param name="count"></param>
-        public void ExecuteWorkflows(int count)
+        /// <param name="count">The number of workflows that can be executed.</param>
+        /// <returns>The number of workflows that were actually executed.</returns>
+        public int ExecuteWorkflows(int count)
         {
             IEnumerable<Workflow> workflows = _workflowStore.GetActive(count);
+            int cnt = workflows.Count();
             Parallel.ForEach(workflows, ExecuteWorkflow);
+            return cnt;
         }
 
         /// <summary>
