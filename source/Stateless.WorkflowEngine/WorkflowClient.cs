@@ -12,6 +12,22 @@ namespace Stateless.WorkflowEngine
 {
     public interface IWorkflowClient
     {
+
+        /// <summary>
+        /// Gets a workflow from the back-end store.  Returns null if the workflow does not exist.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        T Get<T>(Guid workflowId) where T : Workflow;
+
+        /// <summary>
+        /// Gets whether a workflow still exists or not.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        bool Exists(Guid workflowId);
+
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
         /// </summary>
@@ -68,6 +84,28 @@ namespace Stateless.WorkflowEngine
         }
 
         public ICommandFactory CommandFactory { get; set; }
+
+        /// <summary>
+        /// Gets whether a workflow still exists or not.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public bool Exists(Guid workflowId)
+        {
+            Workflow workflow = this._workflowStore.Get(workflowId);
+            return (workflow != null);
+        }
+
+        /// <summary>
+        /// Gets a workflow from the back-end store.  Returns null if the workflow does not exist.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public T Get<T>(Guid workflowId) where T : Workflow
+        {
+            return _workflowStore.Get<T>(workflowId);
+        }
 
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.

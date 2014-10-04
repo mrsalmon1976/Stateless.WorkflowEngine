@@ -21,6 +21,58 @@ namespace Test.Stateless.WorkflowEngine
     [TestFixture]
     public class WorkflowClientTest
     {
+        #region Exists Tests
+
+        [Test]
+        public void Exists_WorkflowExists_ReturnsTrue()
+        {
+            Guid workflowId = Guid.NewGuid();
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.Id = workflowId;
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.Get(workflowId).Returns(workflow);
+            
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            bool result = workflowClient.Exists(workflowId);
+
+            workflowStore.Received(1).Get(workflowId);
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void Exists_WorkflowDoesNotExist_ReturnsFalse()
+        {
+            Guid workflowId = Guid.NewGuid();
+            Workflow workflow = null;
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.Get(workflowId).Returns(workflow);
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            bool result = workflowClient.Exists(workflowId);
+
+            workflowStore.Received(1).Get(workflowId);
+            Assert.IsFalse(result);
+        }
+
+        #endregion
+
+
+        #region Get Tests
+
+        [Test]
+        public void Get_OnExecute_UsesStore()
+        {
+            Guid workflowId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+
+            BasicWorkflow workflow = workflowClient.Get<BasicWorkflow>(workflowId);
+            workflowStore.Received(1).Get<BasicWorkflow>(workflowId);
+        }
+
+        #endregion
 
         #region IsSingleInstanceWorkflowRegistered Tests
 
