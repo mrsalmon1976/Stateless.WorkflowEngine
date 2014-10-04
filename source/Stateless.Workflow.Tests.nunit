@@ -1,0 +1,9 @@
+﻿<NUnitProject>
+  <Settings activeconfig="Debug" />
+  <Config name="Debug" binpathtype="Auto">
+    <assembly path="Test.Stateless.WorkflowEngine\bin\Debug\Test.Stateless.WorkflowEngine.dll" />
+    <assembly path="Test.Stateless.WorkflowEngine.MongoDb\bin\Debug\Test.Stateless.WorkflowEngine.MongoDb.dll" />
+    <assembly path="Test.Stateless.WorkflowEngine.RavenDb\bin\Debug\Test.Stateless.WorkflowEngine.RavenDb.dll" />
+  </Config>
+  <Config name="Release" binpathtype="Auto" />
+</NUnitProject>

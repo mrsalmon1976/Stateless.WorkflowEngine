@@ -27,6 +27,7 @@ namespace Stateless.WorkflowEngine
             {
                 // we've run out of retry intervals, suspend the workflow
                 workflow.IsSuspended = true;
+                workflow.OnSuspend();
             }
 
         }

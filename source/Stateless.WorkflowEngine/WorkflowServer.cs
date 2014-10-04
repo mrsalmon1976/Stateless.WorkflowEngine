@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Stateless;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
+using Stateless.WorkflowEngine.Events;
 
 namespace Stateless.WorkflowEngine
 {
@@ -47,6 +48,11 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         void RegisterWorkflowType<T>() where T : Workflow;
 
+        /// <summary>
+        /// Event raised when a workflow is suspended.
+        /// </summary>
+        event EventHandler<WorkflowEventArgs> WorkflowSuspended;
+
     }
 
     public class WorkflowServer : IWorkflowServer
@@ -67,12 +73,19 @@ namespace Stateless.WorkflowEngine
             _exceptionHandler = exceptionHandler;
         }
 
+        public event EventHandler<WorkflowEventArgs> WorkflowSuspended;
+
         /// <summary>
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
         public void ExecuteWorkflow(Workflow workflow)
         {
+            if (workflow == null)
+            {
+                throw new NullReferenceException("Workflow servered asked to execute null workflow object");
+            }
+
             string initialState = workflow.CurrentState;
             try
             {
@@ -94,6 +107,12 @@ namespace Stateless.WorkflowEngine
                 }
                 workflow.CurrentState = initialState;
 
+                // if the workflow is suspended, raise the events
+                if (workflow.IsSuspended && this.WorkflowSuspended != null)
+                {
+                    this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                }
+
                 // exit out, nothing else to do here
                 return;
             }
@@ -110,7 +129,7 @@ namespace Stateless.WorkflowEngine
             }
 
             // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling
-            if (!String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow)
+            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow)
             {
                 this.ExecuteWorkflow(workflow);
             }

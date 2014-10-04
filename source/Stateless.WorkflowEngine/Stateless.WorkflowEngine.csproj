@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Events\WorkflowEventArgs.cs" />
     <Compile Include="Models\CompletedWorkflow.cs" />
     <Compile Include="Exceptions\WorkflowNotConfiguredException.cs" />
     <Compile Include="Exceptions\WorkflowEngineException.cs" />

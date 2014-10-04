@@ -14,6 +14,7 @@ using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
+using Stateless.WorkflowEngine.Events;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -22,6 +23,14 @@ namespace Test.Stateless.WorkflowEngine
     {
 
         #region ExecuteWorkflow Tests
+
+        [Test]
+        [ExpectedException(ExpectedException=typeof(NullReferenceException))]
+        public void ExecuteWorkflow_NullWorkflow_RaisesException()
+        {
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
+            workflowServer.ExecuteWorkflow(null);
+        }
 
         [Test]
         public void ExecuteWorkflow_OnExecution_InitialisesAndFiresTriggers()
@@ -151,6 +160,32 @@ namespace Test.Stateless.WorkflowEngine
 
             Assert.AreEqual("Complete", workflow.CurrentState);
 
+        }
+
+        [Test]
+        public void ExecuteWorkflow_OnWorkflowSuspension_ExceptionRaised()
+        {
+            string initialState = Guid.NewGuid().ToString();
+            bool eventRaised = false;
+
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.RetryIntervals =  new int[] { };
+            workflow.CurrentState.Returns(initialState);
+            workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
+
+            // make sure the workflow is suspended
+            IWorkflowExceptionHandler workflowExceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
+            workflowExceptionHandler.WhenForAnyArgs(x => x.HandleMultipleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>())).Do(x => { workflow.IsSuspended = true; });
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), workflowExceptionHandler);
+            workflowServer.WorkflowSuspended += delegate(object sender, WorkflowEventArgs e) {
+                eventRaised = true;
+            };
+            workflowServer.ExecuteWorkflow(workflow);
+
+            Assert.IsTrue(eventRaised);
         }
 
         #endregion

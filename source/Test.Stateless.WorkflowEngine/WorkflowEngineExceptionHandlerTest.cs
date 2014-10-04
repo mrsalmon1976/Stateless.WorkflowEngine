@@ -57,6 +57,24 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
+        public void HandleMultipleInstanceWorkflowException_OnWorkflowSuspended_ExecutesOnSuspend()
+        {
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BrokenWorkflow.Trigger.DoStuff.ToString();
+            workflow.RetryIntervals = new int[] { 10, 10, 10 };
+            workflow.RetryCount = workflow.RetryIntervals.Length;
+
+            Exception ex = new Exception("Dummy exception");
+
+            // execute
+            IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
+            exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
+
+            workflow.Received(1).OnSuspend();
+        }
+
+        [Test]
         public void HandleSingleInstanceWorkflowException_RetryIntervalLengthNotExceeded_SleepsForSpecifiedTime()
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);

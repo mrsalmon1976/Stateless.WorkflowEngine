@@ -119,6 +119,14 @@ namespace Stateless.WorkflowEngine
             workflowAction.Execute(this);
         }
 
+        /// <summary>
+        /// Fires when the workflow is suspended.  This can be overridden to handle any workflow-specific 
+        /// suspension activities.
+        /// </summary>
+        public virtual void OnSuspend()
+        {
+        }
+
     }
 
     public abstract class StateWorkflow<TState, TTrigger> : Workflow
