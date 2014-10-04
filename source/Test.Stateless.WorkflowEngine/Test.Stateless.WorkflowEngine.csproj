@@ -53,6 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\UnsuspendWorkflowCommandTest.cs" />
     <Compile Include="WorkflowClientTest.cs" />
     <Compile Include="Services\WorkflowRegistrationServiceTest.cs" />
     <Compile Include="Stores\MemoryWorkflowStoreTest.cs" />

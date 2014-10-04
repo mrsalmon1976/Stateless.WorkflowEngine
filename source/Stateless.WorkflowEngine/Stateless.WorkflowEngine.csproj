@@ -46,7 +46,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\Command.cs" />
+    <Compile Include="Commands\CommandFactory.cs" />
+    <Compile Include="Commands\UnsuspendWorkflowCommand.cs" />
     <Compile Include="Events\WorkflowEventArgs.cs" />
+    <Compile Include="Exceptions\CommandConfigurationException.cs" />
     <Compile Include="Models\CompletedWorkflow.cs" />
     <Compile Include="Exceptions\WorkflowNotConfiguredException.cs" />
     <Compile Include="Exceptions\WorkflowEngineException.cs" />
