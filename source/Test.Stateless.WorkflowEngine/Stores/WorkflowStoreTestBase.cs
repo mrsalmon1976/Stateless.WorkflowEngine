@@ -42,6 +42,28 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region Tests
+
+        [Test]
+        public void Delete_OnExecute_RemovesWorkflow()
+        {
+            Guid workflowId = Guid.NewGuid();
+            IWorkflowStore store = GetStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.Id = workflowId;
+            store.Save(workflow);
+
+            Workflow result1 = store.GetOrDefault(workflowId);
+            Assert.IsNotNull(result1);
+
+            store.Delete(workflowId);
+            Workflow result2 = store.GetOrDefault(workflowId);
+            Assert.IsNull(result2);
+        }
+
+        #endregion
+
         #region Get Tests
 
         [Test]

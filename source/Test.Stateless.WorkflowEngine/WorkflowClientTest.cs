@@ -21,6 +21,22 @@ namespace Test.Stateless.WorkflowEngine
     [TestFixture]
     public class WorkflowClientTest
     {
+        #region Delete Tests
+
+        [Test]
+        public void Delete_OnExecute_RemovesFromStore()
+        {
+            Guid workflowId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            workflowClient.Delete(workflowId);
+
+            workflowStore.Received(1).Delete(workflowId);
+        }
+
+        #endregion
+
         #region Exists Tests
 
         [Test]
@@ -57,7 +73,6 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         #endregion
-
 
         #region Get Tests
 

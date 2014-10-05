@@ -14,12 +14,11 @@ namespace Stateless.WorkflowEngine
     {
 
         /// <summary>
-        /// Gets a workflow from the back-end store.  Returns null if the workflow does not exist.
+        /// Deletes a workflow from the underlying store.  This checks workflows in the active store 
+        /// only, not in the underlying Completed collection.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <param name="workflowId"></param>
-        /// <returns></returns>
-        T Get<T>(Guid workflowId) where T : Workflow;
+        void Delete(Guid workflowId);
 
         /// <summary>
         /// Gets whether a workflow still exists or not.
@@ -27,6 +26,14 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflowId"></param>
         /// <returns></returns>
         bool Exists(Guid workflowId);
+
+        /// <summary>
+        /// Gets a workflow from the back-end store.  Returns null if the workflow does not exist.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        T Get<T>(Guid workflowId) where T : Workflow;
 
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
@@ -84,6 +91,16 @@ namespace Stateless.WorkflowEngine
         }
 
         public ICommandFactory CommandFactory { get; set; }
+
+        /// <summary>
+        /// Deletes a workflow from the underlying store.  This checks workflows in the active store 
+        /// only, not in the underlying Completed collection.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        public void Delete(Guid workflowId)
+        {
+            _workflowStore.Delete(workflowId);
+        }
 
         /// <summary>
         /// Gets whether a workflow still exists or not.

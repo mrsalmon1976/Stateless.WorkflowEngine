@@ -26,6 +26,15 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection. 
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override void Delete(Guid id)
+        {
+            _activeWorkflows.Remove(id);
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>

@@ -16,6 +16,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflow">The workflow to archive.</param>
         void Archive(Workflow workflow);
+        
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection. 
+        /// </summary>
+        /// <param name="id"></param>
+        void Delete(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier.
@@ -99,6 +105,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflow">The workflow to archive.</param>
         public abstract void Archive(Workflow workflow);
+
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection. 
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public abstract void Delete(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier.

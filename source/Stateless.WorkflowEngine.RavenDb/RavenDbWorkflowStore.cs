@@ -56,6 +56,20 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection. 
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override void Delete(Guid id)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                WorkflowContainer wf = session.Load<WorkflowContainer>(id);
+                session.Delete<WorkflowContainer>(wf);
+                session.SaveChanges();
+            }
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>

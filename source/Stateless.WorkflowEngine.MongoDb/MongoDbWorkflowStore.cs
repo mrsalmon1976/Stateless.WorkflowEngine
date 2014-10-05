@@ -72,6 +72,16 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection. 
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override void Delete(Guid id)
+        {
+            var coll = GetCollection();
+            coll.Remove(_queryById(id));
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>

@@ -137,8 +137,6 @@ namespace Stateless.WorkflowEngine
 
         #region Constructors
 
-        #endregion
-
         public StateWorkflow() : this("Start")
         {
         }
@@ -148,6 +146,7 @@ namespace Stateless.WorkflowEngine
             this.Initialise(initialState);
         }
 
+        #endregion
 
         public override string CurrentState
         {
