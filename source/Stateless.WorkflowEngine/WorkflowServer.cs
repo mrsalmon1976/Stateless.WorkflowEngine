@@ -83,7 +83,7 @@ namespace Stateless.WorkflowEngine
         {
             if (workflow == null)
             {
-                throw new NullReferenceException("Workflow servered asked to execute null workflow object");
+                throw new NullReferenceException("Workflow server asked to execute null workflow object");
             }
 
             string initialState = workflow.CurrentState;
@@ -106,6 +106,9 @@ namespace Stateless.WorkflowEngine
                     _exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
                 }
                 workflow.CurrentState = initialState;
+
+                // raise the exception handler
+                workflow.OnError(ex);
 
                 // if the workflow is suspended, raise the events
                 if (workflow.IsSuspended && this.WorkflowSuspended != null)

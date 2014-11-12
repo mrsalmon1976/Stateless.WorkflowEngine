@@ -188,6 +188,24 @@ namespace Test.Stateless.WorkflowEngine
             Assert.IsTrue(eventRaised);
         }
 
+        [Test]
+        public void ExecuteWorkflow_OnWorkflowError_OnErrorCalled()
+        {
+            string initialState = Guid.NewGuid().ToString();
+
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.RetryIntervals = new int[] { };
+            workflow.CurrentState.Returns(initialState);
+            workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
+            workflowServer.ExecuteWorkflow(workflow);
+
+            workflow.Received(1).OnError(Arg.Any<Exception>());
+        }
+
         #endregion
 
         #region ExecuteWorkflows Tests

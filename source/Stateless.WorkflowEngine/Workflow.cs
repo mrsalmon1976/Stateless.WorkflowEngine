@@ -127,6 +127,14 @@ namespace Stateless.WorkflowEngine
         {
         }
 
+        /// <summary>
+        /// Fires when an error happens within the workflow.  This can be overriden to add logging, or any other 
+        /// exception management.
+        /// </summary>
+        public virtual void OnError(Exception ex)
+        {
+        }
+
     }
 
     public abstract class StateWorkflow<TState, TTrigger> : Workflow
