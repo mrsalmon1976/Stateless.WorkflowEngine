@@ -25,6 +25,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
     /// are in the base class so all methods of WorkflowStore are tested consistently.
     /// </summary>
     [TestFixture]
+    [Category("RequiresRavenDb")]
     public class RavenDbWorkflowStoreTest : WorkflowStoreTestBase
     {
 

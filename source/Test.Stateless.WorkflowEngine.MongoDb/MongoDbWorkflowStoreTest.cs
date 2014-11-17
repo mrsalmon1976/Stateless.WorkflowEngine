@@ -23,6 +23,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
     /// are in the base class so all methods of WorkflowStore are tested consistently.
     /// </summary>
     [TestFixture]
+    [Category("RequiresMongoDb")]
     public class MongoDbWorkflowStoreTest : WorkflowStoreTestBase
     {
         private MongoDatabase _database = null;
