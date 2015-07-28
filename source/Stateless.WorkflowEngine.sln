@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.Ra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.RavenDb", "Test.Stateless.WorkflowEngine.RavenDb\Test.Stateless.WorkflowEngine.RavenDb.csproj", "{858F932F-5F2A-4222-9152-4DB350F86527}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.UI.Console", "Stateless.WorkflowEngine.UI.Console\Stateless.WorkflowEngine.UI.Console.csproj", "{A24A3982-6E7A-45C5-8C36-5901E5605F8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{858F932F-5F2A-4222-9152-4DB350F86527}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{858F932F-5F2A-4222-9152-4DB350F86527}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{858F932F-5F2A-4222-9152-4DB350F86527}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A24A3982-6E7A-45C5-8C36-5901E5605F8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A24A3982-6E7A-45C5-8C36-5901E5605F8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A24A3982-6E7A-45C5-8C36-5901E5605F8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A24A3982-6E7A-45C5-8C36-5901E5605F8B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
