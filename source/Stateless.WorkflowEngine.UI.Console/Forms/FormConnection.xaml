@@ -3,20 +3,24 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="New Connection" Height="480" Width="640" WindowStartupLocation="CenterOwner" Loaded="Window_Loaded">
     <Grid>
-        <TabControl VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Name="tabConnectionForms">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="30" />
+        </Grid.RowDefinitions>
+        <TabControl Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Name="tabConnectionForms">
             <TabItem Header="Saved Connections" Tag="Saved" Selector.IsSelected="True">
-                <ListView Name="lstConnections" ItemsSource="{Binding Path=WorkflowStoreConnections}">
+                <ListView Name="lstConnections" ItemsSource="{Binding Path=WorkflowStoreConnections}" SelectionMode="Single">
                     <ListView.View>
                         <GridView>
                             <GridViewColumn DisplayMemberBinding="{Binding Path=WorkflowStoreType}" Header="Type" />
-                            <GridViewColumn DisplayMemberBinding="{Binding Path=Host}" Header="Host:Port" />
-                            <GridViewColumn Header="Database">
+                            <GridViewColumn DisplayMemberBinding="{Binding Path=DatabaseName}" Header="Database" />
+                            <GridViewColumn Header="Host:Port">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock>
                                             <TextBlock.Text>
                                                 <MultiBinding StringFormat="{}{0}:{1}">
-                                                    <Binding Path="DatabaseName" />
+                                                    <Binding Path="Host" />
                                                     <Binding Path="Port" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
@@ -71,13 +75,13 @@
                     <TextBox Grid.Row="6" Grid.Column="1" Name="txtCompletedCollection" Height="25" VerticalAlignment="Top" HorizontalAlignment="Stretch" Text="CompletedWorkflows" />
                     
                     <Label Grid.Row="8" Grid.Column="0" Content="Messages..." Name="lblMessage" HorizontalAlignment="Left" />
-                    <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Name="btnOK" Content="OK" Width="100" HorizontalAlignment="Right" Click="btnOK_Click"/>
-                        <Button Name="btnCancel" Content="Cancel" Height="25" Width="100" HorizontalAlignment="Right" Margin="10,0,0,0" Click="btnCancel_Click"/>
-                    </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="btnOK" Content="OK" Width="100" HorizontalAlignment="Right" Click="btnOK_Click"/>
+            <Button Name="btnCancel" Content="Cancel" Height="25" Width="100" HorizontalAlignment="Right" Margin="10,0,0,0" Click="btnCancel_Click"/>
+        </StackPanel>
 
     </Grid>
 </Window>

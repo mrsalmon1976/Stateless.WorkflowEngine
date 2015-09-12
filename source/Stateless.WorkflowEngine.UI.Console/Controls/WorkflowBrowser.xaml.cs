@@ -23,7 +23,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
     /// </summary>
     public partial class WorkflowBrowser : UserControl
     {
-        protected ObservableCollection<WorkflowContainer> workflows = new ObservableCollection<WorkflowContainer>();
+        protected ObservableCollection<UIWorkflowContainer> workflows = new ObservableCollection<UIWorkflowContainer>();
 
         public WorkflowBrowser()
         {
@@ -37,7 +37,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
             int count = 0;
             Int32.TryParse(txtWorkflowCount.Text, out count);
             workflows.Clear();
-            foreach (WorkflowContainer wc in this.WorkflowProvider.GetActive(count))
+            foreach (UIWorkflowContainer wc in this.WorkflowProvider.GetActive(count))
             {
                 workflows.Add(wc);
             }

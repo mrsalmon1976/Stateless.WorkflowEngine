@@ -61,5 +61,26 @@ namespace Stateless.WorkflowEngine.UI.Console.Models.Workflow
             }
             return AESGCM.SimpleEncryptWithPassword(plainTextPassword, Constants.PasswordKey);
         }
+
+        public override bool Equals(object obj)
+        {
+            WorkflowStoreConnection other = obj as WorkflowStoreConnection;
+            if (other == null) return false;
+
+            if (
+                this.WorkflowStoreType == other.WorkflowStoreType &&
+                this.Host == other.Host &&
+                this.Port == other.Port &&
+                this.DatabaseName == other.DatabaseName &&
+                this.UserName == other.UserName &&
+                this.Password == other.Password &&
+                this.ActiveCollection == other.ActiveCollection &&
+                this.CompleteCollection == other.CompleteCollection)
+            {
+                return true;
+            }
+
+            return base.Equals(obj);
+        }
     }
 }

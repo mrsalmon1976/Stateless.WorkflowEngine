@@ -9,6 +9,6 @@ namespace Stateless.WorkflowEngine.UI.Console.Services.Workflow
 {
     public interface IWorkflowProvider
     {
-        IEnumerable<WorkflowContainer> GetActive(int count);
+        IEnumerable<UIWorkflowContainer> GetActive(int count);
     }
 }

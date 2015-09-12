@@ -21,10 +21,10 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Id" Binding="{Binding Path=Workflow.Id}" IsReadOnly="True" />
                     <DataGridTextColumn Header="Type" Binding="{Binding Path=WorkflowTypeName}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="ResumeOn" Binding="{Binding Path=Workflow.ResumeOn}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="ResumeOn" Binding="{Binding Path=Workflow.ResumeOnFriendly}" IsReadOnly="True" />
                     <DataGridTextColumn Header="IsSuspended" Binding="{Binding Path=Workflow.IsSuspended}" IsReadOnly="True" />
                     <DataGridTextColumn Header="RetryCount" Binding="{Binding Path=Workflow.RetryCount}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="RetryIntervals" Binding="{Binding Path=Workflow.RetryIntervals}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="RetryIntervals" Binding="{Binding Path=Workflow.RetryIntervalsFriendly}" IsReadOnly="True" />
                 </DataGrid.Columns>
            </DataGrid>
             

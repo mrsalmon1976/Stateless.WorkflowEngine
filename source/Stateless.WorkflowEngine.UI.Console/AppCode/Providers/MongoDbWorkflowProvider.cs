@@ -24,14 +24,14 @@ namespace Stateless.WorkflowEngine.UI.Console.Services.Workflow
         public string CompletedCollectionName { get; set; }
         public MongoDatabase MongoDatabase { get; set; }
 
-        public IEnumerable<WorkflowContainer> GetActive(int count)
+        public IEnumerable<UIWorkflowContainer> GetActive(int count)
         {
             var docs = this.MongoDatabase.GetCollection(this.ActiveCollectionName).FindAll().Take(count);
-            List<WorkflowContainer> workflowContainers = new List<WorkflowContainer>();
+            List<UIWorkflowContainer> workflowContainers = new List<UIWorkflowContainer>();
             foreach (BsonDocument document in docs)
             {
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
-                WorkflowContainer wc = BsonSerializer.Deserialize<WorkflowContainer>(document);
+                UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
                 workflowContainers.Add(wc);
             }
             return workflowContainers;

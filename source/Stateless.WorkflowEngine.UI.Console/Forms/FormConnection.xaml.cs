@@ -42,7 +42,15 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
             WorkflowStoreConnection conn = null;
 
             string tabTag = ((TabItem)this.tabConnectionForms.SelectedItem).Tag.ToString().ToUpper();
-            if (tabTag == "MONGODB")
+            if (tabTag == "SAVED")
+            {
+                object selectedItem = lstConnections.SelectedItem;
+                if (selectedItem != null)
+                {
+                    conn = (WorkflowStoreConnection)selectedItem;
+                }
+            }
+            else if (tabTag == "MONGODB")
             {
                 int port = 0;
                 if (!Int32.TryParse(txtPort.Text, out port)) port = Constants.MongoDbDefaultPort;
@@ -79,8 +87,11 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
                 this.WorkflowProvider.GetActive(1);
 
                 // add the connection to the user settings and save
-                _userSettings.Connections.Add(conn);
-                _userSettings.Save();
+                if (!_userSettings.Connections.Contains(conn)) 
+                {
+                    _userSettings.Connections.Add(conn);
+                    _userSettings.Save();
+                }
 
                 this.DialogResult = true;
                 this.Close();

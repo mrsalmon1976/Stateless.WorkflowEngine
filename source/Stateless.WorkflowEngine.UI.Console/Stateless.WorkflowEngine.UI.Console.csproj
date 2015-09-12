@@ -80,8 +80,8 @@
     <Compile Include="AppCode\Utils\ParsedAssemblyQualifiedName.cs" />
     <Compile Include="AppCode\Models\Workflow\WorkflowStoreConnection.cs" />
     <Compile Include="AppCode\Providers\UserSettings.cs" />
-    <Compile Include="AppCode\Models\Workflow\Workflow.cs" />
-    <Compile Include="AppCode\Models\Workflow\WorkflowContainer.cs" />
+    <Compile Include="AppCode\Models\Workflow\UIWorkflow.cs" />
+    <Compile Include="AppCode\Models\Workflow\UIWorkflowContainer.cs" />
     <Compile Include="AppCode\Providers\IWorkflowProvider.cs" />
     <Compile Include="AppCode\Providers\MongoDbWorkflowProvider.cs" />
     <Compile Include="AppCode\Providers\WorkflowProviderFactory.cs" />
