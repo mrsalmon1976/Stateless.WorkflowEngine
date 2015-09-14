@@ -34,6 +34,14 @@ namespace Stateless.WorkflowEngine.UI.Console.Models.Workflow
 
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
+        public string Image
+        {
+            get
+            {
+                return "/Stateless.WorkflowEngine.UI.Console;component/Resources/mongo_24x24.png";
+            }
+        }
+
         public string Host { get; set; }
 
         public int Port { get; set; }

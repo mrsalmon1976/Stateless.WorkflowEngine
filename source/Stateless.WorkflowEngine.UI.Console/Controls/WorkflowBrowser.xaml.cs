@@ -45,14 +45,24 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
+            ToggleUI(false);
             grdWorkflows.ItemsSource = workflows;
             RefreshWorkflows();
+            ToggleUI(true);
         }
 
         private void btnRefresh_Click(object sender, RoutedEventArgs e)
         {
+            ToggleUI(false);
             RefreshWorkflows();
+            ToggleUI(true);
         }
+
+        private void ToggleUI(bool isEnabled)
+        {
+            btnRefresh.IsEnabled = isEnabled;
+        }
+
 
         private void txtWorkflowCount_LostFocus(object sender, RoutedEventArgs e)
         {

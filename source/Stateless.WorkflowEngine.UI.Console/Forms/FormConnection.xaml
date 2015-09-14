@@ -2,16 +2,29 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="New Connection" Height="480" Width="640" WindowStartupLocation="CenterOwner" Loaded="Window_Loaded">
+
     <Grid>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="30" />
         </Grid.RowDefinitions>
         <TabControl Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Name="tabConnectionForms">
+
             <TabItem Header="Saved Connections" Tag="Saved" Selector.IsSelected="True">
-                <ListView Name="lstConnections" ItemsSource="{Binding Path=WorkflowStoreConnections}" SelectionMode="Single">
+                <ListView Name="lstConnections" ItemsSource="{Binding Path=WorkflowStoreConnections}" SelectionMode="Single" MouseDoubleClick="OnLstConnections_MouseDoubleClick">
                     <ListView.View>
                         <GridView>
+                            <GridViewColumn Width="30">
+                                <GridViewColumnHeader IsHitTestVisible="False"></GridViewColumnHeader>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Image Source="{Binding Image}" Width="16" Height="16" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
                             <GridViewColumn DisplayMemberBinding="{Binding Path=WorkflowStoreType}" Header="Type" />
                             <GridViewColumn DisplayMemberBinding="{Binding Path=DatabaseName}" Header="Database" />
                             <GridViewColumn Header="Host:Port">
@@ -36,7 +49,13 @@
                     </ListView.View>
                 </ListView>
             </TabItem>
-            <TabItem Header="MongoDb" Tag="MongoDb">
+            <TabItem Tag="MongoDb">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <Image Height="16" Source="/Stateless.WorkflowEngine.UI.Console;component/Resources/mongo_24x24.png" Width="16"/>
+                        <TextBlock Text="MongoDb" Margin="2,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <Grid Margin="10" >
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -79,8 +98,8 @@
             </TabItem>
         </TabControl>
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Name="btnOK" Content="OK" Width="100" HorizontalAlignment="Right" Click="btnOK_Click"/>
-            <Button Name="btnCancel" Content="Cancel" Height="25" Width="100" HorizontalAlignment="Right" Margin="10,0,0,0" Click="btnCancel_Click"/>
+            <Button Name="btnOK" Content="OK" Width="100" HorizontalAlignment="Right"  Margin="10,3,0,3" Click="btnOK_Click"/>
+            <Button Name="btnCancel" Content="Cancel" Width="100" HorizontalAlignment="Right" Margin="10,3,10,3" Click="btnCancel_Click"/>
         </StackPanel>
 
     </Grid>

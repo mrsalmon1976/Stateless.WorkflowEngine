@@ -14,7 +14,7 @@
                     <TextBox Name="txtWorkflowCount" Text="50" Width="50" LostFocus="txtWorkflowCount_LostFocus" />
                     <Label Content="workflows"></Label>
                 </WrapPanel>
-                <Button Name="btnRefresh" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Refresh" Click="btnRefresh_Click"></Button>
+                <Button Name="btnRefresh" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Refresh" Click="btnRefresh_Click" Margin="10,3,0,3"></Button>
             </DockPanel>
             
             <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False"> 

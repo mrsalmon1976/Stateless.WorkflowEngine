@@ -136,5 +136,14 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
             lstConnections.ItemsSource = this.WorkflowStoreConnections;
 
         }
+
+        private void OnLstConnections_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var item = ((FrameworkElement)e.OriginalSource).DataContext as WorkflowStoreConnection;
+            if (item != null)
+            {
+                btnOK_Click(sender, new RoutedEventArgs());
+            }
+        }
     }
 }
