@@ -53,6 +53,9 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="NLog">
+      <HintPath>..\packages\NLog.4.1.1\lib\net45\NLog.dll</HintPath>
+    </Reference>
     <Reference Include="SimpleInjector">
       <HintPath>..\packages\SimpleInjector.2.8.3\lib\net45\SimpleInjector.dll</HintPath>
     </Reference>
@@ -75,6 +78,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AppCode\Factories\DialogFactory.cs" />
     <Compile Include="AppCode\Utils\AppUtils.cs" />
     <Compile Include="AppCode\Utils\EncryptionUtils.cs" />
     <Compile Include="AppCode\Utils\ParsedAssemblyQualifiedName.cs" />
@@ -84,7 +88,7 @@
     <Compile Include="AppCode\Models\Workflow\UIWorkflowContainer.cs" />
     <Compile Include="AppCode\Providers\IWorkflowProvider.cs" />
     <Compile Include="AppCode\Providers\MongoDbWorkflowProvider.cs" />
-    <Compile Include="AppCode\Providers\WorkflowProviderFactory.cs" />
+    <Compile Include="AppCode\Factories\WorkflowProviderFactory.cs" />
     <Page Include="Controls\WorkflowBrowser.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

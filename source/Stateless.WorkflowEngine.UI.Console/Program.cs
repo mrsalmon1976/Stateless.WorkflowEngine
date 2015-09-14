@@ -7,12 +7,17 @@ using SimpleInjector;
 using Stateless.WorkflowEngine.UI.Console.Forms;
 using Stateless.WorkflowEngine.UI.Console.Models;
 using Stateless.WorkflowEngine.UI.Console.AppCode.Providers;
+using System.Windows;
+using NLog;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
 
 namespace Stateless.WorkflowEngine.UI.Console
 {
 
     static class Program
     {
+        static Logger _logger = LogManager.GetCurrentClassLogger();
+
         [STAThread]
         static void Main()
         {
@@ -30,7 +35,9 @@ namespace Stateless.WorkflowEngine.UI.Console
             }
             catch (Exception ex)
             {
-                //Log the exception and exit
+                _logger.Error(ex);
+                MessageBox.Show("A fatal error has occurred: " + ex.Message, "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Environment.Exit(1);
             }
         }
 
@@ -39,14 +46,15 @@ namespace Stateless.WorkflowEngine.UI.Console
             // Create the container as usual.
             var container = new Container();
 
+            // factories
+            container.Register<IDialogFactory, DialogFactory>();
+            container.Register<IWorkflowProviderFactory, WorkflowProviderFactory>();
+
             // windows and view models:
             container.Register<MainWindow>();
-            container.Register<FormConnection>();
+            container.Register<IFormConnection, FormConnection>();
 
             // models
-            //container.Register<UserSettings>(Lifestyle.Singleton);
-
-            // services
             container.Register<UserSettings>(() =>
             {
                 UserSettings settings = UserSettings.Load();

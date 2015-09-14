@@ -2,9 +2,16 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Stateless.WorkflowEngine Console" Height="600" Width="800" WindowStartupLocation="CenterScreen" Loaded="Window_Loaded">
-    <Grid>
-        <TabControl Name="tabBrowsers" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ItemsSource="{Binding}">
-        </TabControl>
-
-    </Grid>
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" IsMainMenu="True">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New Connection" Click="OnMnuItemClick_File_NewConnection" />
+                <MenuItem Header="E_xit" Click="OnMnuItemClick_File_Exit" />
+            </MenuItem>
+        </Menu>
+        <Grid DockPanel.Dock="Top">
+            <TabControl Name="tabBrowsers" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ItemsSource="{Binding}">
+            </TabControl>
+        </Grid>
+    </DockPanel>
 </Window>

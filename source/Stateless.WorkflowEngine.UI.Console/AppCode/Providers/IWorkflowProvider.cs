@@ -10,5 +10,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Services.Workflow
     public interface IWorkflowProvider
     {
         IEnumerable<UIWorkflowContainer> GetActive(int count);
+
+        WorkflowStoreConnection Connection { get; }
     }
 }

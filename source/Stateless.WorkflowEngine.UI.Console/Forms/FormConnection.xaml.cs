@@ -1,4 +1,5 @@
 ﻿using Stateless.WorkflowEngine.UI.Console.AppCode;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
 using Stateless.WorkflowEngine.UI.Console.AppCode.Providers;
 using Stateless.WorkflowEngine.UI.Console.Models.Workflow;
 using Stateless.WorkflowEngine.UI.Console.Services.Workflow;
@@ -19,20 +20,29 @@ using System.Windows.Shapes;
 
 namespace Stateless.WorkflowEngine.UI.Console.Forms
 {
+    public interface IFormConnection
+    {
+        IWorkflowProvider WorkflowProvider { get; set; }
+
+        bool? ShowDialog();
+    }
+
     /// <summary>
     /// Interaction logic for FormConnection.xaml
     /// </summary>
-    public partial class FormConnection : Window
+    public partial class FormConnection : Window, IFormConnection
     {
         private UserSettings _userSettings;
+        private IWorkflowProviderFactory _workflowProviderFactory;
 
         protected ObservableCollection<WorkflowStoreConnection> WorkflowStoreConnections = new ObservableCollection<WorkflowStoreConnection>();
 
-        public FormConnection(UserSettings userSettings)
+        public FormConnection(UserSettings userSettings, IWorkflowProviderFactory workflowProviderFactory)
         {
             InitializeComponent();
 
             this._userSettings = userSettings;
+            this._workflowProviderFactory = workflowProviderFactory;
         }
 
         public IWorkflowProvider WorkflowProvider { get; set; }
@@ -83,7 +93,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
             {
 
                 lblMessage.Content = "Connecting...";
-                this.WorkflowProvider = WorkflowProviderFactory.GetWorkflowService(conn);
+                this.WorkflowProvider = _workflowProviderFactory.GetWorkflowService(conn);
                 this.WorkflowProvider.GetActive(1);
 
                 // add the connection to the user settings and save
@@ -94,7 +104,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
                 }
 
                 this.DialogResult = true;
-                this.Close();
+                this.Hide();
             }
             catch (Exception ex)
             {
@@ -105,15 +115,13 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
                 lblMessage.Content = "";
                 ToggleUI(true);
             }
-
-
         }
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
         {
             this.WorkflowProvider = null;
             this.DialogResult = false;
-            this.Close();
+            this.Hide();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

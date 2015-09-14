@@ -1,4 +1,5 @@
-﻿using Stateless.WorkflowEngine.UI.Console.Controls;
+﻿using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
+using Stateless.WorkflowEngine.UI.Console.Controls;
 using Stateless.WorkflowEngine.UI.Console.Forms;
 using Stateless.WorkflowEngine.UI.Console.Services.Workflow;
 using System;
@@ -24,47 +25,53 @@ namespace Stateless.WorkflowEngine.UI.Console
     /// </summary>
     public partial class MainWindow : Window
     {
-        private List<TabItem> _tabItems = new List<TabItem>();
         private int _num = 0;
 
         #region Injected Properties
-        private FormConnection _frmConnection;
+        private IDialogFactory _dialogFactory;
 
         #endregion
 
-        public MainWindow(FormConnection frmConnection)
+        public MainWindow(IDialogFactory dialogFactory)
         {
             InitializeComponent();
 
-            _frmConnection = frmConnection;
+            _dialogFactory = dialogFactory;
         }
 
         private void AddConnection() 
         {
-            _frmConnection.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
-            _frmConnection.Owner = this;
-            if (_frmConnection.ShowDialog() == true)
+            IFormConnection frmConnection = _dialogFactory.GetConnectionDialog(this);
+            if (frmConnection.ShowDialog() == true)
             {
-                IWorkflowProvider workflowProvider = _frmConnection.WorkflowProvider;
+                IWorkflowProvider workflowProvider = frmConnection.WorkflowProvider;
 
                 WorkflowBrowser workflowBrowser = new WorkflowBrowser();
                 workflowBrowser.WorkflowProvider = workflowProvider;
 
                 TabItem item = new TabItem();
-                item.Header = _frmConnection.txtServer.Text + " | " + _frmConnection.txtDatabase.Text;
+                item.Header = String.Format("{0}:{1} | {2}", workflowProvider.Connection.Host, workflowProvider.Connection.Port, workflowProvider.Connection.DatabaseName);
                 item.Name = "Tab" + _num.ToString();
                 item.Content = workflowBrowser;
-                //item.HeaderTemplate = tabBrowsers.FindResource("TabHeader") as DataTemplate;
-                _tabItems.Add(item);
 
-                tabBrowsers.DataContext = _tabItems;
-                tabBrowsers.SelectedIndex = (_tabItems.Count - 1);
+                tabBrowsers.Items.Add(item);
+                tabBrowsers.SelectedIndex = tabBrowsers.Items.Count - 1;
 
                 _num++;
             }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            AddConnection();
+        }
+
+        private void OnMnuItemClick_File_Exit(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+        private void OnMnuItemClick_File_NewConnection(object sender, RoutedEventArgs e)
         {
             AddConnection();
         }
