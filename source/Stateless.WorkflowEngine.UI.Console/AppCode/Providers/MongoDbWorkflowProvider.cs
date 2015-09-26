@@ -2,6 +2,7 @@
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Newtonsoft.Json;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
 using Stateless.WorkflowEngine.UI.Console.Models.Workflow;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,34 @@ namespace Stateless.WorkflowEngine.UI.Console.Services.Workflow
                 workflowContainers.Add(wc);
             }
             return workflowContainers;
+        }
+
+        public void SuspendWorkflow(Guid id)
+        {
+            BsonValue val = BsonValue.Create(id);
+            var coll = _db.GetCollection(this.Connection.ActiveCollection);
+            BsonDocument doc = coll.FindOneById(val);
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(true);
+                coll.Save(doc);
+            }
+        }
+
+        public void UnsuspendWorkflow(Guid id)
+        {
+            BsonValue val = BsonValue.Create(id);
+            var coll = _db.GetCollection(this.Connection.ActiveCollection);
+            BsonDocument doc = coll.FindOneById(val);
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(false);
+                workflowElement["RetryCount"] = BsonValue.Create(0);
+                workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
+                coll.Save(doc);
+            }
         }
 
 

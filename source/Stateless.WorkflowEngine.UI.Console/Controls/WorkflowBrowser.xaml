@@ -7,27 +7,34 @@
              d:DesignHeight="300" d:DesignWidth="300" Loaded="UserControl_Loaded">
     <Grid>
         <DockPanel Name="pnlMain">
-            
-            <DockPanel DockPanel.Dock="Top" Name="grdTop">
+
+            <DockPanel DockPanel.Dock="Bottom" Name="grdTop" VerticalAlignment="Bottom">
                 <WrapPanel DockPanel.Dock="Left">
                     <Label Content="Show "></Label>
                     <TextBox Name="txtWorkflowCount" Text="50" Width="50" LostFocus="txtWorkflowCount_LostFocus" />
                     <Label Content="workflows"></Label>
                 </WrapPanel>
                 <Button Name="btnRefresh" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Refresh" Click="btnRefresh_Click" Margin="10,3,0,3"></Button>
+                <Button Name="btnSuspend" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Suspend" Click="btnSuspend_Click" Margin="10,3,0,3"></Button>
+                <Button Name="btnUnsuspend" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Unsuspend" Click="btnUnsuspend_Click" Margin="10,3,0,3"></Button>
             </DockPanel>
-            
-            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False"> 
+
+            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False" VerticalAlignment="Stretch"> 
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Id" Binding="{Binding Path=Workflow.Id}" IsReadOnly="True" />
+                    <DataGridCheckBoxColumn Binding="{Binding IsSelected}" CanUserReorder="False">
+                        <DataGridCheckBoxColumn.Header>
+                            <CheckBox Name="chkSelectAll" Unchecked="chkSelectAll_Unchecked" Checked="chkSelectAll_Checked" />
+                        </DataGridCheckBoxColumn.Header>
+                    </DataGridCheckBoxColumn>
                     <DataGridTextColumn Header="Type" Binding="{Binding Path=WorkflowTypeName}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="ResumeOn" Binding="{Binding Path=Workflow.ResumeOnFriendly}" IsReadOnly="True" />
                     <DataGridTextColumn Header="IsSuspended" Binding="{Binding Path=Workflow.IsSuspended}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="ResumeOn" Binding="{Binding Path=Workflow.ResumeOnFriendly}" IsReadOnly="True" />
                     <DataGridTextColumn Header="RetryCount" Binding="{Binding Path=Workflow.RetryCount}" IsReadOnly="True" />
                     <DataGridTextColumn Header="RetryIntervals" Binding="{Binding Path=Workflow.RetryIntervalsFriendly}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Id" Binding="{Binding Path=Workflow.Id}" IsReadOnly="True" />
                 </DataGrid.Columns>
            </DataGrid>
-            
+
         </DockPanel>
             
     </Grid>

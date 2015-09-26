@@ -10,6 +10,7 @@ using Stateless.WorkflowEngine.UI.Console.AppCode.Providers;
 using System.Windows;
 using NLog;
 using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Services;
 
 namespace Stateless.WorkflowEngine.UI.Console
 {
@@ -49,6 +50,9 @@ namespace Stateless.WorkflowEngine.UI.Console
             // factories
             container.Register<IDialogFactory, DialogFactory>();
             container.Register<IWorkflowProviderFactory, WorkflowProviderFactory>();
+
+            // services
+            container.Register<IUIConnectionService, UIConnectionService>();
 
             // windows and view models:
             container.Register<MainWindow>();

@@ -1,11 +1,14 @@
 ﻿using Stateless.WorkflowEngine.UI.Console.AppCode;
 using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Models.Workflow;
 using Stateless.WorkflowEngine.UI.Console.AppCode.Providers;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Services;
 using Stateless.WorkflowEngine.UI.Console.Models.Workflow;
 using Stateless.WorkflowEngine.UI.Console.Services.Workflow;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,16 +36,16 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
     public partial class FormConnection : Window, IFormConnection
     {
         private UserSettings _userSettings;
-        private IWorkflowProviderFactory _workflowProviderFactory;
+        private IUIConnectionService _uiConnectionService;
 
         protected ObservableCollection<WorkflowStoreConnection> WorkflowStoreConnections = new ObservableCollection<WorkflowStoreConnection>();
 
-        public FormConnection(UserSettings userSettings, IWorkflowProviderFactory workflowProviderFactory)
+        public FormConnection(UserSettings userSettings, IUIConnectionService uiConnectionService)
         {
             InitializeComponent();
 
             this._userSettings = userSettings;
-            this._workflowProviderFactory = workflowProviderFactory;
+            this._uiConnectionService = uiConnectionService;
         }
 
         public IWorkflowProvider WorkflowProvider { get; set; }
@@ -87,34 +90,27 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
         {
             ToggleUI(false);
             WorkflowStoreConnection conn = GetConnection();
+            lblMessage.Content = "Connecting...";
+            _uiConnectionService.RunAsyncConnection(conn, OnConnectionComplete);
 
-            // try and connect
-            try
+        }
+
+        private void OnConnectionComplete(ConnectionResult result)
+        {
+            lblMessage.Content = "";
+            ToggleUI(true);
+            if (result.Exception != null)
             {
-
-                lblMessage.Content = "Connecting...";
-                this.WorkflowProvider = _workflowProviderFactory.GetWorkflowService(conn);
-                this.WorkflowProvider.GetActive(1);
-
-                // add the connection to the user settings and save
-                if (!_userSettings.Connections.Contains(conn)) 
-                {
-                    _userSettings.Connections.Add(conn);
-                    _userSettings.Save();
-                }
-
+                this.DialogResult = false;
+                MessageBox.Show(this, "Connection error: " + result.Exception.Message, "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            else
+            {
+                this.WorkflowProvider = result.WorkflowProvider;
                 this.DialogResult = true;
                 this.Hide();
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "Connection error: " + ex.Message, "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                lblMessage.Content = "";
-                ToggleUI(true);
-            }
+
         }
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
@@ -134,16 +130,36 @@ namespace Stateless.WorkflowEngine.UI.Console.Forms
                 this.WorkflowStoreConnections.Add(conn);
             }
             lstConnections.ItemsSource = this.WorkflowStoreConnections;
+            txtServer.Focus();
 
         }
 
         private void OnLstConnections_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            var item = ((FrameworkElement)e.OriginalSource).DataContext as WorkflowStoreConnection;
-            if (item != null)
+            var conn = ((FrameworkElement)e.OriginalSource).DataContext as WorkflowStoreConnection;
+            if (conn != null)
             {
-                btnOK_Click(sender, new RoutedEventArgs());
+                ToggleUI(false);
+                _uiConnectionService.RunAsyncConnection(conn, OnConnectionComplete);
+
             }
         }
+
+        private void miDelete_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleUI(false);
+            if (MessageBox.Show(this, "Are you sure you want to delete the selected connection?", "Delete Connection", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                WorkflowStoreConnection conn = lstConnections.SelectedItem as WorkflowStoreConnection;
+                if (conn != null)
+                {
+                    this._userSettings.Connections.Remove(conn);
+                    this._userSettings.Save();
+                    this.WorkflowStoreConnections.Remove(conn);
+                }
+            }
+            ToggleUI(true);
+        }
+
     }
 }

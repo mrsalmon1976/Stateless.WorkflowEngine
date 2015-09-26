@@ -12,5 +12,9 @@ namespace Stateless.WorkflowEngine.UI.Console.Services.Workflow
         IEnumerable<UIWorkflowContainer> GetActive(int count);
 
         WorkflowStoreConnection Connection { get; }
+
+        void UnsuspendWorkflow(Guid id);
+
+        void SuspendWorkflow(Guid id);
     }
 }

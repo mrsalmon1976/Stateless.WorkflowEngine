@@ -41,6 +41,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
             {
                 workflows.Add(wc);
             }
+            chkSelectAll.IsChecked = false;
         }
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -58,9 +59,59 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
             ToggleUI(true);
         }
 
+        private void btnSuspend_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleUI(false);
+            IEnumerable<UIWorkflowContainer> workflows = this.workflows.Where(x => x.IsSelected);
+            if (workflows.Count() > 0)
+            {
+                if (MessageBox.Show(MainWindow.GetWindow(this), "Are you sure you want to suspend the selected workflows?", "Suspend Workflows", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    foreach (UIWorkflowContainer wc in workflows)
+                    {
+                        if (!wc.Workflow.IsSuspended)
+                        {
+                            this.WorkflowProvider.SuspendWorkflow(wc.Workflow.Id);
+                        }
+                    }
+                    RefreshWorkflows();
+                }
+            }
+            ToggleUI(true);
+        }
+
+        private void btnUnsuspend_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleUI(false);
+            IEnumerable<UIWorkflowContainer> workflows = this.workflows.Where(x => x.IsSelected);
+            if (workflows.Count() > 0)
+            {
+                if (MessageBox.Show(MainWindow.GetWindow(this), "Are you sure you want to unsuspend the selected workflows?", "Suspend Workflows", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    foreach (UIWorkflowContainer wc in workflows)
+                    {
+                        if (wc.Workflow.IsSuspended)
+                        {
+                            this.WorkflowProvider.UnsuspendWorkflow(wc.Workflow.Id);
+                        }
+                    }
+                    RefreshWorkflows();
+                }
+            }
+            ToggleUI(true);
+        }
+
         private void ToggleUI(bool isEnabled)
         {
             btnRefresh.IsEnabled = isEnabled;
+        }
+
+        private void ToggleCheckBoxes(bool isChecked)
+        {
+            foreach (UIWorkflowContainer wc in this.workflows)
+            {
+                wc.IsSelected = isChecked;
+            }
         }
 
 
@@ -73,5 +124,16 @@ namespace Stateless.WorkflowEngine.UI.Console.Controls
             }
 
         }
+
+        private void chkSelectAll_Checked(object sender, RoutedEventArgs e)
+        {
+            ToggleCheckBoxes(true);
+        }
+
+        private void chkSelectAll_Unchecked(object sender, RoutedEventArgs e)
+        {
+            ToggleCheckBoxes(false);
+        }
+
     }
 }

@@ -59,6 +59,14 @@ namespace Stateless.WorkflowEngine.UI.Console
 
                 _num++;
             }
+            ToggleMenuItems();
+        }
+
+        private void ToggleMenuItems()
+        {
+            bool tabsExist = (tabBrowsers.Items.Count > 0);
+
+            miFile_CloseConnection.IsEnabled = tabsExist;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -75,5 +83,18 @@ namespace Stateless.WorkflowEngine.UI.Console
         {
             AddConnection();
         }
+
+        private void OnMnuItemClick_File_CloseConnection(object sender, RoutedEventArgs e)
+        {
+            if (tabBrowsers.Items.Count == 0) return;
+
+            TabItem tabItem = tabBrowsers.SelectedItem as TabItem;
+            if (tabItem != null)
+            {
+                tabBrowsers.Items.Remove(tabItem);
+            }
+            ToggleMenuItems();
+        }
+
     }
 }

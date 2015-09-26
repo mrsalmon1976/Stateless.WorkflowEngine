@@ -1,4 +1,5 @@
 ﻿using Stateless.WorkflowEngine.UI.Console.AppCode.Providers;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Services;
 using Stateless.WorkflowEngine.UI.Console.Forms;
 using System;
 using System.Collections.Generic;
@@ -17,17 +18,17 @@ namespace Stateless.WorkflowEngine.UI.Console.AppCode.Factories
     public class DialogFactory : IDialogFactory
     {
         private UserSettings _userSettings;
-        private IWorkflowProviderFactory _workflowProviderFactory;
+        private IUIConnectionService _uiConnectionService;
 
-        public DialogFactory(UserSettings userSettings, IWorkflowProviderFactory workflowProviderFactory)
+        public DialogFactory(UserSettings userSettings, IUIConnectionService workflowProviderFactory)
         {
             _userSettings = userSettings;
-            _workflowProviderFactory = workflowProviderFactory;
+            _uiConnectionService = workflowProviderFactory;
         }
 
         public IFormConnection GetConnectionDialog(Window owner)
         {
-            FormConnection form = new FormConnection(_userSettings, _workflowProviderFactory);
+            FormConnection form = new FormConnection(_userSettings, _uiConnectionService);
             form.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             form.Owner = owner;
             return form;

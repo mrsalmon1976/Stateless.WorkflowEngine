@@ -6,6 +6,7 @@
         <Menu DockPanel.Dock="Top" IsMainMenu="True">
             <MenuItem Header="_File">
                 <MenuItem Header="_New Connection" Click="OnMnuItemClick_File_NewConnection" />
+                <MenuItem Name="miFile_CloseConnection" Header="_Close Connection" Click="OnMnuItemClick_File_CloseConnection" />
                 <MenuItem Header="E_xit" Click="OnMnuItemClick_File_Exit" />
             </MenuItem>
         </Menu>

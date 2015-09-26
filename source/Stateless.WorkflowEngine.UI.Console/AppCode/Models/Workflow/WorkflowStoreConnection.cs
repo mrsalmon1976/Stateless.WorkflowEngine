@@ -20,7 +20,7 @@ namespace Stateless.WorkflowEngine.UI.Console.Models.Workflow
         {
         }
 
-        public WorkflowStoreConnection(WorkflowStoreType type, string host, int port, string databaseName, string userName, string password, string activeCollection, string completeCollection)
+        public WorkflowStoreConnection(WorkflowStoreType type, string host, int port, string databaseName, string userName, string password, string activeCollection, string completeCollection) : this()
         {
             this.WorkflowStoreType = type;
             this.Host = host;
@@ -89,6 +89,25 @@ namespace Stateless.WorkflowEngine.UI.Console.Models.Workflow
             }
 
             return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked // Overflow is fine, just wrap
+            {
+                // this is a bit of a hack as these properties are not immutable, but 
+                // for the context of this object this should be fine
+                int hash = 17;
+                hash = hash * 23 + this.WorkflowStoreType.GetHashCode();
+                hash = hash * 23 + this.Host.GetHashCode();
+                hash = hash * 23 + this.Port.GetHashCode();
+                hash = hash * 23 + (this.DatabaseName ?? String.Empty).GetHashCode();
+                hash = hash * 23 + (this.UserName ?? String.Empty).GetHashCode();
+                hash = hash * 23 + (this.Password ?? String.Empty).GetHashCode();
+                hash = hash * 23 + (this.ActiveCollection ?? String.Empty).GetHashCode();
+                hash = hash * 23 + (this.CompleteCollection ?? String.Empty).GetHashCode();
+                return hash;
+            }
         }
     }
 }
