@@ -5,6 +5,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300" Loaded="UserControl_Loaded">
+
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="CustomGridLine" Color="#e0e0e0" />
+    </UserControl.Resources>
     <Grid>
         <DockPanel Name="pnlMain">
 
@@ -19,7 +23,7 @@
                 <Button Name="btnUnsuspend" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Unsuspend" Click="btnUnsuspend_Click" Margin="10,3,0,3"></Button>
             </DockPanel>
 
-            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False" VerticalAlignment="Stretch"> 
+            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False" VerticalAlignment="Stretch" VerticalGridLinesBrush="{StaticResource CustomGridLine}" HorizontalGridLinesBrush="{StaticResource CustomGridLine}">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Binding="{Binding IsSelected}" CanUserReorder="False">
                         <DataGridCheckBoxColumn.Header>
