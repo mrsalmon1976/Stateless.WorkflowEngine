@@ -1,4 +1,5 @@
 ﻿using Stateless.WorkflowEngine.UI.Console.AppCode.Factories;
+using Stateless.WorkflowEngine.UI.Console.AppCode.Utils;
 using Stateless.WorkflowEngine.UI.Console.Controls;
 using Stateless.WorkflowEngine.UI.Console.Forms;
 using Stateless.WorkflowEngine.UI.Console.Services.Workflow;
@@ -71,6 +72,7 @@ namespace Stateless.WorkflowEngine.UI.Console
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            this.Title = this.Title + " v" + AppUtils.AppVersion();
             AddConnection();
         }
 

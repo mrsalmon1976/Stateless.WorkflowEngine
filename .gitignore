@@ -1,3 +1,4 @@
 *.suo
 source/TestResult.xml
 source/Stateless.Workflow.Tests.VisualState.xml
+/deployment/Output

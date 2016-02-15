@@ -23,7 +23,7 @@
                 <Button Name="btnUnsuspend" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="100" Content="Unsuspend" Click="btnUnsuspend_Click" Margin="10,3,0,3"></Button>
             </DockPanel>
 
-            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False" VerticalAlignment="Stretch" VerticalGridLinesBrush="{StaticResource CustomGridLine}" HorizontalGridLinesBrush="{StaticResource CustomGridLine}">
+            <DataGrid Name="grdWorkflows" DockPanel.Dock="Top" AutoGenerateColumns="False" ItemsSource="{Binding Path=workflows}" CanUserAddRows="False" CanUserDeleteRows="False" VerticalAlignment="Stretch" VerticalGridLinesBrush="{StaticResource CustomGridLine}" HorizontalGridLinesBrush="{StaticResource CustomGridLine}" CanUserResizeColumns="True" CanUserSortColumns="True">
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Binding="{Binding IsSelected}" CanUserReorder="False">
                         <DataGridCheckBoxColumn.Header>
