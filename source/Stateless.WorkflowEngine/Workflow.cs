@@ -128,6 +128,14 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Fires when the workflow completes.  This can be overridden to handle any workflow-specific 
+        /// completion activities.
+        /// </summary>
+        public virtual void OnComplete()
+        {
+        }
+
+        /// <summary>
         /// Fires when an error happens within the workflow.  This can be overriden to add logging, or any other 
         /// exception management.
         /// </summary>

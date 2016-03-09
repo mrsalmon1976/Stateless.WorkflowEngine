@@ -91,6 +91,50 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
+        public void ExecuteWorkflow_OnCompletion_WorkflowCompletedEventRaised()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            bool eventRaised = false;
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.Complete.ToString();
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.WorkflowCompleted += delegate(object sender, WorkflowEventArgs e)
+            {
+                eventRaised = true;
+            };
+
+            workflowServer.ExecuteWorkflow(workflow);
+
+            Assert.IsTrue(eventRaised);
+        }
+
+        [Test]
+        public void ExecuteWorkflow_OnCompletion_WorkflowOnCompleteCalled()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = Substitute.For<BasicWorkflow>(BasicWorkflow.State.DoingStuff);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.Complete.ToString();
+            workflowStore.Save(workflow);
+
+            workflow.When(x => x.Fire("Complete")).Do(x => workflow.IsComplete = true);
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflow(workflow);
+
+            workflow.Received(1).OnComplete();
+        }
+
+        [Test]
         public void ExecuteWorkflow_OnStepExceptionAndSingleInstanceWorkflow_CorrectMethodCalled()
         {
             Workflow workflow = Substitute.For<Workflow>();
@@ -163,7 +207,7 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void ExecuteWorkflow_OnWorkflowSuspension_ExceptionRaised()
+        public void ExecuteWorkflow_OnWorkflowSuspension_WorkflowSuspendedEventRaised()
         {
             string initialState = Guid.NewGuid().ToString();
             bool eventRaised = false;
