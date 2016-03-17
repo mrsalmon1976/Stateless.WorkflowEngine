@@ -31,9 +31,9 @@ Most of the classes in the code implement an interface, which allows for the inv
 the **_Workflow_** class, which needed to be concrete class.  This class contains the method to create a workflow action, using 
 Activator.CreateInstance() which isn't great for DI.  For this purpose, the class provides the 
 
-'''
+```
 CreateWorkflowActionInstance<T>()
-'''
+```
 
 method which can be overridden if you want to take control over how workflow actions are instantiated.
 
