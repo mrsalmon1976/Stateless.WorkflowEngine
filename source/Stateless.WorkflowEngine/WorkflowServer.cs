@@ -53,6 +53,11 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         event EventHandler<WorkflowEventArgs> WorkflowSuspended;
 
+        /// <summary>
+        /// Event raised when a workflow completes.
+        /// </summary>
+        event EventHandler<WorkflowEventArgs> WorkflowCompleted;
+
     }
 
     public class WorkflowServer : IWorkflowServer
@@ -73,7 +78,15 @@ namespace Stateless.WorkflowEngine
             _exceptionHandler = exceptionHandler;
         }
 
+        /// <summary>
+        /// Event raised when a workflow is suspended.
+        /// </summary>
         public event EventHandler<WorkflowEventArgs> WorkflowSuspended;
+
+        /// <summary>
+        /// Event raised when a workflow completes.
+        /// </summary>
+        public event EventHandler<WorkflowEventArgs> WorkflowCompleted;
 
         /// <summary>
         /// Executes a workflow.
@@ -128,6 +141,11 @@ namespace Stateless.WorkflowEngine
             if (workflow.IsComplete)
             {
                 _workflowStore.Archive(workflow);
+                workflow.OnComplete();
+                if (this.WorkflowCompleted != null)
+                {
+                    this.WorkflowCompleted(this, new WorkflowEventArgs(workflow));
+                }
                 return;
             }
 

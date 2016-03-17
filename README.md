@@ -23,6 +23,16 @@ Workflows are configured in similar fashion to Stateless.  You should make an ef
 
 There is a full example application in the source code, in the Test.Stateless.WorkflowEngine.Example folder.  This contains a windows service that creates a sample workflow when it runs, which writes 10 files to the "C:\Temp" folder, then deletes all the files.  You can look at this example to see how to set up a windows service that runs the workflow engine.  The WorkerThreadFunc method in the WorkflowEngineExampleService class contains an instantiation of each store type (Memory, MongoDb and RavenDb), if you'd like to run the example just configure what you want.  You can set up your connection properties in the Bootstrapper.
 
-### Looking at the code
+## Code
 
-TO DO - explaining the code of the workflow will be useful.
+### Events
+
+Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 
+action.
+
+1. WorkflowSuspended - this event is raised by the WorkflowServer when a workflow suspends.  This means that a workflow has errored repeatedly 
+until the maximum number of retries (RetryCount) defined for the workflow has been exceeded.  The workflow goes into a suspended state and will 
+not be picked up again by the WorkflowEngine until the problems have been resolved.  Note that the Workflow itself has an OnSuspend method that 
+can be overridden at the workflow level. 
+2. WorkflowCompleted - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() 
+method is called.  The workflow.OnComplete() method can also be overridden and actioned at the workflow level instead of using this event.
