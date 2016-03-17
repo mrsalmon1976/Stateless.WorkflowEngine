@@ -40,5 +40,21 @@ namespace Stateless.WorkflowEngine.UI.Console.Models.Workflow
         }
 
         public bool IsSuspended { get; set; }
+
+        public string LastException { get; set; }
+
+        public string LastExceptionFriendly 
+        {
+            get
+            {
+                string result = this.LastException ?? "";
+                int idx = result.IndexOf('\n');
+                if (idx > -1)
+                {
+                    return result.Substring(0, idx).Trim();
+                }
+                return result;
+            }
+        }
     }
 }

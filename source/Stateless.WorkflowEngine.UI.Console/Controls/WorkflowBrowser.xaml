@@ -31,10 +31,11 @@
                         </DataGridCheckBoxColumn.Header>
                     </DataGridCheckBoxColumn>
                     <DataGridTextColumn Header="Type" Binding="{Binding Path=WorkflowTypeName}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="IsSuspended" Binding="{Binding Path=Workflow.IsSuspended}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="ResumeOn" Binding="{Binding Path=Workflow.ResumeOnFriendly}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="RetryCount" Binding="{Binding Path=Workflow.RetryCount}" IsReadOnly="True" />
-                    <DataGridTextColumn Header="RetryIntervals" Binding="{Binding Path=Workflow.RetryIntervalsFriendly}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Is Suspended" Binding="{Binding Path=Workflow.IsSuspended}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Resume On" Binding="{Binding Path=Workflow.ResumeOnFriendly}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Retry Count" Binding="{Binding Path=Workflow.RetryCount}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Retry Intervals" Binding="{Binding Path=Workflow.RetryIntervalsFriendly}" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Last Exception" Binding="{Binding Path=Workflow.LastExceptionFriendly}" IsReadOnly="True" Width="200" />
                     <DataGridTextColumn Header="Id" Binding="{Binding Path=Workflow.Id}" IsReadOnly="True" />
                 </DataGrid.Columns>
            </DataGrid>
