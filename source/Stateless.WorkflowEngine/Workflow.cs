@@ -98,6 +98,16 @@ namespace Stateless.WorkflowEngine
         public bool IsSingleInstance { get; set; }
 
         /// <summary>
+        /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
+        /// own DI framework to create the actions.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        protected virtual IWorkflowAction CreateWorkflowActionInstance<T>() where T : IWorkflowAction
+        {
+            return Activator.CreateInstance<T>();
+        }
+
+        /// <summary>
         /// Initialises and configures the workflow.
         /// </summary>
         /// <param name="initialState"></param>
@@ -115,7 +125,7 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         protected virtual void ExecuteWorkflowAction<T>() where T : IWorkflowAction
         {
-            IWorkflowAction workflowAction = Activator.CreateInstance<T>();
+            IWorkflowAction workflowAction = CreateWorkflowActionInstance<T>();
             workflowAction.Execute(this);
         }
 
