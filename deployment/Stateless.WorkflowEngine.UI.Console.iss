@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Stateless WorkflowEngine Console"
-#define MyAppVersion "0.0.1"
+#define MyAppVersion "0.0.2"
 #define MyAppPublisher "Matt Salmon"
 #define MyAppURL "https://github.com/mrsalmon1976/Stateless.WorkflowEngine"
 #define MyAppExeName "Stateless.WorkflowEngine.UI.Console.exe"
