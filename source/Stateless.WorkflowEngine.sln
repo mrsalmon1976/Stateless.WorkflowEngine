@@ -26,6 +26,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.UI
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.UI.Console", "Test.Stateless.WorkflowEngine.UI.Console\Test.Stateless.WorkflowEngine.UI.Console.csproj", "{875BEE49-17E3-4105-8954-A4073078AE72}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.WebConsole", "Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj", "{38D0B82F-C0FF-46E5-9E5E-EC6C4D37371C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.WebConsole", "Test.Stateless.WorkflowEngine.WebConsole\Test.Stateless.WorkflowEngine.WebConsole.csproj", "{4C6B935E-EE8B-42B0-9FC6-E4DED0B72A48}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +72,14 @@ Global
 		{875BEE49-17E3-4105-8954-A4073078AE72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{875BEE49-17E3-4105-8954-A4073078AE72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{875BEE49-17E3-4105-8954-A4073078AE72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38D0B82F-C0FF-46E5-9E5E-EC6C4D37371C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38D0B82F-C0FF-46E5-9E5E-EC6C4D37371C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38D0B82F-C0FF-46E5-9E5E-EC6C4D37371C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38D0B82F-C0FF-46E5-9E5E-EC6C4D37371C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C6B935E-EE8B-42B0-9FC6-E4DED0B72A48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C6B935E-EE8B-42B0-9FC6-E4DED0B72A48}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C6B935E-EE8B-42B0-9FC6-E4DED0B72A48}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C6B935E-EE8B-42B0-9FC6-E4DED0B72A48}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

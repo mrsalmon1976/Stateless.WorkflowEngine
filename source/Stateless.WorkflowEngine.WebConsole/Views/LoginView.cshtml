@@ -1,0 +1,40 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Login.LoginViewModel>
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@{
+    Layout = "Views/Layouts/BasicLayout.cshtml";
+    ViewBag.Title = "Stateless.WorkflowEngine Console :: Sign in";
+}
+<div class="wrapper">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="brand text-center">
+                <div class="logo-icon"><i class="fa fa-database fa-2x" aria-hidden="true"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <form id="frm-login" role="form" action="@Actions.Login.Default">
+                <fieldset class="text-center">
+                    <legend>Login to your account</legend>
+                    <div id="msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
+                    <div class="form-group">
+                        <input id="userName" class="form-control" placeholder="User name" type="text" autocomplete="off" style="background-image: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAASCAYAAABSO15qAAAAAXNSR0IArs4c6QAAAPhJREFUOBHlU70KgzAQPlMhEvoQTg6OPoOjT+JWOnRqkUKHgqWP4OQbOPokTk6OTkVULNSLVc62oJmbIdzd95NcuGjX2/3YVI/Ts+t0WLE2ut5xsQ0O+90F6UxFjAI8qNcEGONia08e6MNONYwCS7EQAizLmtGUDEzTBNd1fxsYhjEBnHPQNG3KKTYV34F8ec/zwHEciOMYyrIE3/ehKAqIoggo9inGXKmFXwbyBkmSQJqmUNe15IRhCG3byphitm1/eUzDM4qR0TTNjEixGdAnSi3keS5vSk2UDKqqgizLqB4YzvassiKhGtZ/jDMtLOnHz7TE+yf8BaDZXA509yeBAAAAAElFTkSuQmCC&quot;); background-attachment: scroll; background-size: 16px 18px; background-position: 98% 50%; background-repeat: no-repeat;">
+                    </div>
+                    <div class="form-group">
+                        <input id="password" class="form-control" placeholder="Password" type="password" autocomplete="off" style="background-image: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAASCAYAAABSO15qAAAAAXNSR0IArs4c6QAAAPhJREFUOBHlU70KgzAQPlMhEvoQTg6OPoOjT+JWOnRqkUKHgqWP4OQbOPokTk6OTkVULNSLVc62oJmbIdzd95NcuGjX2/3YVI/Ts+t0WLE2ut5xsQ0O+90F6UxFjAI8qNcEGONia08e6MNONYwCS7EQAizLmtGUDEzTBNd1fxsYhjEBnHPQNG3KKTYV34F8ec/zwHEciOMYyrIE3/ehKAqIoggo9inGXKmFXwbyBkmSQJqmUNe15IRhCG3byphitm1/eUzDM4qR0TTNjEixGdAnSi3keS5vSk2UDKqqgizLqB4YzvassiKhGtZ/jDMtLOnHz7TE+yf8BaDZXA509yeBAAAAAElFTkSuQmCC&quot;); background-attachment: scroll; background-size: 16px 18px; background-position: 98% 50%; background-repeat: no-repeat;">
+                    </div>
+                    <div class="text-center">
+                        <div class="checkbox">
+                            <label><input type="checkbox">Remember me on this computer</label>
+                        </div>
+                        <button id="btn-login" type="button" class="btn btn-lg btn-success">Sign in</button>
+                        <br>
+                        <a href="http://lab2023.github.io/hierapolis/forgot_password.html">Forgot password?</a>
+                    </div>
+                </fieldset>
+                <input id="returnUrl" type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+            </form>
+        </div>
+    </div>
+</div>

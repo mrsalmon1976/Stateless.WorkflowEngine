@@ -1,0 +1,60 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+@model Stateless.WorkflowEngine.WebConsole.ViewModels.User.UserViewModel
+<form id="form-user" class="form-horizontal" role="form" method="post" action="@Model.FormAction">
+    <div class="form-group">
+        <label class="col-sm-3 control-label">Email</label>
+        <div class="col-sm-9">
+            <input class="form-control" id="email" placeholder="Email" name="email" type="email" value="@Model.Email" autofocus="autofocus" />
+            <p class="help-block">Note: your email address will also be your user name.</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label">Password</label>
+        <div class="col-sm-9">
+            <input class="form-control" id="password" placeholder="Password" name="password" type="password" value="@Model.Password">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label">&nbsp;</label>
+        <div class="col-sm-9">
+            <input class="form-control" id="confirmPassword" placeholder="Confirm Password" name="confirmpassword" type="password" value="@Model.ConfirmPassword">
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label">First Name</label>
+        <div class="col-sm-9">
+            <input class="form-control" id="firstName" placeholder="First Name" name="FirstName" type="text" value="@Model.FirstName" />
+        </div>
+    </div>
+    <div class="form-group">
+        <label class="col-sm-3 control-label">Surname</label>
+        <div class="col-sm-9">
+            <input class="form-control" id="surname" placeholder="Surname" name="Surname" type="text" value="@Model.Surname" />
+        </div>
+    </div>
+    @if (Model.IsPermissionPanelVisible)
+    {
+        <div class="form-group">
+            <label class="col-sm-3 control-label">Role</label>
+            <div class="col-sm-9">
+                <select class="form-control" id="role" name="Role">
+                    @foreach (string role in Model.Roles) 
+                    {
+                        <option value="@role" @if (Model.SelectedRole == role) { <text>selected="selected"</text> }>@role</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">Categories</label>
+            <div class="col-sm-9">
+                <select class="form-control" id="categories" name="CategoryIds" multiple="multiple">
+                    @foreach (var cat in Model.CategoryOptions) 
+                    {
+                        <option value="@cat.Value" @if (cat.IsSelected) { <text>selected="selected"</text> }>@cat.Text</option>
+                    }
+                </select>
+            </div>
+        </div>
+    }
+</form>
