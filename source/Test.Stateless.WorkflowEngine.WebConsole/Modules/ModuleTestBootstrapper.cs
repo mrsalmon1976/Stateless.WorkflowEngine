@@ -26,6 +26,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     /// </summary>
     public class ModuleTestBootstrapper : DefaultNancyBootstrapper
     {
+        private IRootPathProvider _rootPathProvider;
+
         public ModuleTestBootstrapper(bool isLoggedIn = true)
         {
             if (isLoggedIn)
@@ -36,6 +38,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                     UserName = "Joe Soap"
                 };
             }
+            _rootPathProvider = new TestRootPathProvider();
         }
 
         public Action<TinyIoCContainer> ApplicationStartupCallback { get; set; }
@@ -44,6 +47,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         public Action<TinyIoCContainer, IPipelines, NancyContext> ConfigureRequestStartupCallback { get; set; }
 
+        protected override IRootPathProvider RootPathProvider
+        {
+            get
+            {
+                return _rootPathProvider;
+            }
+        }
         /// <summary>
         /// Gets/sets the current user - set this to null if you want to simulate no auth.
         /// </summary>
