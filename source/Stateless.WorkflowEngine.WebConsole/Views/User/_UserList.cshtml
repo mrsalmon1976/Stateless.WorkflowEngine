@@ -1,25 +1,22 @@
-﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.User.UserListViewModel>
 @using Stateless.WorkflowEngine.WebConsole.Navigation
-@model Stateless.WorkflowEngine.WebConsole.ViewModels.User.UserListViewModel
 @if (Model.Users.Count > 0)
 {
     <table class="table table-striped table-hover table-bordered">
-        <tr>
-            <th>Email</th>
-            <th>Name</th>
-            <th>Role</th>
-            <th>API Key</th>
-            <th>Created</th>
-        </tr>
-        @foreach (var r in Model.Users)
-        {
+        <thead>
             <tr>
-                <td>@r.Email</td>
-                <td>@r.FullName</td>
-                <td>@r.Role</td>
-                <td>@r.ApiKey</td>
-                <td>@r.CreatedOn</td>
+                <th>User Name</th>
+                <th>Role</th>
             </tr>
-        }
+        </thead>
+        <tbody>
+            @foreach (var r in Model.Users)
+            {
+                <tr>
+                    <td>@r.UserName</td>
+                    <td>@r.Role</td>
+                </tr>
+            }
+        </tbody>
     </table>
 }

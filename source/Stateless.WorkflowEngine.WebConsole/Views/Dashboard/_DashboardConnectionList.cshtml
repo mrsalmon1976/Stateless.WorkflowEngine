@@ -1,28 +1,42 @@
-﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard.DashboardConnectionViewModel>
 @using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 @using Stateless.WorkflowEngine.WebConsole.Navigation
-@model Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard.DashboardConnectionViewModel
 @if (Model.WorkflowStores.Count == 0) 
 {
     <h4>You have no saved connections.  Add new connections by clicking the button on the top right of this panel.</h4>
 }
 @foreach (var workflowStore in Model.WorkflowStores)
 {
-    <div class="panel panel-default pull-left" style="margin-right:40px;">
+    <div class="panel panel-default pull-left dashboard-panel">
         <div class="panel-heading" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
             <i class="fa fa-database"></i>
-            Server:27017 / Database
+            @(workflowStore.Server):@(workflowStore.Port) / @(workflowStore.Database)
         </div>
-        <div class="panel-body" style="width: 275px;">
-            <div class="progress" data-toggle="tooltip" data-placement="top" title="Collection: Workflows">
-                <div class="progress-bar progress-bar-success progress-bar-striped" style="width: 100%"><span>Active: 15</span></div>
-            </div>
-            <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Oldest: 2 years">
-                <div class="progress-bar progress-bar-success progress-bar-striped" style="width: 100%"><span>Suspended: 0</span></div>
-            </div>
-            <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Collection: CompletedWorkflows">
-                <div class="progress-bar progress-bar-success progress-bar-striped" style="width: 100%"><span>Complete: 1000</span></div>
-            </div>
+        <div class="panel-body">
+            @if (String.IsNullOrEmpty(workflowStore.ConnectionError))
+            {
+                @{
+                     string activeStyle = "progress-bar-success";
+                     if (workflowStore.ActiveCount > 100) activeStyle = "progress-bar-warning";
+                     if (workflowStore.ActiveCount > 1000) activeStyle = "progress-bar-warning";
+                     
+                     string suspendedStyle = "progress-bar-success";
+                     if (workflowStore.SuspendedCount > 0) suspendedStyle = "progress-bar-danger";
+                 }
+                <div class="progress" data-toggle="tooltip" data-placement="top" title="Collection: Workflows">
+                    <div class="progress-bar @(activeStyle) progress-bar-striped" style="width: 100%"><span>Active: @(workflowStore.ActiveCount)</span></div>
+                </div>
+                <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Oldest: 2 years">
+                    <div class="progress-bar @(suspendedStyle) progress-bar-striped" style="width: 100%"><span>Suspended: @(workflowStore.SuspendedCount)</span></div>
+                </div>
+                <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Collection: CompletedWorkflows">
+                    <div class="progress-bar progress-bar-success progress-bar-striped" style="width: 100%"><span>Complete: @(workflowStore.CompletedCount)</span></div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger" role="alert">@workflowStore.ConnectionError</div>
+            }
         </div>
     </div>
 }

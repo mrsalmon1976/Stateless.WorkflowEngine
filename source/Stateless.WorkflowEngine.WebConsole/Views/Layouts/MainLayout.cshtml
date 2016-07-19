@@ -1,4 +1,9 @@
 ﻿@using Stateless.WorkflowEngine.WebConsole.Navigation
+@functions {
+    public string MenuActiveClass(string title) {
+       return (ViewBag.Title.ToString().Contains(title) ? " active" : "");
+    }
+}
 <html class=" js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths" lang="en">
     <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     
@@ -23,43 +28,21 @@
         Stateless.WorkflowEngine Console
       </a>
       <ul class="nav navbar-nav pull-right">
-        <li class="dropdown">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="http://lab2023.github.io/hierapolis/dashboard.html#">
-            <i class="icon-envelope"></i>
-            Messages
-            <span class="badge">5</span>
-            <b class="caret"></b>
-          </a>
-          <ul class="dropdown-menu">
-            <li>
-              <a href="http://lab2023.github.io/hierapolis/dashboard.html#">New message</a>
-            </li>
-            <li>
-              <a href="http://lab2023.github.io/hierapolis/dashboard.html#">Inbox</a>
-            </li>
-            <li>
-              <a href="http://lab2023.github.io/hierapolis/dashboard.html#">Out box</a>
-            </li>
-            <li>
-              <a href="http://lab2023.github.io/hierapolis/dashboard.html#">Trash</a>
-            </li>
-          </ul>
-        </li>
         <li>
-          <a href="http://lab2023.github.io/hierapolis/dashboard.html#">
+          <a href="#">
             <i class="icon-cog"></i>
             Settings
           </a>
         </li>
         <li class="dropdown user">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="http://lab2023.github.io/hierapolis/dashboard.html#">
+          <a class="dropdown-toggle" data-toggle="dropdown" href="#">
             <i class="icon-user"></i>
-            <strong>John DOE</strong>
+            <strong>@ViewBag.CurrentUserName</strong>
             <b class="caret"></b>
           </a>
           <ul class="dropdown-menu">
             <li>
-              <a href="http://lab2023.github.io/hierapolis/dashboard.html#">Edit Profile</a>
+              <a href="#">Edit Profile</a>
             </li>
             <li class="divider"></li>
             <li>
@@ -74,11 +57,11 @@
         <section id="sidebar">
             <i class="icon-align-justify icon-large" id="toggle"></i>
             <ul id="dock">
-                <li class="active launcher">
+                <li class="launcher@(MenuActiveClass("Dashboard"))">
                 <i class="fa fa-dashboard"></i>
                 <a href="@Actions.Dashboard.Default">Dashboard</a>
                 </li>
-                <li class="launcher">
+                <li class="launcher@(MenuActiveClass("Users"))">
                 <i class="fa fa-users"></i>
                 <a href="@Actions.User.Default">Users</a>
                 </li>
@@ -102,9 +85,6 @@
         <script src="@script"></script>
     }
   
-
-<div id="feedly-mini" title="feedly Mini tookit"></div>
-
   </body>
 
 </html>

@@ -65,6 +65,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                 user.Id = Guid.NewGuid();
                 user.UserName = "admin";
                 user.Password = _passwordProvider.HashPassword("admin", _passwordProvider.GenerateSalt());
+                user.Role = Roles.Admin;
                 Users.Add(user);
             }
         }

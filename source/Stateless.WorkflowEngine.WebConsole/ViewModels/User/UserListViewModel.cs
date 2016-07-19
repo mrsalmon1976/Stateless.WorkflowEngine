@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,10 +13,10 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.User
         public UserListViewModel()
             : base()
         {
-            //this.Users = new List<UserSearchResult>();
+            this.Users = new List<UserModel>();
         }
 
-        //public List<UserSearchResult> Users { get; private set; }
+        public List<UserModel> Users { get; private set; }
         
 
     }

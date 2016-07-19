@@ -40,6 +40,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             user.Id = Guid.NewGuid();
             user.UserName = "test";
             user.Password = "password";
+            user.Role = Roles.Admin;
             List<UserModel> users = new List<UserModel>() { user };
             string sUsers = JsonConvert.SerializeObject(users);
 
@@ -55,6 +56,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             Assert.AreEqual(1, _userStore.Users.Count);
             Assert.AreEqual(user.Id, _userStore.Users[0].Id);
             Assert.AreEqual(user.UserName, _userStore.Users[0].UserName);
+            Assert.AreEqual(Roles.Admin, _userStore.Users[0].Role);
             Assert.IsNotNullOrEmpty(_userStore.Users[0].Password);
         }
 

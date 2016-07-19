@@ -126,15 +126,15 @@ namespace Stateless.WorkflowEngine.WebConsole
             context.ViewBag.Scripts = new List<string>();
             //context.ViewBag.IsAdmin = false;
 
-            //// before the request builds up, if there is a logged in user then set the admin info
-            //pipelines.BeforeRequest += (ctx) =>
-            //{
-            //    if (ctx.CurrentUser != null)
-            //    {
-            //        ctx.ViewBag.IsAdmin = ctx.CurrentUser.Claims.Contains(Roles.Admin);
-            //    }
-            //    return null;
-            //};
+            // before the request builds up, if there is a logged in user then set the admin info
+            pipelines.BeforeRequest += (ctx) =>
+            {
+                if (ctx.CurrentUser != null)
+                {
+                    ctx.ViewBag.CurrentUserName = ctx.CurrentUser.UserName;
+                }
+                return null;
+            };
 
             //// clean up anything that needs to be
             //pipelines.AfterRequest.AddItemToEndOfPipeline((ctx) =>

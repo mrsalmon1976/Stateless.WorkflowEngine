@@ -1,39 +1,29 @@
-﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.User.UserViewModel>
+@using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 @using Stateless.WorkflowEngine.WebConsole.Navigation
-@model Stateless.WorkflowEngine.WebConsole.ViewModels.User.UserViewModel
 @{
-    Layout = "Content/Layouts/MainLayout.cshtml";
+    Layout = "Views/Layouts/MainLayout.cshtml";
+    ViewBag.Title = "Stateless.WorkflowEngine Console :: Users";
 }
-<div class="row">
-    <div class="col-lg-12">
-        <h1 class="page-header">Maintain Users</h1>
-    </div>
-</div>
-<div class="row">
-    <div class="col-lg-12">
-        <div id="pnl-loading">
-            <h4>Loading...<i id="spinner" class="fa fa-circle-o-notch fa-spin fa-lg fa-fw pull-left"></i></h4>
+<!-- Tools -->
+<section id="tools">
+    <ul class="breadcrumb" id="breadcrumb">
+        <li class="title">Users</li>
+    </ul>
+    <div id="toolbar">
+        <div class="btn-group">
+            <a class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
+                <i class="fa fa-plus"></i>
+            </a>
         </div>
-        <div id="user-list"></div>
-        <button id="btn-add" class="btn btn-primary pull-left">Add User</button>
     </div>
-</div>
-<div class="modal fade" id="dlg-add" tabindex="-1" role="dialog" aria-labelledby="dlg-title">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-        <span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="dlg-title">Add User</h4>
-      </div>
-      <div class="modal-body">
-        <div id="msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
-        @Html.Partial("Content/Views/User/_UserForm.cshtml", Model)
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <button id="btn-submit" type="button" class="btn btn-primary">Add user</button>
-      </div>
+</section>
+<!-- Content -->
+<div id="content">
+    <div id="pnl-loading">
+        <i class="pull-left fa fa-circle-o-notch fa-spin fa-2x fa-fw"></i>
+        <h4 class="pull-left">Loading users...</h4>
     </div>
-  </div>
+    <div id="pnl-users">
+    </div>
 </div>

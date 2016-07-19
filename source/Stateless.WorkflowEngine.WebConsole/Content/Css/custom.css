@@ -1,3 +1,10 @@
+.dashboard-panel {
+    margin-right:20px;
+    min-height:193px;
+}
+    .dashboard-panel .panel-body {
+         width: 300px;
+    }
 .logo-icon
 {
     width:75px;

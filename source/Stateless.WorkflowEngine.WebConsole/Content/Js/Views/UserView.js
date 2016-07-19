@@ -28,7 +28,7 @@ var UserView = function () {
 
         request.done(function (response) {
             //debugger;
-            $('#user-list').html(response);
+            $('#pnl-users').html(response);
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {

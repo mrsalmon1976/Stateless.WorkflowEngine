@@ -28,7 +28,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
             {
                 ui = new UserIdentity();
                 ui.Id = user.Id;
-                ui.Claims = new string[] { Roles.User };
+                ui.Claims = new string[] { user.Role };
                 ui.UserName = user.UserName;
             }
             return ui;
