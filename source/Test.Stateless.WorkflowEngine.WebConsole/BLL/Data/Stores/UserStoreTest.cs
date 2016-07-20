@@ -104,7 +104,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                 });
             }
             _userStore.Users.AddRange(users);
-            _path = "C:\\Temp\\Test\\users.json";
+            _userStore.FilePath = "C:\\Temp\\Test\\users.json";
 
             // execute 
             _userStore.Save();
@@ -112,7 +112,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             // assert
             string contents = JsonConvert.SerializeObject(users);
             _dirWrap.Received(1).CreateDirectory("C:\\Temp\\Test");
-            _fileWrap.Received(1).WriteAllText(_path, contents);
+            _fileWrap.Received(1).WriteAllText(_userStore.FilePath, contents);
         }
         #endregion
     }

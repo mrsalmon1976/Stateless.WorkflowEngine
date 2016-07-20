@@ -14,14 +14,19 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
     public interface IUserStore
     {
         /// <summary>
-        /// Loads the users for the app from the file on disk.
+        /// Gets/sets the file path of the file store.
         /// </summary>
-        void Load();
+        string FilePath { get; set; }
 
         /// <summary>
         /// Gets the users of the application.
         /// </summary>
         List<UserModel> Users { get; }
+
+        /// <summary>
+        /// Loads the users for the app from the file on disk.
+        /// </summary>
+        void Load();
 
         /// <summary>
         /// Saves the user store to disk.
@@ -32,23 +37,20 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
 
     public class UserStore : IUserStore
     {
-        private string _filePath;
         private IFileWrap _fileWrap;
         private IDirectoryWrap _dirWrap;
         private IPasswordProvider _passwordProvider;
 
         public UserStore(string filePath, IFileWrap fileWrap, IDirectoryWrap dirWrap, IPasswordProvider passwordProvider)
         {
-            _filePath = filePath;
+            this.FilePath = filePath;
             _fileWrap = fileWrap;
             _dirWrap = dirWrap;
             _passwordProvider = passwordProvider;
             this.Users = new List<UserModel>();
         }
 
-        public string RootPath { get; set; }
-
-        public string FileName { get; set; }
+        public string FilePath { get; set; }
 
         /// <summary>
         /// Gets the users of the application.
@@ -60,9 +62,9 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// </summary>
         public void Load()
         {
-            if (_fileWrap.Exists(_filePath))
+            if (_fileWrap.Exists(this.FilePath))
             {
-                string sUsers = _fileWrap.ReadAllText(_filePath);
+                string sUsers = _fileWrap.ReadAllText(this.FilePath);
                 List<UserModel> users = JsonConvert.DeserializeObject<List<UserModel>>(sUsers);
                 this.Users.AddRange(users);
             }
@@ -84,8 +86,8 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         public void Save()
         {
             string contents = JsonConvert.SerializeObject(this.Users);
-            _dirWrap.CreateDirectory(Path.GetDirectoryName(_filePath));
-            _fileWrap.WriteAllText(_filePath, contents);
+            _dirWrap.CreateDirectory(Path.GetDirectoryName(this.FilePath));
+            _fileWrap.WriteAllText(this.FilePath, contents);
         }
     }
 }
