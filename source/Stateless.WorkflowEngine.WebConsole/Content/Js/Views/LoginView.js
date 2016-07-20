@@ -12,16 +12,6 @@
         });
     };
 
-    this.showError = function (error) {
-        //debugger;
-        var err = error;
-        if ($.isArray(err)) {
-            err = Collections.displayList(err);
-        }
-        $("#msg-error").html(err);
-        $("#msg-error").removeClass('hidden');
-    };
-
     this.submitForm = function () {
         //debugger;
         var frm = $('#frm-login');
@@ -44,7 +34,7 @@
         });
         request.done(function (response) {
             if (response.success === false) {
-                that.showError('Unable to sign in using the supplied email address and password');
+                Utils.showError("#msg-error", 'Unable to sign in using the supplied email address and password');
             }
             else {
                 window.location.assign($('#returnUrl').val());
@@ -53,10 +43,10 @@
 
         request.fail(function (xhr, textStatus) {
             try {
-                that.showError(xhr.responseJSON.message);
+                Utils.showError("#msg-error", xhr.responseJSON.message);
             }
             catch(err) {
-                that.showError('A fatal error occurred');
+                Utils.showError("#msg-error", 'A fatal error occurred');
             }
         });
     };

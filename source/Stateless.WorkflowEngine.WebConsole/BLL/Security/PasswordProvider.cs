@@ -19,7 +19,14 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
     {
         public bool CheckPassword(string password, string hash)
         {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify(password, hash);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public string GenerateSalt()

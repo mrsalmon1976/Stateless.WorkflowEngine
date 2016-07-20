@@ -28,16 +28,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     {
         private IRootPathProvider _rootPathProvider;
 
-        public ModuleTestBootstrapper(bool isLoggedIn = true)
+        public ModuleTestBootstrapper()
         {
-            if (isLoggedIn)
-            {
-                this.CurrentUser = new UserIdentity()
-                {
-                    Id = Guid.NewGuid(),
-                    UserName = "Joe Soap"
-                };
-            }
             _rootPathProvider = new TestRootPathProvider();
         }
 
@@ -57,7 +49,22 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         /// <summary>
         /// Gets/sets the current user - set this to null if you want to simulate no auth.
         /// </summary>
-        public IUserIdentity CurrentUser { get; set; }
+        public UserIdentity CurrentUser { get; set; }
+
+        /// <summary>
+        /// Simulates a login and returns the user created.
+        /// </summary>
+        /// <returns></returns>
+        public UserIdentity Login()
+        {
+            this.CurrentUser = new UserIdentity()
+            {
+                Id = Guid.NewGuid(),
+                UserName = "Joe Soap",
+                Claims = new string[] { Roles.Admin }
+            };
+            return this.CurrentUser;
+        }
 
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {

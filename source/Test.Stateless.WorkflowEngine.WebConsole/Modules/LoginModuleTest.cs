@@ -45,14 +45,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginGet_UserLoggedIn_RedirectsToDashboard()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper(true);
+            var bootstrapper = this.ConfigureBootstrapper();
+            bootstrapper.Login();
             var browser = new Browser(bootstrapper);
 
             // execute
             var response = browser.Get(Actions.Login.Default, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(Guid.NewGuid(), new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -261,9 +262,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapper(bool isLoggedIn = false)
+        private ModuleTestBootstrapper ConfigureBootstrapper()
         {
-            var bootstrapper = new ModuleTestBootstrapper(isLoggedIn);
+            var bootstrapper = new ModuleTestBootstrapper();
             bootstrapper.ConfigureRequestContainerCallback = (container) =>
             {
                 container.Register<IUserStore>(_userStore);

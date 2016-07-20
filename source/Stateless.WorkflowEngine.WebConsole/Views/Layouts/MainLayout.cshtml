@@ -29,26 +29,16 @@
       </a>
       <ul class="nav navbar-nav pull-right">
         <li>
-          <a href="#">
-            <i class="icon-cog"></i>
-            Settings
+          <a href="#" id="mnu-change-password">
+            <i class="fa fa-user"></i>
+            @ViewBag.CurrentUserName
           </a>
         </li>
-        <li class="dropdown user">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-            <i class="icon-user"></i>
-            <strong>@ViewBag.CurrentUserName</strong>
-            <b class="caret"></b>
+        <li>
+          <a href="@Actions.Login.Logout">
+            <i class="fa fa-sign-out"></i>
+            Sign out
           </a>
-          <ul class="dropdown-menu">
-            <li>
-              <a href="#">Edit Profile</a>
-            </li>
-            <li class="divider"></li>
-            <li>
-              <a href="@Actions.Login.Logout">Sign out</a>
-            </li>
-          </ul>
         </li>
       </ul>
     </div>
@@ -69,6 +59,39 @@
             <div data-toggle="tooltip" id="beaker" title="" data-original-title="Made by lab2023"></div>
         </section>
         @RenderBody()
+    </div>
+    <div class="modal fade" id="dlg-profile" tabindex="-1" role="dialog" aria-labelledby="dlg-title">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">@ViewBag.CurrentUserName :: Change your password</h4>
+                </div>
+                <div class="modal-body">
+                    <div id="profile-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
+                    <form id="form-profile" class="form-horizontal" role="form" method="post" action="@Actions.User.ChangePassword">
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">Password</label>
+                            <div class="col-sm-9">
+                                <input class="form-control" id="profile-password" placeholder="Password" name="password" type="password" value="">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-3 control-label">&nbsp;</label>
+                            <div class="col-sm-9">
+                                <input class="form-control" id="profile-confirmPassword" placeholder="Confirm Password" name="confirmpassword" type="password" value="">
+                            </div>
+                        </div>
+                    </form>                    
+                </div>
+                <div class="modal-footer">
+                    <i id="profile-spinner" class="hide fa fa-circle-o-notch fa-spin fa-lg fa-fw pull-right"></i>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button id="profile-btn-submit" type="button" class="btn btn-primary">Change password</button>
+                </div>
+            </div>
+        </div>
     </div>
     <!-- Footer -->
     <!-- Javascripts -->

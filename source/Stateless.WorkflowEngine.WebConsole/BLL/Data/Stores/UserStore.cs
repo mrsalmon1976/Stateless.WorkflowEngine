@@ -3,6 +3,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +22,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// Gets the users of the application.
         /// </summary>
         List<UserModel> Users { get; }
+
+        /// <summary>
+        /// Saves the user store to disk.
+        /// </summary>
+        void Save();
         
     }
 
@@ -28,12 +34,14 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
     {
         private string _filePath;
         private IFileWrap _fileWrap;
+        private IDirectoryWrap _dirWrap;
         private IPasswordProvider _passwordProvider;
 
-        public UserStore(string filePath, IFileWrap fileWrap, IPasswordProvider passwordProvider)
+        public UserStore(string filePath, IFileWrap fileWrap, IDirectoryWrap dirWrap, IPasswordProvider passwordProvider)
         {
             _filePath = filePath;
             _fileWrap = fileWrap;
+            _dirWrap = dirWrap;
             _passwordProvider = passwordProvider;
             this.Users = new List<UserModel>();
         }
@@ -68,6 +76,16 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                 user.Role = Roles.Admin;
                 Users.Add(user);
             }
+        }
+
+        /// <summary>
+        /// Saves the user store to disk.
+        /// </summary>
+        public void Save()
+        {
+            string contents = JsonConvert.SerializeObject(this.Users);
+            _dirWrap.CreateDirectory(Path.GetDirectoryName(_filePath));
+            _fileWrap.WriteAllText(_filePath, contents);
         }
     }
 }

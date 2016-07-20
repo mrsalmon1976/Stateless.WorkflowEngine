@@ -16,10 +16,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 
         public string ConnectionError { get; set; }
 
-        public int ActiveCount { get; set; }
+        public int? ActiveCount { get; set; }
 
-        public int SuspendedCount { get; set; }
+        public int? SuspendedCount { get; set; }
 
-        public int CompletedCount { get; set; }
+        public int? CompletedCount { get; set; }
     }
 }

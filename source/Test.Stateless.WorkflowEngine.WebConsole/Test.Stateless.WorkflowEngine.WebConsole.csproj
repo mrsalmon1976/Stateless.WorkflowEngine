@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BLL\Data\Stores\UserStoreTest.cs" />
+    <Compile Include="Modules\UserModuleTest.cs" />
     <Compile Include="Modules\LoginModuleTest.cs" />
     <Compile Include="Modules\ModuleTestBootstrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

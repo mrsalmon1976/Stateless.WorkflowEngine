@@ -24,6 +24,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         {
             public const string Default = "/user";
 
+            public const string ChangePassword = "/user/changepassword";
+
             public const string List = "/user/list";
 
         }

@@ -12,16 +12,20 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using Stateless.WorkflowEngine.WebConsole.Navigation;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
+using Stateless.WorkflowEngine.WebConsole.ViewModels;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class UserModule : WebConsoleSecureModule
     {
         private IUserStore _userStore;
+        private IPasswordProvider _passwordProvider;
 
-        public UserModule(IUserStore userStore) : base()
+        public UserModule(IUserStore userStore, IPasswordProvider passwordProvider) : base()
         {
             _userStore = userStore;
+            _passwordProvider = passwordProvider;
+
             this.RequiresClaims(new[] { Roles.Admin });
 
             Get[Actions.User.Default] = (x) =>
@@ -33,12 +37,37 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             {
                 return List();
             };
+            Post[Actions.User.ChangePassword] = (x) =>
+            {
+                return ChangePassword();
+            };
             Post[Actions.User.Default] = (x) =>
             {
                 var model = this.Bind<UserViewModel>();
                 //return this.HandleResult(userController.HandleUserPost(model, this.Context.CurrentUser));
                 throw new NotImplementedException();
             };
+        }
+
+        public dynamic ChangePassword()
+        {
+            string password = Request.Form["Password"];
+            string confirmPassword = Request.Form["ConfirmPassword"];
+            if (password.Length < 6)
+            {
+                return Response.AsJson<BasicResult>(new BasicResult(false, "Passwords must be at least 6 characters in length"));
+            }
+            if (password != confirmPassword)
+            {
+                return Response.AsJson<BasicResult>(new BasicResult(false, "Password and confirmation password do not match"));
+            }
+
+            // all ok - update the password
+            var currentUser = _userStore.Users.Where(x => x.UserName == this.Context.CurrentUser.UserName).Single();
+            currentUser.Password = _passwordProvider.HashPassword(password, _passwordProvider.GenerateSalt());
+            _userStore.Save();
+
+            return Response.AsJson<BasicResult>(new BasicResult(true));
         }
 
         public dynamic Default()

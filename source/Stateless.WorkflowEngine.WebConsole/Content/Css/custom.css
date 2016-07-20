@@ -1,9 +1,12 @@
 .dashboard-panel {
     margin-right:20px;
-    min-height:193px;
 }
     .dashboard-panel .panel-body {
          width: 300px;
+    }
+    .dashboard-panel .panel-heading.error {
+        background-color: #d9534f;
+        color: white;
     }
 .logo-icon
 {

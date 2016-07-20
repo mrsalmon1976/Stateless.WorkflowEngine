@@ -18,16 +18,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
     {
         private IUserStore _userStore;
         private IFileWrap _fileWrap;
+        private IDirectoryWrap _dirWrap;
         private IPasswordProvider _passwordProvider;
-        private const string _path = "dummypath";
+        private string _path = "dummypath";
 
         [SetUp]
         public void UserStoreTest_SetUp()
         {
             _fileWrap = Substitute.For<IFileWrap>();
+            _dirWrap = Substitute.For<IDirectoryWrap>();
             _passwordProvider = Substitute.For<IPasswordProvider>();
 
-            _userStore = new UserStore(_path, _fileWrap, _passwordProvider);
+            _userStore = new UserStore(_path, _fileWrap, _dirWrap, _passwordProvider);
         }
 
         #region Load Tests
@@ -81,6 +83,37 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
 
         }
 
+        #endregion
+
+        #region Save Tests
+
+        [Test]
+        public void Save_OnExecute_SavesContentsToDisk()
+        {
+            // setup 
+            List<UserModel> users = new List<UserModel>();
+            Random r = new Random();
+            for (int i = 0; i < r.Next(3, 7); i++)
+            {
+                users.Add(new UserModel()
+                {
+                    Id = Guid.NewGuid(),
+                    Password = Guid.NewGuid().ToString(),
+                    UserName = Guid.NewGuid().ToString(),
+                    Role = Guid.NewGuid().ToString(),
+                });
+            }
+            _userStore.Users.AddRange(users);
+            _path = "C:\\Temp\\Test\\users.json";
+
+            // execute 
+            _userStore.Save();
+
+            // assert
+            string contents = JsonConvert.SerializeObject(users);
+            _dirWrap.Received(1).CreateDirectory("C:\\Temp\\Test");
+            _fileWrap.Received(1).WriteAllText(_path, contents);
+        }
         #endregion
     }
 }

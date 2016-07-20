@@ -26,7 +26,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IAppSettings>(settings);
 
             // IO Wrappers
-            //container.Register<IDirectoryWrap, DirectoryWrap>();
+            container.Register<IDirectoryWrap, DirectoryWrap>();
             //container.Register<IPathWrap, PathWrap>();
             container.Register<IFileWrap, FileWrap>();
             //container.Register<IPathHelper, PathHelper>();
@@ -44,7 +44,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             var dataPath = Path.Combine(this.RootPathProvider.GetRootPath(), "Data");
             var userStorePath = Path.Combine(dataPath, "users.json");
             
-            IUserStore userStore = new UserStore(userStorePath, container.Resolve<IFileWrap>(), container.Resolve<IPasswordProvider>());
+            IUserStore userStore = new UserStore(userStorePath, container.Resolve<IFileWrap>(), container.Resolve<IDirectoryWrap>(), container.Resolve<IPasswordProvider>());
             userStore.Load();
             container.Register<IUserStore>(userStore);
 
@@ -124,9 +124,8 @@ namespace Stateless.WorkflowEngine.WebConsole
             // set shared ViewBag details here
             context.ViewBag.AppVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
             context.ViewBag.Scripts = new List<string>();
-            //context.ViewBag.IsAdmin = false;
 
-            // before the request builds up, if there is a logged in user then set the admin info
+            // before the request builds up, if there is a logged in user then set the user info
             pipelines.BeforeRequest += (ctx) =>
             {
                 if (ctx.CurrentUser != null)
