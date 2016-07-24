@@ -34,8 +34,23 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AutoMapper">
+      <HintPath>..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+    </Reference>
     <Reference Include="BCrypt.Net, Version=0.1.5073.29922, Culture=neutral, PublicKeyToken=6bcd409ee6bc9292, processorArchitecture=MSIL">
       <HintPath>..\packages\BCrypt-Official.0.1.109\lib\BCrypt.Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="BouncyCastle.Crypto, Version=1.7.4137.9688, Culture=neutral, PublicKeyToken=a4292a325f69b123, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MongoDB.Bson, Version=1.9.1.221, Culture=neutral, PublicKeyToken=f686731cfb9cc103, processorArchitecture=MSIL">
+      <HintPath>..\packages\mongocsharpdriver.1.9.1\lib\net35\MongoDB.Bson.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MongoDB.Driver, Version=1.9.1.221, Culture=neutral, PublicKeyToken=f686731cfb9cc103, processorArchitecture=MSIL">
+      <HintPath>..\packages\mongocsharpdriver.1.9.1\lib\net35\MongoDB.Driver.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Nancy, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
@@ -88,14 +103,22 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BLL\Data\Models\ConnectionModel.cs" />
     <Compile Include="BLL\Data\Models\UserModel.cs" />
     <Compile Include="BLL\Data\Models\WorkflowStoreModel.cs" />
+    <Compile Include="BLL\Data\Models\WorkflowStoreType.cs" />
     <Compile Include="BLL\Data\Stores\UserStore.cs" />
+    <Compile Include="BLL\Factories\WorkflowClientFactory.cs" />
+    <Compile Include="BLL\Security\EncryptionProvider.cs" />
     <Compile Include="BLL\Security\PasswordProvider.cs" />
     <Compile Include="BLL\Security\Roles.cs" />
     <Compile Include="BLL\Security\UserIdentity.cs" />
+    <Compile Include="BLL\Services\WorkflowStoreInfoService.cs" />
+    <Compile Include="BLL\Validators\ConnectionValidator.cs" />
+    <Compile Include="BLL\Validators\ValidationResult.cs" />
     <Compile Include="Configuration\AppSettings.cs" />
     <Compile Include="BLL\Security\UserMapper.cs" />
+    <Compile Include="Modules\ConnectionModule.cs" />
     <Compile Include="Modules\WebConsoleModule.cs" />
     <Compile Include="Modules\WebConsoleSecureModule.cs" />
     <Compile Include="Modules\DashboardModule.cs" />
@@ -106,7 +129,7 @@
     <Compile Include="Navigation\Views.cs" />
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\BasicResult.cs" />
-    <Compile Include="ViewModels\Dashboard\DashboardConnectionViewModel.cs" />
+    <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />
     <Compile Include="ViewModels\MultiSelectItem.cs" />
@@ -131,7 +154,7 @@
     <None Include="Content\Fonts\FontAwesome.otf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Views\Dashboard\_DashboardConnectionList.cshtml">
+    <None Include="Views\Connection\_ConnectionList.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Views\Dashboard\DashboardView.cshtml">
@@ -188,6 +211,9 @@
     <Content Include="Content\Fonts\fontawesome-webfont.svg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Content\Images\mongo_24x24.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Content\Images\node.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -232,7 +258,16 @@
     </Content>
     <Content Include="LICENSE.txt" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj">
+      <Project>{650ff1f8-3dcc-4aa5-9d18-e4f77db03c78}</Project>
+      <Name>Stateless.WorkflowEngine.MongoDb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj">
+      <Project>{eb4615d8-4123-4316-8d92-285680d6100c}</Project>
+      <Name>Stateless.WorkflowEngine</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

@@ -24,6 +24,13 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         List<UserModel> Users { get; }
 
         /// <summary>
+        /// Gets a user by user name.
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        UserModel GetUser(string userName);
+
+        /// <summary>
         /// Loads the users for the app from the file on disk.
         /// </summary>
         void Load();
@@ -56,6 +63,16 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// Gets the users of the application.
         /// </summary>
         public List<UserModel> Users { get; private set; }
+
+        /// <summary>
+        /// Gets a user by user name.
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public UserModel GetUser(string userName)
+        {
+            return this.Users.Where(x => x.UserName == userName).SingleOrDefault();
+        }
 
         /// <summary>
         /// Loads the users for the app from the file on disk.

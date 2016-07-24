@@ -1,8 +1,8 @@
-﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard.DashboardConnectionViewModel>
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Connection.ConnectionListViewModel>
 @using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 @using Stateless.WorkflowEngine.WebConsole.Navigation
 @functions {
-    public string FormatConnectionNumber(int? no) {
+    public string FormatConnectionNumber(long? no) {
         return (no.HasValue ? no.Value.ToString() : "n/a");
     }
 
@@ -10,7 +10,7 @@
         return (String.IsNullOrEmpty(model.ConnectionError) ? String.Empty : " error");
     }
     
-    public string GetConnectionStyle(int? no, int warningThreshold, int errorThreshold) {
+    public string GetConnectionStyle(long? no, long warningThreshold, long errorThreshold) {
         if (!no.HasValue || no.Value > errorThreshold) return "progress-bar-danger";
         if (no.Value > warningThreshold) return "progress-bar-warning";
         return "progress-bar-success";
@@ -18,7 +18,7 @@
 
     public string GetConnectionTitle(WorkflowStoreModel model)
     {
-        return String.Format("{0}:{1} / {2}", model.Server, model.Port, model.Database);
+        return String.Format("{0}:{1} / {2}", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database);
     }
 
     public string GetConnectionTitleTooltip(WorkflowStoreModel model)
@@ -37,7 +37,7 @@
 {
     <div class="panel panel-default pull-left dashboard-panel">
         <div class="panel-heading@(GetConnectionErrorClass(workflowStore))" data-toggle="tooltip" data-placement="top" title="@GetConnectionTitleTooltip(workflowStore)">
-            <i class="fa fa-database"></i>
+            <img src="/Content/Images/mongo_24x24.png" alt="" title="" />
             @GetConnectionTitle(workflowStore)
         </div>
         <div class="panel-body">

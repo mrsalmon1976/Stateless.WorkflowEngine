@@ -82,6 +82,17 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetActiveCount()
+        {
+            var collection = GetCollection();
+            var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == false);
+            return collection.Find(query).Count();
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
@@ -94,6 +105,17 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .ThenBy(x => x.Workflow.CreatedOn)
                    select s.Workflow;
         }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetCompletedCount()
+        {
+            var collection = GetCompletedCollection();
+            return collection.Count();
+        }
+
 
         /// <summary>
         /// Gets a completed workflow by it's unique identifier, or null if it does not exist.
@@ -140,6 +162,18 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .Take(count)
                    select s.Workflow;
         }
+
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetSuspendedCount()
+        {
+            var collection = GetCollection();
+            var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == true);
+            return collection.Find(query).Count();
+        }
+
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 

@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard
+namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
 {
-    public class DashboardConnectionViewModel : BaseViewModel
+    public class ConnectionListViewModel : BaseViewModel
     {
-        public DashboardConnectionViewModel()
+        public ConnectionListViewModel()
         {
             this.WorkflowStores = new List<WorkflowStoreModel>();
         }

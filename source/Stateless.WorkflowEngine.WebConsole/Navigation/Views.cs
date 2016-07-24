@@ -10,10 +10,14 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
     {
         public const string Login = "Views/LoginView.cshtml";
 
+        public class Connection
+        {
+            public const string List = "Views/Connection/_ConnectionList.cshtml";
+        }
+
         public class Dashboard
         {
             public const string Default = "Views/Dashboard/DashboardView.cshtml";
-            public const string ConnectionList = "Views/Dashboard/_DashboardConnectionList.cshtml";
         }
 
         public class User

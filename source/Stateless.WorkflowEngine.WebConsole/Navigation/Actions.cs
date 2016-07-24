@@ -11,7 +11,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         public class Dashboard
         {
             public const string Default = "/dashboard";
-            public const string Connections = "/dashboard/connections";
+        }
+
+        public class Connection
+        {
+            public const string List = "/connection/list";
+            public const string Save = "/connection/save";
         }
 
         public class Login

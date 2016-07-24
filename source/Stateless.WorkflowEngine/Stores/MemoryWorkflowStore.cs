@@ -35,6 +35,15 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetActiveCount()
+        {
+            return this._activeWorkflows.Where(x => x.Value.IsSuspended == false).Count();
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
@@ -44,6 +53,15 @@ namespace Stateless.WorkflowEngine.Stores
                        .Where(x => x.GetType().AssemblyQualifiedName == workflowType)
                        .OrderByDescending(x => x.RetryCount)
                        .ThenBy(x => x.CreatedOn);
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetCompletedCount()
+        {
+            return this._completedWorkflows.Count;
         }
 
         /// <summary>
@@ -90,6 +108,15 @@ namespace Stateless.WorkflowEngine.Stores
                 .OrderByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
+        }
+
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetSuspendedCount()
+        {
+            return this._activeWorkflows.Values.Where(x => x.IsSuspended == true).Count();
         }
 
         /// <summary>

@@ -42,7 +42,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
-        #region Tests
+        #region Delete Tests
 
         [Test]
         public void Delete_OnExecute_RemovesWorkflow()
@@ -212,6 +212,43 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetActiveCount Tests
+
+        [Test]
+        public void GetActiveCount_NoSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+
+            long result = store.GetActiveCount();
+            Assert.AreEqual(count, result);
+        }
+
+        [Test]
+        public void GetActiveCount_WithSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+
+            long result = store.GetActiveCount();
+            Assert.AreEqual(count, result);
+        }
+
+        #endregion
+
         #region GetAllByType Tests
 
         [Test]
@@ -227,6 +264,54 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Workflow wf = result.Single();
             Assert.AreEqual(typeof(SingleInstanceWorkflow).FullName, wf.GetType().FullName);
             
+        }
+
+        #endregion
+
+        #region GetCompletedCount Tests
+
+        [Test]
+        public void GetCompletedCount_OnExecute_ReturnsAccurateCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                store.Save(wf);
+                store.Archive(wf);
+            }
+
+            long result = store.GetCompletedCount();
+            Assert.AreEqual(count, result);
+        }
+
+        #endregion
+
+        #region GetCompletedCount Tests
+
+        [Test]
+        public void GetSuspendedCount_OnExecute_ReturnsAccurateCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            int suspendedCount = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                store.Save(wf);
+            }
+            for (int i = 0; i < suspendedCount; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = true;
+                store.Save(wf);
+            }
+
+            long result = store.GetSuspendedCount();
+            Assert.AreEqual(suspendedCount, result);
         }
 
         #endregion

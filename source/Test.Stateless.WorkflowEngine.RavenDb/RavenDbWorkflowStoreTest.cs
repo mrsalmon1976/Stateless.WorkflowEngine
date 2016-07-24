@@ -74,6 +74,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             using (IDocumentSession session = _documentStore.OpenSession())
             {
                 // drop all workflows
+                var xx = session.Query<WorkflowContainer>().Take(1000);
                 IEnumerable<WorkflowContainer> workflows = session.Query<WorkflowContainer>().Take(1000);
                 foreach (WorkflowContainer wi in workflows)
                 {

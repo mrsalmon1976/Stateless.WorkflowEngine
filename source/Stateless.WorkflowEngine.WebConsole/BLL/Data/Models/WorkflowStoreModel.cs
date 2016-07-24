@@ -8,18 +8,19 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 {
     public class WorkflowStoreModel
     {
-        public string Server { get; set; }
+        public WorkflowStoreModel(ConnectionModel connectionModel)
+        {
+            this.ConnectionModel = connectionModel;
+        }
 
-        public int Port { get; set; }
-
-        public string Database { get; set; }
+        public ConnectionModel ConnectionModel { get; set; }
 
         public string ConnectionError { get; set; }
 
-        public int? ActiveCount { get; set; }
+        public long? ActiveCount { get; set; }
 
-        public int? SuspendedCount { get; set; }
+        public long? SuspendedCount { get; set; }
 
-        public int? CompletedCount { get; set; }
+        public long? CompletedCount { get; set; }
     }
 }

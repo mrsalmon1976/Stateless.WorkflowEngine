@@ -13,6 +13,9 @@ using System.IO;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using SystemWrapper.IO;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
+using Encryption;
+using AutoMapper;
+using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -32,13 +35,13 @@ namespace Stateless.WorkflowEngine.WebConsole
             //container.Register<IPathHelper, PathHelper>();
 
             // security
+            container.Register<IEncryptionProvider, AESGCM>();
             container.Register<IPasswordProvider, PasswordProvider>();
 
-            //// set up mappings
-            //Mapper.Initialize((cfg) => {
-            //    cfg.CreateMap<DocumentViewModel, DocumentEntity>().ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
-            //    cfg.CreateMap<DocumentEntity, DocumentViewModel>().ForMember(dest => dest.DocumentId, opt => opt.MapFrom(src => src.Id));
-            //});
+            // set up mappings
+            Mapper.Initialize((cfg) => {
+                cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
+            });
 
             // set up the stores
             var dataPath = Path.Combine(this.RootPathProvider.GetRootPath(), "Data");

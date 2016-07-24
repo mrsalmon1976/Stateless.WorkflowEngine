@@ -70,6 +70,18 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetActiveCount()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<WorkflowContainer>().Where(x => x.Workflow.IsSuspended == false).Count();
+            }
+        }
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
@@ -82,6 +94,19 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .OrderByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     select s.Workflow;
+            }
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetCompletedCount()
+        {
+            CompletedWorkflow workflow = null;
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<CompletedWorkflow>().Count();
             }
         }
 
@@ -138,6 +163,19 @@ namespace Stateless.WorkflowEngine.RavenDb
                     select s.Workflow;
             }
         }
+
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override long GetSuspendedCount()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<WorkflowContainer>().Where(x => x.Workflow.IsSuspended == true).Count();
+            }
+        }
+
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 

@@ -36,6 +36,24 @@ namespace Stateless.WorkflowEngine
         T Get<T>(Guid workflowId) where T : Workflow;
 
         /// <summary>
+        /// Gets the count of active workflows on the underlying store (including suspended).
+        /// </summary>
+        /// <returns></returns>
+        long GetActiveCount();
+
+        /// <summary>
+        /// Gets the count of completed workflows on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        long GetCompletedCount();
+
+        /// <summary>
+        /// Gets the count of suspended workflows that have not completed on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        long GetSuspendedCount();
+
+        /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -66,11 +84,6 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         Workflow Unsuspend(Guid workflowId);
 
-
-        // Delete workflow
-        // Get workflow
-        // Exists
-        // 
     }
     
     public class WorkflowClient : IWorkflowClient
@@ -122,6 +135,33 @@ namespace Stateless.WorkflowEngine
         public T Get<T>(Guid workflowId) where T : Workflow
         {
             return _workflowStore.Get<T>(workflowId);
+        }
+
+        /// <summary>
+        /// Gets the count of active workflows on the underlying store (including suspended).
+        /// </summary>
+        /// <returns></returns>
+        public long GetActiveCount()
+        {
+            return _workflowStore.GetActiveCount();
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        public long GetCompletedCount()
+        {
+            return _workflowStore.GetCompletedCount();
+        }
+
+        /// <summary>
+        /// Gets the count of suspended workflows that have not completed on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        public long GetSuspendedCount()
+        {
+            return _workflowStore.GetSuspendedCount();
         }
 
         /// <summary>

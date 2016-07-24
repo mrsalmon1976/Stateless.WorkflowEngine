@@ -38,6 +38,12 @@ namespace Stateless.WorkflowEngine.Stores
         T Get<T>(Guid id) where T : Workflow;
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        long GetActiveCount();
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
@@ -55,6 +61,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         /// <returns></returns>
         CompletedWorkflow GetCompleted(Guid id);
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        long GetCompletedCount();
 
         /// <summary>
         /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
@@ -78,6 +90,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        long GetSuspendedCount();
+
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
@@ -139,6 +158,12 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public abstract long GetActiveCount();
+
+        /// <summary>
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
@@ -169,6 +194,13 @@ namespace Stateless.WorkflowEngine.Stores
             }
             return workflow;
         }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public abstract long GetCompletedCount();
+
 
         /// <summary>
         /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
@@ -206,6 +238,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         public abstract IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public abstract long GetSuspendedCount();
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 

@@ -4,6 +4,8 @@ var DashboardView = function () {
     var that = this;
 
     this.init = function () {
+        $('#btn-add-connection').on('click', function () { that.showForm(''); });
+        $('#btn-submit-connection').on('click', that.submitForm);
         this.loadConnections();
     };
 
@@ -12,7 +14,7 @@ var DashboardView = function () {
         $('#pnl-loading').show();
 
         var request = $.ajax({
-            url: "/dashboard/connections",
+            url: "/connection/list",
             method: "GET",
             dataType: 'html'
         });
@@ -37,20 +39,22 @@ var DashboardView = function () {
         if ($.isArray(err)) {
             err = Collections.displayList(err);
         }
-        $("#msg-error").html(err);
-        $("#msg-error").removeClass('hidden');
+        $("#connection-msg-error").html(err);
+        $("#connection-msg-error").removeClass('hidden');
     };
 
-    this.showForm = function () {
-        $("#msg-error").addClass('hidden');
-        $('#dlg-add').modal('show');
+    this.showForm = function (connectionId) {
+        $('#hid-connection-id').val(connectionId);
+        $('#btn-submit-connection').text(connectionId == '' ? 'Add connection' : 'Update connection');
+        $("#connection-msg-error").addClass('hidden');
+        $('#dlg-connection').modal('show');
     };
 
     this.submitForm = function () {
         $("#msg-error").addClass('hidden');
-        var formData = $('#form-user').serializeForm();
+        var formData = $('#form-connection').serializeForm();
         var request = $.ajax({
-            url: "/user",
+            url: "/connection/save",
             method: "POST",
             data: formData,
             dataType: 'json',
@@ -60,8 +64,8 @@ var DashboardView = function () {
         request.done(function (response) {
             //debugger;
             if (response.success) {
-                $('#dlg-add').modal('hide');
-                that.loadUsers();
+                $('#dlg-connection').modal('hide');
+                that.loadConnections();
             }
             else {
                 that.showError(response.messages);
