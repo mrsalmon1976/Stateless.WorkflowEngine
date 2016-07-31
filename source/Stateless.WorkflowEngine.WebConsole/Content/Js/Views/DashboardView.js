@@ -9,9 +9,46 @@ var DashboardView = function () {
         this.loadConnections();
     };
 
+    this.confirmDeleteConnection = function (evt) {
+        //debugger;
+        var anchor = evt.currentTarget;
+        var connId = anchor.attributes['data-model-id'].value;
+        var dbName = anchor.attributes['data-model-db'].value;
+        bootbox.confirm('Are you sure you want to delete this connection?', function (result) {
+            if (result == true) {
+                that.deleteConnection(connId);
+            }
+        });
+    };
+
+    this.deleteConnection = function (connId) {
+
+        $('#pnl-loading').show();
+
+        var request = $.ajax({
+            url: "/connection/delete",
+            method: "POST",
+            dataType: 'html',
+            data: { "id": connId }
+        });
+
+        request.done(function (response) {
+            //debugger;
+            that.loadConnections();
+        });
+
+        request.fail(function (xhr, textStatus, errorThrown) {
+            alert('error: ' + xhr.responseText);
+        });
+        request.always(function (xhr, textStatus) {
+            $('#pnl-loading').hide();
+        });
+    };
+
     this.loadConnections = function () {
 
         $('#pnl-loading').show();
+        $('a.btn-delete').off('click');
 
         var request = $.ajax({
             url: "/connection/list",
@@ -22,6 +59,8 @@ var DashboardView = function () {
         request.done(function (response) {
             //debugger;
             $('#pnl-connections').html(response);
+            $('a.btn-delete').on('click', that.confirmDeleteConnection);
+
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {

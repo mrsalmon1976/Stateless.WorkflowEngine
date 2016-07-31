@@ -18,13 +18,14 @@
 
     public string GetConnectionTitle(WorkflowStoreModel model)
     {
-        return String.Format("{0}:{1} / {2}", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database);
+        return String.Format("{0} / {2}", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database);
     }
 
     public string GetConnectionTitleTooltip(WorkflowStoreModel model)
     {
         if (String.IsNullOrEmpty(model.ConnectionError)) {
-            return GetConnectionTitle(model);
+            string user = (String.IsNullOrEmpty(model.ConnectionModel.User) ? String.Empty : "(" + model.ConnectionModel.User + ")");
+            return String.Format("{0}:{1} / {2} (3)", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database, user);
         }
         return model.ConnectionError;
     }
@@ -36,9 +37,21 @@
 @foreach (var workflowStore in Model.WorkflowStores)
 {
     <div class="panel panel-default pull-left dashboard-panel">
-        <div class="panel-heading@(GetConnectionErrorClass(workflowStore))" data-toggle="tooltip" data-placement="top" title="@GetConnectionTitleTooltip(workflowStore)">
+        <div class="panel-heading@(GetConnectionErrorClass(workflowStore))" title="@GetConnectionTitleTooltip(workflowStore)">
             <img src="/Content/Images/mongo_24x24.png" alt="" title="" />
-            @GetConnectionTitle(workflowStore)
+            <div class="conn-title dropdown">
+              <a class="dropdown-toggle" id="mnu@(workflowStore.ConnectionModel.Id)" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                @GetConnectionTitle(workflowStore)
+                <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
+                  <!--
+                <li class="text-left"><a href="#" class="btn disabled"><i class="fa fa-list-ul"></i> View incomplete workflows</a></li>
+                <li class="text-left"><a href="#" class="btn disabled text-left"><i class="fa fa-info-circle"></i> Info</a></li>
+                      -->
+                <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
+              </ul>
+            </div>
         </div>
         <div class="panel-body">
             <div class="progress" data-toggle="tooltip" data-placement="top" title="Collection: Workflows">

@@ -119,6 +119,7 @@
     <Compile Include="Configuration\AppSettings.cs" />
     <Compile Include="BLL\Security\UserMapper.cs" />
     <Compile Include="Modules\ConnectionModule.cs" />
+    <Compile Include="Modules\StoreModule.cs" />
     <Compile Include="Modules\WebConsoleModule.cs" />
     <Compile Include="Modules\WebConsoleSecureModule.cs" />
     <Compile Include="Modules\DashboardModule.cs" />
@@ -220,6 +221,9 @@
     <Content Include="Content\Images\sprite-8460f675.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Content\Js\bootbox.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Content\Js\custom.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -242,6 +246,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\modernizr.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\Js\Views\StoreView.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\Views\DashboardView.js">

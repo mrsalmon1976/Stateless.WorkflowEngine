@@ -36,7 +36,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             Get[Actions.Connection.List] = (x) =>
             {
                 this.RequiresAnyClaim(Roles.AllRoles);
-                return this.View[Views.Connection.List, this.List()];
+                return this.List();
+            };
+            Post[Actions.Connection.Delete] = (x) =>
+            {
+                this.RequiresAnyClaim(Roles.AllRoles);
+                return Delete();
             };
             Post[Actions.Connection.Save] = (x) =>
             {
@@ -45,7 +50,26 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             };
         }
 
-        public ConnectionListViewModel List()
+        public dynamic Delete()
+        {
+            var id = Request.Form["id"];
+
+            // load the connections for the current user
+            var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
+
+            var conn = currentUser.Connections.Where(x => x.Id == id).SingleOrDefault();
+            if (conn == null)
+            {
+                var model = new { Error = "Connection not found" };
+                return this.Response.AsJson(model, HttpStatusCode.NotFound);
+            }
+
+            currentUser.Connections.Remove(conn);
+            _userStore.Save();
+            return this.Response.AsJson(new { Result = "Ok" }, HttpStatusCode.OK);
+        }
+
+        public dynamic List()
         {
             // load the connections for the current user
             var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
@@ -61,7 +85,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
             ConnectionListViewModel model = new ConnectionListViewModel();
             model.WorkflowStores.AddRange(workflowStoreModels);
-            return model;
+            return this.View[Views.Connection.List, model]; ;
 
         }
 

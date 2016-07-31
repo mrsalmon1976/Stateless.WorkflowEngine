@@ -1,3 +1,9 @@
+.conn-title {
+    display: inline;
+}
+    .conn-title a {
+        cursor: pointer;
+    }
 .dashboard-panel {
     margin-right:20px;
 }

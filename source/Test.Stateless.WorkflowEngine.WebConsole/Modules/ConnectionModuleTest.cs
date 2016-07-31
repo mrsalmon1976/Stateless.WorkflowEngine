@@ -52,6 +52,71 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         }
 
+        #region Delete Tests
+
+        [Test]
+        public void Delete_NoConnectionFound_ReturnsNotFoundResponse()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var connectionId = Guid.NewGuid();
+
+            List<UserModel> users = ConfigureUsers(bootstrapper);
+            UserModel currentUser = users[0];
+            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
+            currentUser.Connections = new List<ConnectionModel>();
+
+            // execute
+            var response = browser.Post(Actions.Connection.Delete, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+
+            _userStore.DidNotReceive().Save();
+        }
+
+        [Test]
+        public void Delete_ConnectionFound_RemovesConnection()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId
+            };
+
+            List<UserModel> users = ConfigureUsers(bootstrapper);
+            UserModel currentUser = users[0];
+            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
+            currentUser.Connections = new List<ConnectionModel>() { connection };
+
+            Assert.AreEqual(1, currentUser.Connections.Count);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Delete, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            Assert.AreEqual(0, currentUser.Connections.Count);
+            _userStore.Received(1).Save();
+        }
+        #endregion
+
         #region List Tests
 
         [Test]
@@ -182,7 +247,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapperAndUser()
+        private ModuleTestBootstrapper ConfigureBootstrapperAndUser(bool configureUsers = true)
         {
             var bootstrapper = new ModuleTestBootstrapper();
             bootstrapper.Login();
@@ -194,6 +259,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 container.Register<IWorkflowStoreInfoService>(_workflowStoreService);
             };
 
+            if (configureUsers)
+            {
+                ConfigureUsers(bootstrapper);
+            }
+            return bootstrapper;
+        }
+
+        private List<UserModel> ConfigureUsers(ModuleTestBootstrapper bootstrapper)
+        {
             // set up the logged in user
             UserModel user = new UserModel()
             {
@@ -203,8 +277,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             };
             List<UserModel> users = new List<UserModel>() { user };
             _userStore.Users.Returns(users);
-
-            return bootstrapper;
+            return users;
         }
 
         #endregion
