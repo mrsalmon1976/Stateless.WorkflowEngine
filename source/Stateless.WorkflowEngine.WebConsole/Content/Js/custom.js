@@ -35,6 +35,10 @@ Numeric.getRandomInt = function(min, max) {
 
 var Utils = function () { };
 
+Utils.createErrorAlert = function (message) {
+    return '<div class="alert alert-danger" role="alert">' + message + '</div>';
+};
+
 Utils.showError = function (selector, error) {
     //debugger;
     var err = error;

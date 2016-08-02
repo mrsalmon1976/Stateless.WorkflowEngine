@@ -4,6 +4,7 @@ var DashboardView = function () {
     var that = this;
 
     this.init = function () {
+        $('#btn-refresh').on('click', function () { that.loadConnections(); });
         $('#btn-add-connection').on('click', function () { that.showForm(''); });
         $('#btn-submit-connection').on('click', that.submitForm);
         this.loadConnections();
@@ -48,6 +49,7 @@ var DashboardView = function () {
     this.loadConnections = function () {
 
         $('#pnl-loading').show();
+        $('#pnl-connections').html('');
         $('a.btn-delete').off('click');
 
         var request = $.ajax({
@@ -64,7 +66,8 @@ var DashboardView = function () {
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
-            alert('error: ' + xhr.responseText);
+            var html = Utils.createErrorAlert('ERROR: ' + xhr.responseText);
+            $('#pnl-connections').html(html);
         });
         request.always(function (xhr, textStatus) {
             //debugger;
