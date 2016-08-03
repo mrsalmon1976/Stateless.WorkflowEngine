@@ -1,0 +1,39 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Store.WorkflowListViewModel>
+@using Stateless.WorkflowEngine;
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@if (Model.Workflows.Count > 0)
+{
+    <table class="table table-striped table-hover table-bordered font90">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Type</th>
+                <th>Resumes</th>
+                <th>Suspended</th>
+                <th>State</th>
+                <th>Retry Count</th>
+                <th>Retry Intervals</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var wf in Model.Workflows)
+            {
+                <tr @if (wf.IsSuspended) {  <text>class="danger"</text> }>
+                    <td>@wf.Id</td>
+                    <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
+                    <td>@wf.ResumeOn</td>
+                    <td>@(wf.IsSuspended ? "Yes" : "No")</td>
+                    <td>@wf.CurrentState</td>
+                    <td>@wf.RetryCount</td>
+                    <td>@(String.Join(",", wf.RetryIntervals))</td>
+                    <td>@wf.CreatedOn</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <h4>There are no workflows to display.</h4>
+}

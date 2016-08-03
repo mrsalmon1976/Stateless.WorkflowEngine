@@ -38,10 +38,10 @@ namespace Stateless.WorkflowEngine.Stores
         T Get<T>(Guid id) where T : Workflow;
 
         /// <summary>
-        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// Gets the count of workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
-        long GetActiveCount();
+        long GetIncompleteCount();
 
         /// <summary>
         /// Gets all workflows of a specified type.
@@ -90,6 +90,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        IEnumerable<Workflow> GetIncomplete(int count);
 
         /// <summary>
         /// Gets the count of suspended workflows in the active collection.
@@ -161,7 +168,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
-        public abstract long GetActiveCount();
+        public abstract long GetIncompleteCount();
 
         /// <summary>
         /// Gets all workflows of a specified type.
@@ -238,6 +245,14 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         public abstract IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public abstract IEnumerable<Workflow> GetIncomplete(int count);
+
 
         /// <summary>
         /// Gets the count of suspended workflows in the active collection.

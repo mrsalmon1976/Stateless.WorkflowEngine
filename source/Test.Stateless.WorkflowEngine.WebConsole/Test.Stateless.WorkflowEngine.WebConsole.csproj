@@ -111,10 +111,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BLL\Data\Stores\UserStoreTest.cs" />
-    <Compile Include="BLL\Services\WorkflowStoreInfoServiceTest.cs" />
+    <Compile Include="BLL\Services\WorkflowInfoServiceTest.cs" />
     <Compile Include="BLL\Validators\ConnectionValidatorTest.cs" />
     <Compile Include="DataHelper.cs" />
     <Compile Include="Modules\ConnectionModuleTest.cs" />
+    <Compile Include="Modules\StoreModuleTest.cs" />
     <Compile Include="Modules\UserModuleTest.cs" />
     <Compile Include="Modules\LoginModuleTest.cs" />
     <Compile Include="Modules\ModuleTestBootstrapper.cs" />

@@ -3,42 +3,36 @@ var StoreView = function () {
 
     var that = this;
 
-    //    this.init = function () {
-    //        this.loadUsers();
-    //        $('#categories').multiselect({
-    //            //includeSelectAllOption: true,
-    //            //buttonClass: "col-sm-12"
-    //        });
-    //        $('#btn-add').on('click', that.showForm);
-    //        $('#btn-submit').on('click', that.submitForm);
-    //        $('#dlg-add').on('shown.bs.modal', function () {
-    //            $('#email').focus();
-    //        });
-    //    };
+    this.init = function () {
+        $('#btn-refresh').on('click', function () { that.loadWorkflows(); });
+        this.loadWorkflows();
+    };
 
-    //    this.loadUsers = function () {
+    this.loadWorkflows = function () {
 
-    //        $('#pnl-loading').show();
+        var connId = $('#pnl-workflows').data().modelId;
+        $('#pnl-loading').show();
+        $('#pnl-workflows').html('');
 
-    //        var request = $.ajax({
-    //            url: "/user/list",
-    //            method: "GET",
-    //            dataType: 'html'
-    //        });
+        var request = $.ajax({
+            url: "/store/list",
+            method: "POST",
+            dataType: 'html',
+            data: { "id": connId }
+        });
 
-    //        request.done(function (response) {
-    //            //debugger;
-    //            $('#pnl-users').html(response);
-    //        });
+        request.done(function (response) {
+            $('#pnl-workflows').html(response);
+        });
 
-    //        request.fail(function (xhr, textStatus, errorThrown) {
-    //            alert('error: ' + xhr.responseText);
-    //        });
-    //        request.always(function (xhr, textStatus) {
-    //            //debugger;
-    //            $('#pnl-loading').hide();
-    //        });
-    //    };
+        request.fail(function (xhr, textStatus, errorThrown) {
+            var html = Utils.createErrorAlert('ERROR: ' + xhr.responseText);
+            $('#pnl-workflows').html(html);
+        });
+        request.always(function (xhr, textStatus) {
+            $('#pnl-loading').hide();
+        });
+    };
 
     //    this.showError = function (error) {
     //        //debugger;

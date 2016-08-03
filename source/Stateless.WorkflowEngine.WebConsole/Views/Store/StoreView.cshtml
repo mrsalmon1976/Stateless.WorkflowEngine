@@ -1,0 +1,44 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+@using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@model Stateless.WorkflowEngine.WebConsole.ViewModels.Store.StoreViewModel
+@{
+    var title = String.Format("Stateless.WorkflowEngine Console :: Store :: {0}:{1}:{2}", Model.Connection.Host, Model.Connection.Port, Model.Connection.Database);
+    Layout = "Views/Layouts/MainLayout.cshtml";
+    ViewBag.Title = title;
+}
+@functions {
+    public string GetHost() {
+        string host = Model.Connection.Host;
+        if (Model.Connection.Port > 0) {
+            host = String.Format("{0}:{1}", host, Model.Connection.Port);
+        }
+        return host;
+    }
+}
+<!-- Tools -->
+<section id="tools">
+    <ul class="breadcrumb" id="breadcrumb">
+        <li class="title"><a href="@Actions.Dashboard.Default">Dashboard</a></li>
+        <li>@GetHost()</li>
+        <li>@Model.Connection.Database</li>
+    </ul>
+    <div id="toolbar">
+        <div class="btn-group">
+            <a id="btn-refresh" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
+                <i class="fa fa-refresh"></i>
+            </a>
+        </div>
+    </div>
+</section>
+<!-- Content -->
+<div id="content">
+    <div id="pnl-loading">
+        <i class="pull-left fa fa-circle-o-notch fa-spin fa-2x fa-fw"></i>
+        <h4 class="pull-left">Loading workflows...</h4>
+    </div>
+    <div id="pnl-workflows" data-model-id="@Model.Connection.Id">
+    </div>
+</div>
+
+

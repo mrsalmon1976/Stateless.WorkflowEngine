@@ -45,11 +45,8 @@
                 <span class="caret"></span>
               </a>
               <ul class="dropdown-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
-                  <!--
-                <li class="text-left"><a href="#" class="btn disabled"><i class="fa fa-list-ul"></i> View incomplete workflows</a></li>
-                <li class="text-left"><a href="#" class="btn disabled text-left"><i class="fa fa-info-circle"></i> Info</a></li>
-                      -->
                 <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
+                <li><a href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)" class="btn-delete"><i class="fa fa-table"></i> View incomplete workflows</a></li>
               </ul>
             </div>
         </div>

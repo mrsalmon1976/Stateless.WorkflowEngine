@@ -73,7 +73,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
-        public override long GetActiveCount()
+        public override long GetIncompleteCount()
         {
             using (IDocumentSession session = this.OpenSession())
             {
@@ -161,6 +161,24 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
                     select s.Workflow;
+            }
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override IEnumerable<Workflow> GetIncomplete(int count)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return from s in session.Query<WorkflowContainer>()
+                    .Where(x => x.Workflow.ResumeOn <= DateTime.UtcNow)
+                    .OrderByDescending(x => x.Workflow.RetryCount)
+                    .ThenBy(x => x.Workflow.CreatedOn)
+                    .Take(count)
+                       select s.Workflow;
             }
         }
 

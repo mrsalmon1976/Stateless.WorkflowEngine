@@ -10,7 +10,7 @@
         <meta content="" name="keywords">
         <link href="/Content/Css/theme-hierapolis.css" rel="stylesheet" type="text/css">
         <link href="/Content/Css/font-awesome.min.css" rel="stylesheet" type="text/css">
-        <link href="/Content/Css/custom.css" rel="stylesheet" type="text/css">
+        <link href="/Content/Css/custom.css?v=@(ViewBag.AppVersion)" rel="stylesheet" type="text/css">
     
     </head>
   <body class="login" data-feedly-mini="yes">
@@ -22,16 +22,13 @@
     <script src="/Content/Js/hierapolis.js" type="text/javascript"></script>
     <script src="/Content/Js/bootstrap.min.js"></script>
     <script src="/Content/Js/metisMenu.min.js"></script>
-    <script src="/Content/Js/custom.js"></script>
+    <script src="/Content/Js/custom.js?v=@(ViewBag.AppVersion)"></script>
     
 
     @foreach (string script in ViewBag.Scripts)
     {
-        <script src="@script"></script>
+        <script src="@(script + "?v=" + ViewBag.AppVersion)"></script>
     }
 
-    <div id="feedly-mini" title="feedly Mini tookit"></div>
-      <script aria-hidden="true" type="application/x-lastpass" id="hiddenlpsubmitdiv" style="display: none;"></script>
-      <script>try{(function() { for(var lastpass_iter=0; lastpass_iter < document.forms.length; lastpass_iter++){ var lastpass_f = document.forms[lastpass_iter]; if(typeof(lastpass_f.lpsubmitorig2)=="undefined"){ lastpass_f.lpsubmitorig2 = lastpass_f.submit; if (typeof(lastpass_f.lpsubmitorig2)=='object'){ continue;}lastpass_f.submit = function(){ var form=this; var customEvent = document.createEvent("Event"); customEvent.initEvent("lpCustomEvent", true, true); var d = document.getElementById("hiddenlpsubmitdiv"); if (d) {for(var i = 0; i < document.forms.length; i++){ if(document.forms[i]==form){ if (typeof(d.innerText) != 'undefined') { d.innerText=i.toString(); } else { d.textContent=i.toString(); } } } d.dispatchEvent(customEvent); }form.lpsubmitorig2(); } } }})()}catch(e){}</script>
 </body>
 </html>

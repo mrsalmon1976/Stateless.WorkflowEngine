@@ -212,10 +212,137 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
-        #region GetActiveCount Tests
+        #region GetIncomplete Tests
 
         [Test]
-        public void GetActiveCount_NoSuspendedWorkflows_ReturnsCorrectCount()
+        public void GetIncomplete_WorkflowIsSuspended_IsReturned()
+        {
+            // factory method for workflows
+            Func<bool, BasicWorkflow> createWorkflow = (isSuspended) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                return wf;
+            };
+
+            Workflow activeWorkflow = createWorkflow(false);
+            Workflow suspendedWorkflow = createWorkflow(true);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(activeWorkflow);
+            store.Save(suspendedWorkflow);
+
+            // fetch the workflows, only one should be returned
+            List<Workflow> workflows = store.GetIncomplete(10).ToList();
+            Assert.AreEqual(2, workflows.Count);
+            Assert.IsNotNull(workflows.SingleOrDefault(x => x.Id == activeWorkflow.Id));
+            Assert.IsNotNull(workflows.SingleOrDefault(x => x.Id == suspendedWorkflow.Id));
+        }
+
+        [Test]
+        public void GetIncomplete_WorkflowResumeDateInFuture_NotReturned()
+        {
+            // factory method for workflows
+            Func<bool, DateTime, BasicWorkflow> createWorkflow = (isSuspended, resumeOn) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                wf.ResumeOn = resumeOn;
+                wf.BasicMetaData = Guid.NewGuid().ToString();
+                return wf;
+            };
+
+            Workflow noResumeDateWorkflow = createWorkflow(false, DateTime.MinValue);
+            Workflow resumeDateActiveWorkflow = createWorkflow(true, DateTime.UtcNow.AddMilliseconds(-1));
+            Workflow futureDatedWorkflow = createWorkflow(false, DateTime.UtcNow.AddMinutes(3));
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(noResumeDateWorkflow);
+            store.Save(resumeDateActiveWorkflow);
+            store.Save(futureDatedWorkflow);
+
+            // fetch the workflows, only two should be returned
+            List<Workflow> workflows = store.GetIncomplete(10).ToList();
+            Assert.AreEqual(2, workflows.Count);
+
+            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id));
+            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id));
+            Assert.IsNull(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id));
+        }
+
+        [Test]
+        public void GetIncomplete_MultipleWorkflowsReturned_OrderedByRetryCountBeforeCreateDate()
+        {
+            // factory method for workflows
+            Func<DateTime, int, bool, BasicWorkflow> createWorkflow = (createdOn, retryCount, isSuspended) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.CreatedOn = createdOn;
+                wf.RetryCount = retryCount;
+                wf.IsSuspended = isSuspended;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+
+            Workflow workflow1 = createWorkflow(baseDate.AddMinutes(1), 2, true);
+            Workflow workflow2 = createWorkflow(baseDate.AddMinutes(-1), 1, false);
+            Workflow workflow3 = createWorkflow(baseDate.AddMinutes(1), 3, true);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3 });
+
+            // fetch the workflows, only two should be returned
+            List<Workflow> workflows = store.GetIncomplete(10).ToList();
+
+            Assert.AreEqual(workflow3.Id, workflows[0].Id);
+            Assert.AreEqual(workflow1.Id, workflows[1].Id);
+            Assert.AreEqual(workflow2.Id, workflows[2].Id);
+        }
+
+        [Test]
+        public void GetIncomplete_MultipleWorkflowsReturned_OrderedByCreateDateAfterRetryCount()
+        {
+            // factory method for workflows
+            Func<DateTime, bool, BasicWorkflow> createWorkflow = (createdOn, isSuspended) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow("Start");
+                wf.CreatedOn = createdOn;
+                wf.RetryCount = 1;
+                wf.IsSuspended = isSuspended;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+
+            Workflow workflow1 = createWorkflow(baseDate.AddMinutes(1), true);
+            Workflow workflow2 = createWorkflow(baseDate.AddMinutes(2), false);
+            Workflow workflow3 = createWorkflow(baseDate.AddMinutes(-1), true);
+            Workflow workflow4 = createWorkflow(baseDate.AddMinutes(-2), false);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3, workflow4 });
+
+            // fetch the workflows, only two should be returned
+            List<Workflow> workflows = store.GetIncomplete(10).ToList();
+
+            Assert.AreEqual(workflow4.Id, workflows[0].Id);
+            Assert.AreEqual(workflow3.Id, workflows[1].Id);
+            Assert.AreEqual(workflow1.Id, workflows[2].Id);
+            Assert.AreEqual(workflow2.Id, workflows[3].Id);
+        }
+
+        #endregion
+        #region GetIncompleteCount Tests
+
+        [Test]
+        public void GetIncompleteCount_NoSuspendedWorkflows_ReturnsCorrectCount()
         {
             // Set up a store with some basic workflows
             IWorkflowStore store = GetStore();
@@ -225,12 +352,12 @@ namespace Test.Stateless.WorkflowEngine.Stores
                 store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
             }
 
-            long result = store.GetActiveCount();
+            long result = store.GetIncompleteCount();
             Assert.AreEqual(count, result);
         }
 
         [Test]
-        public void GetActiveCount_WithSuspendedWorkflows_ReturnsCorrectCount()
+        public void GetIncompleteCount_WithSuspendedWorkflows_ReturnsCorrectCount()
         {
             // Set up a store with some basic workflows
             IWorkflowStore store = GetStore();
@@ -243,7 +370,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
             store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
 
-            long result = store.GetActiveCount();
+            long result = store.GetIncompleteCount();
             Assert.AreEqual(count, result);
         }
 

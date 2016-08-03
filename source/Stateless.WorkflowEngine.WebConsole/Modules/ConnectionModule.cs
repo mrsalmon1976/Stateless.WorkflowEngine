@@ -24,9 +24,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
-        private IWorkflowStoreInfoService _workflowStoreService;
+        private IWorkflowInfoService _workflowStoreService;
 
-        public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowStoreInfoService workflowStoreService) : base()
+        public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService) : base()
         {
             _userStore = userStore;
             _connectionValidator = connectionValidator;

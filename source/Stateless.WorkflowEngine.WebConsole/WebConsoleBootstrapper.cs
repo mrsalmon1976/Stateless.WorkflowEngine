@@ -16,6 +16,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using Encryption;
 using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -51,16 +52,6 @@ namespace Stateless.WorkflowEngine.WebConsole
             userStore.Load();
             container.Register<IUserStore>(userStore);
 
-            //// at this point, run in any database changes if there are any
-            //using (IDbConnection conn = new SqlConnection(settings.ConnectionString))
-            //{
-            //    IDbScriptResourceProvider resourceProvider = container.Resolve<IDbScriptResourceProvider>();
-            //    Console.WriteLine("Running migrations...");
-            //    new DbMigrator().Migrate(conn, settings.DbSchema, resourceProvider.GetDbMigrationScripts());
-            //    Console.WriteLine("...Done.");
-            //}
-
-
         }
 
         protected override void ConfigureRequestContainer(TinyIoCContainer container, NancyContext context)
@@ -69,47 +60,8 @@ namespace Stateless.WorkflowEngine.WebConsole
             
             IAppSettings settings = container.Resolve<IAppSettings>();
 
-            //// set up a new DB Connection per request
-            //IDbConnection conn = new SqlConnection();
-            //conn.ConnectionString = settings.ConnectionString;
-            //conn.Open();
-            //container.Register<IDbConnection>(conn);
-
-            // BLL repositories
-            //container.Register<IAuditLogRepository>(new AuditLogRepository(conn, settings.DbSchema));
-            //container.Register<ICategoryRepository>(new CategoryRepository(conn, settings.DbSchema));
-            //container.Register<IDocumentRepository>(new DocumentRepository(conn, settings.DbSchema));
-            //container.Register<IDocumentCategoryAsscRepository>(new DocumentCategoryAsscRepository(conn, settings.DbSchema));
-            //container.Register<IDocumentVersionRepository>(new DocumentVersionRepository(conn, settings.DbSchema));
-            //container.Register<IUserRepository>(new UserRepository(conn, settings.DbSchema));
-            //container.Register<IUserCategoryAsscRepository>(new UserCategoryAsscRepository(conn, settings.DbSchema));
-
-            //// set up the unit of work which will be used for database access
-            //IUnitOfWork unitOfWork = new UnitOfWork(conn, settings.DbSchema
-            //    , container.Resolve<IAuditLogRepository>()
-            //    , container.Resolve<ICategoryRepository>()
-            //    , container.Resolve<IDocumentRepository>()
-            //    , container.Resolve<IDocumentCategoryAsscRepository>()
-            //    , container.Resolve<IDocumentVersionRepository>()
-            //    , container.Resolve<IUserRepository>()
-            //    , container.Resolve<IUserCategoryAsscRepository>()
-            //    );
-            //container.Register<IUnitOfWork>(unitOfWork);
-
             // WebConsole classes and controllers
             container.Register<IUserMapper, UserMapper>();
-
-            //// BLL commands
-            //container.Register<ISaveAuditLogCommand, SaveAuditLogCommand>();
-            //container.Register<ISaveCategoryCommand, SaveCategoryCommand>();
-            //container.Register<ISaveDocumentCommand, SaveDocumentCommand>();
-            //container.Register<ISaveUserCommand, SaveUserCommand>();
-
-            // other BLL classes
-            //container.Register<IAuditLogValidator, AuditLogValidator>();
-            //container.Register<ICategoryValidator, CategoryValidator>();
-            //container.Register<IDocumentValidator, DocumentValidator>();
-            //container.Register<IUserValidator, UserValidator>();
 
         }
 

@@ -30,7 +30,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         {
             public const string Default = "/store";
 
-            public const string Workflows = "/store/workflows";
+            public const string List = "/store/list";
 
         }
 

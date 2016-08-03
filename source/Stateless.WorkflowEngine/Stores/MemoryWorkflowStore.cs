@@ -38,7 +38,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
-        public override long GetActiveCount()
+        public override long GetIncompleteCount()
         {
             return this._activeWorkflows.Where(x => x.Value.IsSuspended == false).Count();
         }
@@ -109,6 +109,21 @@ namespace Stateless.WorkflowEngine.Stores
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
         }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override IEnumerable<Workflow> GetIncomplete(int count)
+        {
+            return _activeWorkflows.Values
+                .Where(x => x.ResumeOn <= DateTime.UtcNow)
+                .OrderByDescending(x => x.RetryCount)
+                .ThenBy(x => x.CreatedOn)
+                .Take(count);
+        }
+
 
         /// <summary>
         /// Gets the count of suspended workflows in the active collection.

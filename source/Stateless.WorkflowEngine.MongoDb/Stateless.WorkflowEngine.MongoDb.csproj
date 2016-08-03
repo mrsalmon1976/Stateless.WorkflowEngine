@@ -48,6 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MongoDbWorkflow.cs" />
+    <Compile Include="MongoDbWorkflowContainer.cs" />
     <Compile Include="MongoDbWorkflowStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -36,10 +36,10 @@ namespace Stateless.WorkflowEngine
         T Get<T>(Guid workflowId) where T : Workflow;
 
         /// <summary>
-        /// Gets the count of active workflows on the underlying store (including suspended).
+        /// Gets the count of workflows on the underlying store (including suspended).
         /// </summary>
         /// <returns></returns>
-        long GetActiveCount();
+        long GetIncompleteCount();
 
         /// <summary>
         /// Gets the count of completed workflows on the underlying store.
@@ -138,12 +138,12 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Gets the count of active workflows on the underlying store (including suspended).
+        /// Gets the count of workflows on the underlying store (including suspended).
         /// </summary>
         /// <returns></returns>
-        public long GetActiveCount()
+        public long GetIncompleteCount()
         {
-            return _workflowStore.GetActiveCount();
+            return _workflowStore.GetIncompleteCount();
         }
 
         /// <summary>

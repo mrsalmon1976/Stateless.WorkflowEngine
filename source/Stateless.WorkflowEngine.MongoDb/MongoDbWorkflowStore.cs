@@ -85,7 +85,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
-        public override long GetActiveCount()
+        public override long GetIncompleteCount()
         {
             var collection = GetCollection();
             var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == false);
@@ -155,13 +155,30 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override IEnumerable<Workflow> GetActive(int count)
         {
             var collection = GetCollection();
-            var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow));
+            var query = Query<MongoDbWorkflowContainer>.Where(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow));
             return from s in collection.Find(query)
                 .OrderByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
                 .Take(count)
                    select s.Workflow;
         }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override IEnumerable<Workflow> GetIncomplete(int count)
+        {
+            var collection = GetCollection();
+            var query = Query<MongoDbWorkflowContainer>.Where(x => (x.Workflow.ResumeOn <= DateTime.UtcNow));
+            return from s in collection.Find(query)
+                .OrderByDescending(x => x.Workflow.RetryCount)
+                .ThenBy(x => x.Workflow.CreatedOn)
+                .Take(count)
+                   select s.Workflow;
+        }
+
 
         /// <summary>
         /// Gets the count of suspended workflows in the active collection.

@@ -10,14 +10,14 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.WebConsole.BLL.Factories
 {
-    public interface IWorkflowClientFactory
+    public interface IWorkflowStoreFactory
     {
-        IWorkflowClient GetWorkflowClient(ConnectionModel connectionModel);
+        IWorkflowStore GetWorkflowStore(ConnectionModel connectionModel);
     }
 
-    public class WorkflowClientFactory : IWorkflowClientFactory
+    public class WorkflowStoreFactory : IWorkflowStoreFactory
     {
-        public IWorkflowClient GetWorkflowClient(ConnectionModel connectionModel)
+        public IWorkflowStore GetWorkflowStore(ConnectionModel connectionModel)
         {
             IWorkflowStore workflowStore;
             if (connectionModel.WorkflowStoreType == WorkflowStoreType.MongoDb)
@@ -32,14 +32,14 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Factories
                 var server = client.GetServer();
                 var db = server.GetDatabase(connectionModel.Database);
 
-                workflowStore = new MongoDbWorkflowStore(db);
+                workflowStore = new MongoDbWorkflowStore(db, connectionModel.ActiveCollection, connectionModel.CompletedCollection);
             }
             else
             {
                 throw new NotImplementedException();
             }
 
-            return new WorkflowClient(workflowStore);
+            return workflowStore;
         }
     }
 }

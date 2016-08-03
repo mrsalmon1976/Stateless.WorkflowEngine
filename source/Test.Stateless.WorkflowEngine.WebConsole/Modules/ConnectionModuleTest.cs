@@ -33,15 +33,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
-        private IWorkflowStoreInfoService _workflowStoreService;
+        private IWorkflowInfoService _workflowStoreService;
 
         [SetUp]
-        public void UserModuleTest_SetUp()
+        public void ConnectionModuleTest_SetUp()
         {
             _userStore = Substitute.For<IUserStore>();
             _encryptionProvider = Substitute.For<IEncryptionProvider>();
             _connectionValidator = Substitute.For<IConnectionValidator>();
-            _workflowStoreService = Substitute.For<IWorkflowStoreInfoService>();
+            _workflowStoreService = Substitute.For<IWorkflowInfoService>();
 
             _connectionModule = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService);
 
@@ -256,7 +256,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 container.Register<IUserStore>(_userStore);
                 container.Register<IEncryptionProvider>(_encryptionProvider);
                 container.Register<IConnectionValidator>(_connectionValidator);
-                container.Register<IWorkflowStoreInfoService>(_workflowStoreService);
+                container.Register<IWorkflowInfoService>(_workflowStoreService);
             };
 
             if (configureUsers)

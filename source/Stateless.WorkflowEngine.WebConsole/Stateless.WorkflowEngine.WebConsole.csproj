@@ -108,12 +108,15 @@
     <Compile Include="BLL\Data\Models\WorkflowStoreModel.cs" />
     <Compile Include="BLL\Data\Models\WorkflowStoreType.cs" />
     <Compile Include="BLL\Data\Stores\UserStore.cs" />
-    <Compile Include="BLL\Factories\WorkflowClientFactory.cs" />
+    <Compile Include="BLL\Factories\WorkflowStoreFactory.cs" />
+    <Compile Include="BLL\Models\UIWorkflow.cs" />
+    <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
     <Compile Include="BLL\Security\EncryptionProvider.cs" />
     <Compile Include="BLL\Security\PasswordProvider.cs" />
     <Compile Include="BLL\Security\Roles.cs" />
     <Compile Include="BLL\Security\UserIdentity.cs" />
-    <Compile Include="BLL\Services\WorkflowStoreInfoService.cs" />
+    <Compile Include="BLL\Services\WorkflowInfoService.cs" />
+    <Compile Include="BLL\Utils\ParsedAssemblyQualifiedName.cs" />
     <Compile Include="BLL\Validators\ConnectionValidator.cs" />
     <Compile Include="BLL\Validators\ValidationResult.cs" />
     <Compile Include="Configuration\AppSettings.cs" />
@@ -134,6 +137,8 @@
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />
     <Compile Include="ViewModels\MultiSelectItem.cs" />
+    <Compile Include="ViewModels\Store\StoreViewModel.cs" />
+    <Compile Include="ViewModels\Store\WorkflowListViewModel.cs" />
     <Compile Include="ViewModels\User\UserListViewModel.cs" />
     <Compile Include="ViewModels\User\UserViewModel.cs" />
     <Compile Include="WebConsoleBootstrapper.cs" />
@@ -171,6 +176,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Views\Shared\_ValidationErrorPanel.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Views\Store\StoreView.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Views\Store\_WorkflowList.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Views\User\UserView.cshtml">

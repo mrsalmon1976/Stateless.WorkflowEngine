@@ -31,7 +31,7 @@ namespace Stateless.WorkflowEngine
         /// <summary>
         /// Gets/sets the workflow unique identifier.
         /// </summary>
-        public Guid Id { get; set; }
+        public virtual Guid Id { get; set; }
 
         /// <summary>
         /// Gets or sets the creation date.
@@ -39,7 +39,7 @@ namespace Stateless.WorkflowEngine
         /// <value>
         /// The creation date.
         /// </value>
-        public DateTime CreatedOn { get; set; }
+        public virtual DateTime CreatedOn { get; set; }
 
         /// <summary>
         /// Marks a workflow as suspended.  This will be set to true when the maximum retry count is exceeded.
@@ -47,18 +47,18 @@ namespace Stateless.WorkflowEngine
         /// <value>
         /// <c>true</c> if this instance is suspended; otherwise, <c>false</c>.
         /// </value>
-        public bool IsSuspended { get; set; }
+        public virtual bool IsSuspended { get; set; }
 
         /// <summary>
         /// Gets/sets the last exception info pertaining to the workflow.
         /// </summary>
-        public string LastException { get; set; }
+        public virtual string LastException { get; set; }
 
         /// <summary>
         /// Gets/sets the time the workflow can be resumed.  Set to DateTime.Min to ensure workflows are picked up - nullable 
         /// properties are not used here as MongoDb's QUery does not support it.
         /// </summary>
-        public DateTime ResumeOn { get; set; }
+        public virtual DateTime ResumeOn { get; set; }
 
         /// <summary>
         /// Gets or sets the trigger to be fire when the workflow resumes.
@@ -66,7 +66,7 @@ namespace Stateless.WorkflowEngine
         /// <value>
         /// The trigger.
         /// </value>
-        public string ResumeTrigger { get; set; }
+        public virtual string ResumeTrigger { get; set; }
 
         /// <summary>
         /// Gets or sets the retry count for the workflow at the current step.  This gets reset to 0 when a step successfully completes, 
@@ -75,12 +75,12 @@ namespace Stateless.WorkflowEngine
         /// <value>
         /// The retry count.
         /// </value>
-        public int RetryCount { get; set; }
+        public virtual int RetryCount { get; set; }
 
         /// <summary>
         /// Gets/sets the retry intervals, in seconds, of the workflow.
         /// </summary>
-        public int[] RetryIntervals { get; set; }
+        public virtual int[] RetryIntervals { get; set; }
 
         /// <summary>
         /// Gets/sets the current state of the workflow.
@@ -90,12 +90,12 @@ namespace Stateless.WorkflowEngine
         /// <summary>
         /// Gets/sets whether the workflow is complete.
         /// </summary>
-        public bool IsComplete { get; set; }
+        public virtual bool IsComplete { get; set; }
 
         /// <summary>
         /// Gets whether the worker is a single-instance type workflow worker.
         /// </summary>
-        public bool IsSingleInstance { get; set; }
+        public virtual bool IsSingleInstance { get; set; }
 
         /// <summary>
         /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
