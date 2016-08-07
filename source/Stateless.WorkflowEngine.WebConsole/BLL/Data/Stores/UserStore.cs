@@ -71,7 +71,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// <returns></returns>
         public UserModel GetUser(string userName)
         {
-            return this.Users.Where(x => x.UserName == userName).SingleOrDefault();
+            return this.Users.Where(x => x.UserName == userName).FirstOrDefault();
         }
 
         /// <summary>

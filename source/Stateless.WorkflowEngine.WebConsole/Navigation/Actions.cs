@@ -42,6 +42,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
 
             public const string List = "/user/list";
 
+            public const string Save = "/user/save";
         }
     }
 }

@@ -3,16 +3,14 @@ var UserView = function () {
 
     var that = this;
 
+    this.errorSelector = '#user-msg-error';
+
     this.init = function () {
         this.loadUsers();
-        $('#categories').multiselect({
-            //includeSelectAllOption: true,
-            //buttonClass: "col-sm-12"
-        });
-        $('#btn-add').on('click', that.showForm);
-        $('#btn-submit').on('click', that.submitForm);
-        $('#dlg-add').on('shown.bs.modal', function () {
-            $('#email').focus();
+        $('#btn-add-user').on('click', function () { that.showForm(''); });
+        $('#btn-submit-user').on('click', that.submitForm);
+        $('#dlg-user').on('shown.bs.modal', function () {
+            $('#txt-user').focus();
         });
     };
 
@@ -52,7 +50,7 @@ var UserView = function () {
 
     this.showForm = function () {
         $("#msg-error").addClass('hidden');
-        $('#dlg-add').modal('show');
+        $('#dlg-user').modal('show');
     };
 
     this.submitForm = function () {
@@ -60,7 +58,7 @@ var UserView = function () {
 //        debugger;
         var formData = $('#form-user').serializeForm();
         var request = $.ajax({
-            url: "/user",
+            url: "/user/save",
             method: "POST",
             data: formData,
             dataType: 'json',
@@ -68,22 +66,22 @@ var UserView = function () {
         });
 
         request.done(function (response) {
-            //debugger;
-            if (response.success) {
-                $('#dlg-add').modal('hide');
-                that.loadUsers();
+            if (response.success === false) {
+                Utils.showError(that.errorSelector, response.messages[0]);
             }
             else {
-                that.showError(response.messages);
+                $('#dlg-user').modal('hide');
+                that.loadUsers();
+                $('#form-user')[0].reset();
             }
         });
 
         request.fail(function (xhr, textStatus) {
             try {
-                that.showError(xhr.responseJSON.message);
+                Utils.showError(that.errorSelector, xhr.responseJSON.message);
             }
             catch (err) {
-                that.showError('A fatal error occurred');
+                Utils.showError(that.errorSelector, 'A fatal error occurred');
             }
         });
     };

@@ -10,6 +10,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
     {
         public UserModel()
         {
+            this.Id = Guid.NewGuid();
             this.Connections = new List<ConnectionModel>();
         }
 

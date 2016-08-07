@@ -13,6 +13,9 @@ using Stateless.WorkflowEngine.WebConsole.Navigation;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using Stateless.WorkflowEngine.WebConsole.ViewModels;
+using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using AutoMapper;
+using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -20,10 +23,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
     {
         private IUserStore _userStore;
         private IPasswordProvider _passwordProvider;
+        private IUserValidator _userValidator;
 
-        public UserModule(IUserStore userStore, IPasswordProvider passwordProvider) : base()
+        public UserModule(IUserStore userStore, IUserValidator userValidator, IPasswordProvider passwordProvider) : base()
         {
             _userStore = userStore;
+            _userValidator = userValidator;
             _passwordProvider = passwordProvider;
 
             this.RequiresClaims(new[] { Roles.Admin });
@@ -41,11 +46,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             {
                 return ChangePassword();
             };
-            Post[Actions.User.Default] = (x) =>
+            Post[Actions.User.Save] = (x) =>
             {
-                var model = this.Bind<UserViewModel>();
-                //return this.HandleResult(userController.HandleUserPost(model, this.Context.CurrentUser));
-                throw new NotImplementedException();
+                return Save();
             };
         }
 
@@ -87,40 +90,45 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             return this.View[Views.User.ListPartial, model];
         }
 
-        //public IControllerResult HandleUserPost(UserViewModel model, IUserIdentity currentUser)
-        //{
+        public dynamic Save()
+        {
 
-        //    // do first level validation - if it fails then we need to exit
-        //    List<string> validationErrors = this._userViewModelValidator.Validate(model);
-        //    if (validationErrors.Count > 0)
-        //    {
-        //        var vresult = new BasicResult(false, validationErrors.ToArray());
-        //        return new JsonResult(vresult);
-        //    }
+            var model = this.Bind<UserViewModel>();
+            UserModel user = Mapper.Map<UserViewModel, UserModel>(model);
 
-        //    UserEntity user = Mapper.Map<UserViewModel, UserEntity>(model);
-        //    // try and execute the command 
-        //    BasicResult result = new BasicResult(true);
-        //    try
-        //    {
-        //        _unitOfWork.BeginTransaction();
-        //        _saveUserCommand.User = user;
-        //        _saveUserCommand.CurrentUserId = ((UserIdentity)currentUser).Id;
-        //        _saveUserCommand.CategoryIds = model.CategoryIds;
-        //        _saveUserCommand.Execute();
-        //        _unitOfWork.Commit();
-        //    }
-        //    catch (ValidationException vex)
-        //    {
-        //        result = new BasicResult(false, vex.Errors.ToArray());
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        result = new BasicResult(false, ex.Message);
-        //    }
+            // do first level validation - if it fails then we need to exit
+            ValidationResult validationErrors = this._userValidator.Validate(user);
+            if (model.Password != model.ConfirmPassword)
+            {
+                validationErrors.Messages.Add("Password does not match confirmation password");
+            }
+            if (validationErrors.Messages.Count > 0)
+            {
+                var vresult = new BasicResult(false, validationErrors.Messages.ToArray());
+                return Response.AsJson(vresult);
+            }
 
-        //    return new JsonResult(result);
-        //}
+            // validation is done - hash the password
+            user.Password = _passwordProvider.HashPassword(user.Password, _passwordProvider.GenerateSalt());
+
+            // try and execute the command 
+            BasicResult result = new BasicResult(true);
+            try
+            {
+                _userStore.Users.Add(user);
+                _userStore.Save();
+            }
+            //catch (ValidationException vex)
+            //{
+            //    result = new BasicResult(false, vex.Errors.ToArray());
+            //}
+            catch (Exception ex)
+            {
+                result = new BasicResult(false, ex.Message);
+            }
+
+            return Response.AsJson(result);
+        }
 
 
     }

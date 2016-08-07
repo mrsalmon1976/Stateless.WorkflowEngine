@@ -17,6 +17,7 @@ using Encryption;
 using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -42,6 +43,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             // set up mappings
             Mapper.Initialize((cfg) => {
                 cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
+                cfg.CreateMap<UserViewModel, UserModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
             });
 
             // set up the stores

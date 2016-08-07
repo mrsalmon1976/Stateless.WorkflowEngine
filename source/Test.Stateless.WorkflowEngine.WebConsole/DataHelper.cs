@@ -27,5 +27,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole
 
             return model;
         }
+
+        public static UserModel CreateUserModel()
+        {
+            UserModel model = new UserModel();
+            model.UserName = "TestUser";
+            model.Password = "password";
+            return model;
+        }
+
     }
 }

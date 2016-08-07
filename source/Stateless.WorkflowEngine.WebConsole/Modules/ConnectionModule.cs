@@ -41,7 +41,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             Post[Actions.Connection.Delete] = (x) =>
             {
                 this.RequiresAnyClaim(Roles.AllRoles);
-                return Delete();
+                return DeleteConnection();
             };
             Post[Actions.Connection.Save] = (x) =>
             {
@@ -50,7 +50,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             };
         }
 
-        public dynamic Delete()
+        public dynamic DeleteConnection()
         {
             var id = Request.Form["id"];
 

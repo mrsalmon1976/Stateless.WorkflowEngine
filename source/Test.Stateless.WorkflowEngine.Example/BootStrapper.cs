@@ -34,7 +34,6 @@ namespace Test.Stateless.WorkflowEngine.Example
         {
             // configure the document store and the session
             var ds = new EmbeddableDocumentStore { RunInMemory = true };
-            ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
             ds.Initialize();
             return new RavenDbWorkflowStore(ds, String.Empty);
         }
@@ -46,9 +45,8 @@ namespace Test.Stateless.WorkflowEngine.Example
 
             // configure the document store and the session
             var ds = new DocumentStore { ConnectionStringName = "RavenDb" };
-            ds.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
             ds.Initialize();
-            ds.DatabaseCommands.EnsureDatabaseExists(WorkflowDatabase);
+            ds.DatabaseCommands.GlobalAdmin.EnsureDatabaseExists(WorkflowDatabase);
             return new RavenDbWorkflowStore(ds, WorkflowDatabase);
         }
 

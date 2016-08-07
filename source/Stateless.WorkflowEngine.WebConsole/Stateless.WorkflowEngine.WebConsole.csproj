@@ -118,6 +118,7 @@
     <Compile Include="BLL\Services\WorkflowInfoService.cs" />
     <Compile Include="BLL\Utils\ParsedAssemblyQualifiedName.cs" />
     <Compile Include="BLL\Validators\ConnectionValidator.cs" />
+    <Compile Include="BLL\Validators\UserValidator.cs" />
     <Compile Include="BLL\Validators\ValidationResult.cs" />
     <Compile Include="Configuration\AppSettings.cs" />
     <Compile Include="BLL\Security\UserMapper.cs" />

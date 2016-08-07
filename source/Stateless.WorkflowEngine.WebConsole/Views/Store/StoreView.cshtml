@@ -21,7 +21,7 @@
     <ul class="breadcrumb" id="breadcrumb">
         <li class="title"><a href="@Actions.Dashboard.Default">Dashboard</a></li>
         <li>@GetHost()</li>
-        <li>@Model.Connection.Database</li>
+        <li class="active">@Model.Connection.Database</li>
     </ul>
     <div id="toolbar">
         <div class="btn-group">
@@ -40,5 +40,3 @@
     <div id="pnl-workflows" data-model-id="@Model.Connection.Id">
     </div>
 </div>
-
-

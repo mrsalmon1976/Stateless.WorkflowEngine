@@ -11,6 +11,7 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.User
     {
         public UserViewModel()
         {
+            this.Id = Guid.NewGuid();
             this.ValidationErrors = new List<string>();
             this.Roles = new List<string>();
         }
