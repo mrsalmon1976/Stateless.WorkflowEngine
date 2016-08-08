@@ -1,4 +1,5 @@
 ﻿using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole
             UserModel model = new UserModel();
             model.UserName = "TestUser";
             model.Password = "password";
+            model.Role = Roles.User;
             return model;
         }
 
