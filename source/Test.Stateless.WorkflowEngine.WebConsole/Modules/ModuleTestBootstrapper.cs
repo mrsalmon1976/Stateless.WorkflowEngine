@@ -17,6 +17,7 @@ using NSubstitute;
 using System.Security.Principal;
 using Nancy.Security;
 using Nancy.ViewEngines.Razor;
+using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -69,7 +70,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
             base.ApplicationStartup(container, pipelines);
-            //container.Register<IUserStore>(Substitute.For<IUserStore>());
             if (this.ApplicationStartupCallback != null)
             {
                 this.ApplicationStartupCallback(container);
@@ -80,6 +80,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             base.ConfigureRequestContainer(container, context);
             container.Register<IUserMapper, UserMapper>();
+            container.Register<IUserStore>(Substitute.For<IUserStore>());
+            container.Register<IUserValidator>(Substitute.For<IUserValidator>());
             if (this.ConfigureRequestContainerCallback != null)
             {
                 this.ConfigureRequestContainerCallback(container);
