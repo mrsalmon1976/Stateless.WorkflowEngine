@@ -19,11 +19,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
     {
         private IUserStore _userStore;
         private IWorkflowInfoService _workflowInfoService;
+        private IWorkflowStoreFactory _workflowStoreFactory;
 
-        public StoreModule(IUserStore userStore, IWorkflowInfoService workflowInfoService) : base()
+        public StoreModule(IUserStore userStore, IWorkflowInfoService workflowInfoService, IWorkflowStoreFactory workflowStoreFactory) : base()
         {
             _userStore = userStore;
             _workflowInfoService = workflowInfoService;
+            _workflowStoreFactory = workflowStoreFactory;
             this.RequiresAnyClaim(Roles.AllRoles);
 
             Get[Actions.Store.Default] = (x) =>
@@ -34,6 +36,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             Post[Actions.Store.List] = (x) =>
             {
                 return List();
+            };
+            Post[Actions.Store.Workflow] = (x) =>
+            {
+                return Workflow();
             };
         }
 
@@ -66,12 +72,34 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
                 return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
             }
             
+            //List<string> documents = _workflowStoreFactory.GetWorkflowStore(connection).GetIncompleteWorkflowsAsJson(50).ToList();
+            //IEnumerable<UIWorkflow> workflows = _workflowInfoService.ConvertWorkflowDocuments(documents, connection.WorkflowStoreType);
             IEnumerable<UIWorkflow> workflows = _workflowInfoService.GetIncompleteWorkflows(connection, 50);
-
+            
             WorkflowListViewModel model = new WorkflowListViewModel();
+            model.ConnectionId = connection.Id;
             model.Workflows.AddRange(workflows);
 
             return this.View[Views.Store.ListPartial, model];
+
+        }
+
+        public dynamic Workflow()
+        {
+            var workflowId = Request.Form["WorkflowId"];
+            var connId = Request.Form["ConnectionId"];
+            var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
+
+            // get the connection and load the workflows
+            ConnectionModel connection = _userStore.GetUser(currentUser.UserName).Connections.Where(x => x.Id == connId).SingleOrDefault();
+
+            IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
+            string json = store.GetWorkflowAsJson(workflowId);
+            if (json == null)
+            {
+                return this.Response.AsJson(new { Message = "No workflow found matching the supplied workflow and connection" }, HttpStatusCode.NotFound);
+            }
+            return Response.AsText(json);
 
         }
 

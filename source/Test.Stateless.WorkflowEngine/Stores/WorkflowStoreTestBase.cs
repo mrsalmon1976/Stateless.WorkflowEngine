@@ -10,12 +10,12 @@ using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Stateless.WorkflowEngine.Models;
+using Newtonsoft.Json;
 
 namespace Test.Stateless.WorkflowEngine.Stores
 {
     public abstract class WorkflowStoreTestBase
     {
-
         #region Protected Methods
 
         /// <summary>
@@ -23,6 +23,11 @@ namespace Test.Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <returns></returns>
         protected abstract IWorkflowStore GetStore();
+
+        protected virtual T DeserializeJsonWorkflow<T>(string json) where T : Workflow
+        {
+            return JsonConvert.DeserializeObject<T>(json);
+        }
 
         #endregion
 
@@ -339,6 +344,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
         }
 
         #endregion
+
         #region GetIncompleteCount Tests
 
         [Test]
@@ -442,5 +448,64 @@ namespace Test.Stateless.WorkflowEngine.Stores
         }
 
         #endregion
+
+        #region GetIncompleteWorkflowsAsJson Tests
+
+        [Test]
+        public void GetIncompleteWorkflowsAsJson_WorkflowsFound_SerializesWorkflows()
+        {
+            Workflow workflow1 = new BasicWorkflow(BasicWorkflow.State.Start);
+            Workflow workflow2 = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+
+            IWorkflowStore store = GetStore();
+            store.Save(workflow1);
+            store.Save(workflow2);
+
+            // fetch the workflows, only one should be returned
+            List<string> documents = store.GetIncompleteWorkflowsAsJson(10).ToList();
+            Assert.AreEqual(2, documents.Count);
+
+            // deserialize and check that we have the correct ones
+            Workflow w1 = DeserializeJsonWorkflow<BasicWorkflow>(documents[0]);
+            Assert.AreEqual(workflow1.Id, w1.Id);
+            Workflow w2 = DeserializeJsonWorkflow<BasicWorkflow>(documents[1]);
+            Assert.AreEqual(workflow2.Id, w2.Id);
+
+        }
+
+        #endregion
+
+        #region GetWorkflowAsJson Tests
+
+        [Test]
+        public void GetWorkflowAsJson_NoSuchDocument_ReturnsNull()
+        {
+            var store = this.GetStore();
+
+            var doc = store.GetWorkflowAsJson(Guid.NewGuid());
+            Assert.IsNull(doc);
+        }
+
+        [Test]
+        public void GetWorkflowAsJson_DocumentExists_ReturnsDocument()
+        {
+            IWorkflowStore store = GetStore();
+            Workflow wf = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            Guid id = wf.Id;
+            store.Save(wf);
+
+            string json = store.GetWorkflowAsJson(id);
+            Assert.IsNotNull(json);
+
+            // convert back to the known type and make sure it's ok
+            BasicWorkflow workflow = DeserializeJsonWorkflow<BasicWorkflow>(json);
+            Assert.IsNotNull(workflow);
+            Assert.AreEqual(id, workflow.Id);
+            Assert.AreEqual(BasicWorkflow.State.DoingStuff.ToString(), workflow.CurrentState); 
+        }
+
+        #endregion
+
+
     }
 }

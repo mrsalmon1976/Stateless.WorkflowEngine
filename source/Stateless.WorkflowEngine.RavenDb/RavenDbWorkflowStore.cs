@@ -103,7 +103,6 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <returns></returns>
         public override long GetCompletedCount()
         {
-            CompletedWorkflow workflow = null;
             using (IDocumentSession session = this.OpenSession())
             {
                 return session.Query<CompletedWorkflow>().Count();

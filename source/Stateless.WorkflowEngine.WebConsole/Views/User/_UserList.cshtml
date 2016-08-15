@@ -7,6 +7,7 @@
             <tr>
                 <th>User Name</th>
                 <th>Role</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -15,6 +16,17 @@
                 <tr>
                     <td>@r.UserName</td>
                     <td>@r.Role</td>
+                    <td class="action">
+                        <a class="btn btn-success disabled" data-toggle="tooltip" href="#" title="" data-original-title="Zoom">
+                            <i class="fa fa-search-plus"></i>
+                        </a>
+                        <a class="btn btn-info disabled" href="#">
+                            <i class="fa fa-edit"></i>
+                        </a>
+                        <a class="btn btn-danger disabled" href="#">
+                            <i class="fa fa-trash"></i>
+                        </a>
+                    </td>
                 </tr>
             }
         </tbody>

@@ -1,5 +1,8 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
+using MongoDB.Driver.Builders;
+using Newtonsoft.Json;
 using Stateless.WorkflowEngine.MongoDb;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
@@ -17,7 +20,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
     {
         void PopulateWorkflowStoreInfo(WorkflowStoreModel workflowStoreModel);
 
+        //IEnumerable<UIWorkflow> ConvertWorkflowDocuments(IEnumerable<string> documents, WorkflowStoreType workflowStoreType);
+
         IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
+
     }
 
 
@@ -30,28 +36,54 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             _workflowStoreFactory = workflowStoreFactory;
         }
 
+        //public IEnumerable<UIWorkflow> ConvertWorkflowDocuments(IEnumerable<string> documents, WorkflowStoreType workflowStoreType)
+        //{
+        //    List<UIWorkflow> workflows = new List<UIWorkflow>();
+        //    foreach (string doc in documents)
+        //    {
+        //        if (workflowStoreType == WorkflowStoreType.MongoDb)
+        //        {
+        //            UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(doc);
+        //            wc.Workflow.WorkflowType = wc.WorkflowType;
+        //            workflows.Add(wc.Workflow);
+        //        }
+        //        else
+        //        {
+        //            throw new NotImplementedException();
+        //        }
+        //    }
+        //    return workflows;
+        //}
+
         public IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count)
         {
             IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
+            IEnumerable<string> documents = workflowStore.GetIncompleteWorkflowsAsJson(count);
+            List<UIWorkflow> workflows = new List<UIWorkflow>();
 
             // for MongoDb, we can't use the GetIncomplete call because the Bson Deserialization call will fail 
             // with unknown types
             if (connectionModel.WorkflowStoreType == WorkflowStoreType.MongoDb)
             {
-                MongoDbWorkflowStore mongoStore = (MongoDbWorkflowStore)workflowStore;
-                var docs = mongoStore.MongoDatabase.GetCollection(connectionModel.ActiveCollection).FindAll().Take(count);
-                List<UIWorkflow> workflows = new List<UIWorkflow>();
-                foreach (BsonDocument document in docs)
+                foreach (string doc in documents)
                 {
-                    string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
-                    UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
+                    //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
+                    UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(doc);
                     wc.Workflow.WorkflowType = wc.WorkflowType;
                     workflows.Add(wc.Workflow);
                 }
-                return workflows;
+            }
+            else
+            {
+                foreach (string doc in documents)
+                {
+                    //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
+                    UIWorkflow wf = JsonConvert.DeserializeObject<UIWorkflow>(doc);
+                    workflows.Add(wf);
+                }
             }
 
-            throw new NotImplementedException();
+            return workflows;
         }
 
 

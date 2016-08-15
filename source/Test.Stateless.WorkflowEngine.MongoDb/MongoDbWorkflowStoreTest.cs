@@ -15,6 +15,7 @@ using MongoDB.Driver;
 using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.MongoDb;
 using NSubstitute;
+using MongoDB.Bson.Serialization;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb
 {
@@ -129,6 +130,12 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         protected override IWorkflowStore GetStore()
         {
             return new MongoDbWorkflowStore(_database);
+        }
+
+        protected override T DeserializeJsonWorkflow<T>(string json)
+        {
+            WorkflowContainer container = BsonSerializer.Deserialize<WorkflowContainer>(json);
+            return (T)container.Workflow;
         }
 
         #endregion

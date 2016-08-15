@@ -3,6 +3,7 @@ using Stateless.WorkflowEngine.Models;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Stateless.WorkflowEngine.Stores
 {
@@ -99,6 +100,21 @@ namespace Stateless.WorkflowEngine.Stores
         IEnumerable<Workflow> GetIncomplete(int count);
 
         /// <summary>
+        /// Gets all incomplete workflows as JSON documents.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        IEnumerable<string> GetIncompleteWorkflowsAsJson(int count);
+
+        /// <summary>
+        /// Gets the json version of a workflow.
+        /// </summary>
+        /// <param name="connectionModel"></param>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        string GetWorkflowAsJson(Guid id);
+
+        /// <summary>
         /// Gets the count of suspended workflows in the active collection.
         /// </summary>
         /// <returns></returns>
@@ -169,6 +185,32 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <returns></returns>
         public abstract long GetIncompleteCount();
+
+        /// <summary>
+        /// Gets all incomplete workflows as JSON documents.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public virtual IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
+        {
+            return this.GetIncomplete(count).Select(x => JsonConvert.SerializeObject(x));
+        }
+        
+        /// <summary>
+        /// Gets a workflow as a JSON document.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public virtual string GetWorkflowAsJson(Guid id)
+        {
+            var doc = this.GetOrDefault(id);
+            if (doc == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(doc);
+        }
+
 
         /// <summary>
         /// Gets all workflows of a specified type.

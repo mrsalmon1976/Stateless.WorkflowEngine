@@ -17,6 +17,8 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Store
             this.Workflows = new List<UIWorkflow>();
         }
 
+        public Guid ConnectionId { get; set; }
+
         public List<UIWorkflow> Workflows { get; private set; }
         
 

@@ -6,6 +6,8 @@ using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 using Stateless.WorkflowEngine.Stores;
+using MongoDB.Bson;
+using MongoDB.Bson.IO;
 
 namespace Stateless.WorkflowEngine.MongoDb
 {
@@ -17,6 +19,7 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         private Func<Guid, IMongoQuery> _queryById = delegate(Guid id) { return Query<WorkflowContainer>.EQ(x => x.Id, id); };
         private Func<Guid, IMongoQuery> _queryCompletedById = delegate(Guid id) { return Query<CompletedWorkflow>.EQ(x => x.Id, id); };
+        private Func<Guid, IMongoQuery> _queryByIdJson = delegate(Guid id) { return Query.EQ("_id", BsonValue.Create(id)); };
 
         public const string DefaultCollectionActive = "Workflows";
         public const string DefaultCollectionCompleted = "CompletedWorkflows";
@@ -129,6 +132,22 @@ namespace Stateless.WorkflowEngine.MongoDb
             return collection.FindOne(_queryCompletedById(id));
         }
 
+        public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
+        {
+            var docs = this.MongoDatabase.GetCollection(this.CollectionActive).FindAll().Take(count);
+            List<string> workflows = new List<string>();
+            foreach (BsonDocument document in docs)
+            {
+                string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
+                //UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
+                //wc.Workflow.WorkflowType = wc.WorkflowType;
+                //workflows.Add(wc.Workflow);
+                workflows.Add(json);
+
+            }
+            return workflows;
+        }
+
         /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
         /// </summary>
@@ -146,6 +165,24 @@ namespace Stateless.WorkflowEngine.MongoDb
             }
             return workflow;
         }
+
+        /// <summary>
+        /// Gets the json version of a workflow.
+        /// </summary>
+        /// <param name="connectionModel"></param>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public override string GetWorkflowAsJson(Guid id)
+        {
+            var doc = this.MongoDatabase.GetCollection(this.CollectionActive).FindOne(_queryByIdJson(id));
+            if (doc != null)
+            {
+                var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, CloseOutput = true, Indent = true };
+                return doc.ToJson(settings);
+            }
+            return null;
+        }
+
 
         /// <summary>
         /// Gets the first <c>count</c> unsuspended active workflows, ordered by RetryCount, and then CreationDate.

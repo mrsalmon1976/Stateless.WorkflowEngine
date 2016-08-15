@@ -29,3 +29,8 @@
     background:#2c3e50;
     color: #1abc9c;
 }
+@media screen and (min-width: 768px) {
+    .modal-wide {
+        width: 70%; /* either % (e.g. 60%) or px (400px) */
+    }
+}

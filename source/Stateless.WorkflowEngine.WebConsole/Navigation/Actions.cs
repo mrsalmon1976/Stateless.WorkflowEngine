@@ -32,6 +32,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
 
             public const string List = "/store/list";
 
+            public const string Workflow = "/store/workflow";
+
         }
 
         public class User
