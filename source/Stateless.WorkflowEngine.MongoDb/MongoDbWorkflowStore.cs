@@ -177,6 +177,8 @@ namespace Stateless.WorkflowEngine.MongoDb
             var doc = this.MongoDatabase.GetCollection(this.CollectionActive).FindOne(_queryByIdJson(id));
             if (doc != null)
             {
+                //doc.Add("Id", doc.GetValue("_id"));
+                //doc.Set("CreatedOn", BsonValue.Create(doc.GetValue("CreatedOn").ToString()));
                 var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, CloseOutput = true, Indent = true };
                 return doc.ToJson(settings);
             }

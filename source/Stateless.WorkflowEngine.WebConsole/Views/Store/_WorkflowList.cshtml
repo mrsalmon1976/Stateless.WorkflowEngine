@@ -20,7 +20,7 @@
             @foreach (var wf in Model.Workflows)
             {
                 <tr @if (wf.IsSuspended) {  <text>class="danger"</text> }>
-                    <td><a href="#" data-id="@wf.Id" class="workflow-id">@wf.Id</a></td>
+                    <td><a href="#" data-id="@wf.Id" data-type="@wf.WorkflowClassName" class="workflow-id">@wf.Id</a></td>
                     <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
                     <td>@wf.ResumeOn.ToLocalTime()</td>
                     <td>@(wf.IsSuspended ? "Yes" : "No")</td>

@@ -38,7 +38,9 @@ var StoreView = function () {
     };
 
     this.openWorkflowDialog = function (evtSource) {
+        //debugger;
         var workflowId = evtSource.data('id');
+        var workflowTypeName = evtSource.data().type;
         var connId = $('#pnl-workflows').data().modelId;
         $('#txt-workflow-json').val('');
         $('#dlg-workflow').modal('show');
@@ -54,6 +56,8 @@ var StoreView = function () {
 
         request.done(function (response) {
             $('#txt-workflow-json').val(response);
+            //var obj = JSON.parse(response);
+            $('#workflow-header-id').html(workflowTypeName + ' :: ' + workflowId);
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
