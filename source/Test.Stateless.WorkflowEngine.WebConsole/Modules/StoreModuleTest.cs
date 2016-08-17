@@ -53,7 +53,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Default Tests
 
         [Test]
-        public void Default_NoConnectionFound_ReturnsNotFoundResponse()
+        public void Default_NoConnectionFound_ReturnsInternalServerError()
         {
             // setup
             var bootstrapper = this.ConfigureBootstrapperAndUser(false);
@@ -74,7 +74,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.IsTrue(response.Body.AsString().Contains("No connection found"));
         }
 
         [Test]
