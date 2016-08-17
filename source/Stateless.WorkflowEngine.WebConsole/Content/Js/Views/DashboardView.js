@@ -66,8 +66,7 @@ var DashboardView = function () {
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
-            var html = Utils.createErrorAlert('ERROR: ' + xhr.responseText);
-            $('#pnl-connections').html(html);
+            Utils.handleAjaxError(xhr, $('#pnl-connections'));
         });
         request.always(function (xhr, textStatus) {
             //debugger;

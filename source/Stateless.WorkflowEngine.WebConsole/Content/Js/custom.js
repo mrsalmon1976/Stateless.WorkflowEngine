@@ -35,8 +35,28 @@ Numeric.getRandomInt = function(min, max) {
 
 var Utils = function () { };
 
-Utils.createErrorAlert = function (message) {
-    return '<div class="alert alert-danger" role="alert">' + message + '</div>';
+// handles an ajax error by redirecting to the login screen if there was an authorisation error, 
+// or displaying the error in an element specifed as a jquery object
+Utils.handleAjaxError = function (xhr, jqMessagePanel) {
+    if (xhr.status == 401) {
+        bootbox.alert('You do not have authorisation to perform this action; you will now be redirected to the login page.', function (result) {
+            window.location.href = '/login';
+        });
+        return;
+    }
+    var msg = xhr.statusText;
+    try
+    {
+        var json = JSON.parse(msg);
+        msg = json.message;
+    }
+    catch (error)
+    { 
+    }
+    if (msg == null || msg.length == 0) {
+        msg = 'An unspecified error occurred.';
+    }
+    jqMessagePanel.html('<div class="alert alert-danger" role="alert">' + msg + '</div>');
 };
 
 Utils.showError = function (selector, error) {

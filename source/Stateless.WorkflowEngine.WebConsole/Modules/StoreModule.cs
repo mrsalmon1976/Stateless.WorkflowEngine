@@ -53,7 +53,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
             if (model.Connection == null)
             {
-                return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
+                throw new Exception("No connection found matching the supplied id");
             }
 
             return this.View[Views.Store.Default, model];
@@ -70,6 +70,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             if (connection == null)
             {
                 return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
+                //throw new Exception("No connection found matching the supplied id.");
             }
             
             //List<string> documents = _workflowStoreFactory.GetWorkflowStore(connection).GetIncompleteWorkflowsAsJson(50).ToList();

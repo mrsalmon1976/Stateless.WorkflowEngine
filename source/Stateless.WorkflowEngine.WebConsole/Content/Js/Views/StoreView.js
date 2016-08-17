@@ -29,8 +29,8 @@ var StoreView = function () {
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
-            var html = Utils.createErrorAlert('ERROR: ' + xhr.responseText);
-            $('#pnl-workflows').html(html);
+            Utils.handleAjaxError(xhr, $('#pnl-workflows'));
+
         });
         request.always(function (xhr, textStatus) {
             $('#pnl-loading').hide();
@@ -61,7 +61,6 @@ var StoreView = function () {
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
-            //var html = Utils.createErrorAlert('ERROR: ' + xhr.responseText);
             $('#workflow-msg-error').show();
         });
         request.always(function (xhr, textStatus) {

@@ -2,6 +2,7 @@
 using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
 using Nancy.TinyIoc;
+using Nancy.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -70,11 +71,11 @@ namespace Stateless.WorkflowEngine.WebConsole
         protected override void RequestStartup(TinyIoCContainer container, IPipelines pipelines, NancyContext context)
         {
             base.RequestStartup(container, pipelines, context);
-
             var formsAuthConfiguration = new FormsAuthenticationConfiguration()
             {
                 RedirectUrl = "~/login",
                 UserMapper = container.Resolve<IUserMapper>(),
+                DisableRedirect = context.Request.IsAjaxRequest()    
             };
             FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
 
