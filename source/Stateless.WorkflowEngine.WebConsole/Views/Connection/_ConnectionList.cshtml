@@ -36,7 +36,7 @@
 }
 @foreach (var workflowStore in Model.WorkflowStores)
 {
-    <div class="panel panel-default pull-left dashboard-panel">
+    <div class="panel panel-default pull-left dashboard-panel font90">
         <div class="panel-heading@(GetConnectionErrorClass(workflowStore))" title="@GetConnectionTitleTooltip(workflowStore)">
             <img src="/Content/Images/mongo_24x24.png" alt="" title="" />
             <div class="conn-title dropdown">
