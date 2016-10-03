@@ -3,13 +3,17 @@
 @using Stateless.WorkflowEngine.WebConsole.Navigation
 @functions {
     public string FormatConnectionNumber(long? no) {
-        return (no.HasValue ? no.Value.ToString() : "n/a");
+        if (!no.HasValue)
+        {
+            return "n/a";
+        }
+        return String.Format("{0:n0}", no);
     }
 
     public string GetConnectionErrorClass(WorkflowStoreModel model) {
         return (String.IsNullOrEmpty(model.ConnectionError) ? String.Empty : " error");
     }
-    
+
     public string GetConnectionStyle(long? no, long warningThreshold, long errorThreshold) {
         if (!no.HasValue || no.Value > errorThreshold) return "progress-bar-danger";
         if (no.Value > warningThreshold) return "progress-bar-warning";
@@ -44,9 +48,9 @@
                 @GetConnectionTitle(workflowStore)
                 <span class="caret"></span>
               </a>
-              <ul class="dropdown-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
+              <ul class="dropdown-menu conn-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
                 <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
-                <li><a href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)" class="btn-delete"><i class="fa fa-table"></i> View incomplete workflows</a></li>
+                <li><a href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)"><i class="fa fa-table"></i> View incomplete workflows</a></li>
               </ul>
             </div>
         </div>

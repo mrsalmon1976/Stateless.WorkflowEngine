@@ -1,3 +1,6 @@
+.conn-menu > li > a {
+    font-size: 90%;
+}
 .conn-title {
     display: inline;
 }
@@ -8,7 +11,7 @@
     margin-right:20px;
 }
     .dashboard-panel .panel-body {
-         width: 300px;
+         width: 350px;
     }
     .dashboard-panel .panel-heading.error {
         background-color: #d9534f;
