@@ -8,8 +8,10 @@ using Nancy.Testing;
 using Newtonsoft.Json;
 using NSubstitute;
 using NUnit.Framework;
+using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
+using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
@@ -34,6 +36,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
         private IWorkflowInfoService _workflowStoreService;
+        private IWorkflowStoreFactory _workflowStoreFactory;
 
         [SetUp]
         public void ConnectionModuleTest_SetUp()
@@ -42,8 +45,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _encryptionProvider = Substitute.For<IEncryptionProvider>();
             _connectionValidator = Substitute.For<IConnectionValidator>();
             _workflowStoreService = Substitute.For<IWorkflowInfoService>();
+            _workflowStoreFactory = Substitute.For<IWorkflowStoreFactory>();
 
-            _connectionModule = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService);
+            _connectionModule = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
 
             Mapper.Initialize((cfg) =>
             {
@@ -245,6 +249,92 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #endregion
 
+        #region Test Tests
+
+        [Test]
+        public void Test_InvalidModel_ReturnsError()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
+
+            // execute
+            var response = browser.Post(Actions.Connection.Test, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(1, result.Messages.Count);
+            _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
+        }
+
+        [Test]
+        public void Test_ConnectionFails_ReturnsError()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+
+            // set up the workflow store to throw an exception
+            IWorkflowStore store = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(store);
+            store.When(x => x.GetActive(1)).Do(x => { throw new Exception("connection error"); });
+
+            // execute
+            var response = browser.Post(Actions.Connection.Test, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(1, result.Messages.Count);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Any<ConnectionModel>());
+        }
+
+        [Test]
+        public void Test_ConnectionSucceeds_ReturnsSuccess()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+
+            // set up the workflow store to throw an exception
+            IWorkflowStore store = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(store);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Test, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(0, result.Messages.Count);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Any<ConnectionModel>());
+            store.Received(1).GetActive(1);
+        }
+
+        #endregion
+
         #region Private Methods
 
         private ModuleTestBootstrapper ConfigureBootstrapperAndUser(bool configureUsers = true)
@@ -257,6 +347,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 container.Register<IEncryptionProvider>(_encryptionProvider);
                 container.Register<IConnectionValidator>(_connectionValidator);
                 container.Register<IWorkflowInfoService>(_workflowStoreService);
+                container.Register<IWorkflowStoreFactory>(_workflowStoreFactory);
             };
 
             if (configureUsers)

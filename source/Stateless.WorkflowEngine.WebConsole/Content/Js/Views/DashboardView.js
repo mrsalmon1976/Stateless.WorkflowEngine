@@ -7,6 +7,7 @@ var DashboardView = function () {
         $('#btn-refresh').on('click', function () { that.loadConnections(); });
         $('#btn-add-connection').on('click', function () { that.showForm(''); });
         $('#btn-submit-connection').on('click', that.submitForm);
+        $('#btn-test-connection').on('click', that.testConnection);
         this.loadConnections();
     };
 
@@ -107,6 +108,37 @@ var DashboardView = function () {
             if (response.success) {
                 $('#dlg-connection').modal('hide');
                 that.loadConnections();
+            }
+            else {
+                that.showError(response.messages);
+            }
+        });
+
+        request.fail(function (xhr, textStatus) {
+            try {
+                that.showError(xhr.responseJSON.message);
+            }
+            catch (err) {
+                that.showError('A fatal error occurred');
+            }
+        });
+    };
+
+    this.testConnection = function () {
+        $("#msg-error").addClass('hidden');
+        var formData = $('#form-connection').serializeForm();
+        var request = $.ajax({
+            url: "/connection/test",
+            method: "POST",
+            data: formData,
+            dataType: 'json',
+            traditional: true
+        });
+
+        request.done(function (response) {
+            //debugger;
+            if (response.success) {
+                bootbox.alert('Connection succeeded!');
             }
             else {
                 that.showError(response.messages);

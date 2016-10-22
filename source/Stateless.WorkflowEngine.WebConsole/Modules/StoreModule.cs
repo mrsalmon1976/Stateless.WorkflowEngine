@@ -28,15 +28,18 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             _workflowStoreFactory = workflowStoreFactory;
             this.RequiresAnyClaim(Roles.AllRoles);
 
+            // default action - used to display a single connection
             Get[Actions.Store.Default] = (x) =>
             {
                 AddScript(Scripts.StoreView);
                 return Default();
             };
+            // displays a list of workflows for a specified store
             Post[Actions.Store.List] = (x) =>
             {
                 return List();
             };
+            // loads a single workflow
             Post[Actions.Store.Workflow] = (x) =>
             {
                 return Workflow();

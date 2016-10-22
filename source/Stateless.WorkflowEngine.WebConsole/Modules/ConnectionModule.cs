@@ -16,6 +16,8 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using Encryption;
 using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Stateless.WorkflowEngine.Stores;
+using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -25,28 +27,40 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
         private IWorkflowInfoService _workflowStoreService;
+        private IWorkflowStoreFactory _workflowStoreFactory;
 
-        public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService) : base()
+        public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
+            : base()
         {
             _userStore = userStore;
             _connectionValidator = connectionValidator;
             _encryptionProvider = encryptionProvider;
             _workflowStoreService = workflowStoreService;
+            _workflowStoreFactory = workflowStoreFactory;
 
+            // lists all connections for the current user
             Get[Actions.Connection.List] = (x) =>
             {
                 this.RequiresAnyClaim(Roles.AllRoles);
                 return this.List();
             };
+            // deletes a connection for the current user
             Post[Actions.Connection.Delete] = (x) =>
             {
                 this.RequiresAnyClaim(Roles.AllRoles);
                 return DeleteConnection();
             };
+            // saves a connection for the current user
             Post[Actions.Connection.Save] = (x) =>
             {
                 this.RequiresAnyClaim(Roles.AllRoles);
                 return Save();
+            };
+            // tests a new connection for the current user
+            Post[Actions.Connection.Test] = (x) =>
+            {
+                this.RequiresAnyClaim(Roles.AllRoles);
+                return Test();
             };
         }
 
@@ -113,6 +127,33 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
             return Response.AsJson<ValidationResult>(new ValidationResult());
         }
+
+        public dynamic Test()
+        {
+            var model = this.Bind<ConnectionModel>();
+            var validationResult = _connectionValidator.Validate(model);
+
+            if (!validationResult.Success)
+            {
+                return Response.AsJson<ValidationResult>(validationResult);
+            }
+
+            // try and connect
+            try
+            {
+                // create a store and try and get the active count - this will bomb out if there is a problem
+                IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(model);
+                store.GetIncompleteCount();
+
+                // all good, return an empty validation result
+                return Response.AsJson<ValidationResult>(new ValidationResult());
+            }
+            catch (Exception ex)
+            {
+                return Response.AsJson<ValidationResult>(new ValidationResult("Connection failed: " + ex.Message));
+            }
+        }
+
 
     }
 }
