@@ -286,7 +286,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // set up the workflow store to throw an exception
             IWorkflowStore store = Substitute.For<IWorkflowStore>();
             _workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(store);
-            store.When(x => x.GetActive(1)).Do(x => { throw new Exception("connection error"); });
+            store.When(x => x.GetIncompleteCount()).Do(x => { throw new Exception("connection error"); });
 
             // execute
             var response = browser.Post(Actions.Connection.Test, (with) =>
@@ -330,7 +330,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             Assert.IsTrue(result.Success);
             Assert.AreEqual(0, result.Messages.Count);
             _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Any<ConnectionModel>());
-            store.Received(1).GetActive(1);
+            store.Received(1).GetIncompleteCount();
         }
 
         #endregion
