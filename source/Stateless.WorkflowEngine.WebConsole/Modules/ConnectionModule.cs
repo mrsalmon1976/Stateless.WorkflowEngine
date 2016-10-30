@@ -69,27 +69,23 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             var id = Request.Form["id"];
 
             // load the connections for the current user
-            var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
-
-            var conn = currentUser.Connections.Where(x => x.Id == id).SingleOrDefault();
+            var conn = _userStore.GetConnection(id);
             if (conn == null)
             {
                 var model = new { Error = "Connection not found" };
                 return this.Response.AsJson(model, HttpStatusCode.NotFound);
             }
 
-            currentUser.Connections.Remove(conn);
+            _userStore.Connections.Remove(conn);
             _userStore.Save();
             return this.Response.AsJson(new { Result = "Ok" }, HttpStatusCode.OK);
         }
 
         public dynamic List()
         {
-            // load the connections for the current user
-            var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
-
+            // load the connections 
             List<WorkflowStoreModel> workflowStoreModels = new List<WorkflowStoreModel>();
-            foreach (ConnectionModel cm in currentUser.Connections) 
+            foreach (ConnectionModel cm in _userStore.Connections) 
             {
                 workflowStoreModels.Add(new WorkflowStoreModel(cm));
             }
@@ -121,8 +117,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             }
 
             // add the connection and return success
-            var currentUser = _userStore.Users.Where(x => x.UserName == this.Context.CurrentUser.UserName).Single();
-            currentUser.Connections.Add(model);
+            _userStore.Connections.Add(model);
             _userStore.Save();
 
             return Response.AsJson<ValidationResult>(new ValidationResult());

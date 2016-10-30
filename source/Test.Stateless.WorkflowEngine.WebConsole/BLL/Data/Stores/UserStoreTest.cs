@@ -43,8 +43,21 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             user.UserName = "test";
             user.Password = "password";
             user.Role = Roles.Admin;
-            List<UserModel> users = new List<UserModel>() { user };
-            string sUsers = JsonConvert.SerializeObject(users);
+
+            byte[] key = new byte[20];
+            new Random().NextBytes(key);
+            ConnectionModel conn = new ConnectionModel();
+            conn.Database = "MongoDb";
+            conn.Host = "myserver";
+            conn.Key = key;
+            conn.Password = "hullabaloo";
+            conn.Port = new Random().Next(1000, 99999);
+            conn.User = "mrplod";
+
+            UserStore store = new UserStore(_path, _fileWrap, _dirWrap, _passwordProvider);
+            store.Users.Add(user);
+            store.Connections.Add(conn);
+            string sUsers = JsonConvert.SerializeObject(store);
 
             _fileWrap.Exists(_path).Returns(true);
             _fileWrap.ReadAllText(_path).Returns(sUsers);
@@ -91,11 +104,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         public void Save_OnExecute_SavesContentsToDisk()
         {
             // setup 
-            List<UserModel> users = new List<UserModel>();
             Random r = new Random();
+
+            List<UserModel> users = new List<UserModel>();
             for (int i = 0; i < r.Next(3, 7); i++)
             {
-                users.Add(new UserModel()
+                _userStore.Users.Add(new UserModel()
                 {
                     Id = Guid.NewGuid(),
                     Password = Guid.NewGuid().ToString(),
@@ -103,14 +117,30 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                     Role = Guid.NewGuid().ToString(),
                 });
             }
-            _userStore.Users.AddRange(users);
+
+            byte[] key = new byte[20];
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            for (int i = 0; i < r.Next(3, 7); i++)
+            {
+                r.NextBytes(key);
+                _userStore.Connections.Add(new ConnectionModel()
+                {
+                    Password = Guid.NewGuid().ToString(),
+                    User = Guid.NewGuid().ToString(),
+                    Key = key,
+                    Database = Guid.NewGuid().ToString(),
+                    Port = r.Next(1000, 999999),
+                    Host = Guid.NewGuid().ToString()
+                });
+            }
+
             _userStore.FilePath = "C:\\Temp\\Test\\users.json";
 
             // execute 
             _userStore.Save();
 
             // assert
-            string contents = JsonConvert.SerializeObject(users);
+            string contents = JsonConvert.SerializeObject(_userStore, Formatting.Indented);
             _dirWrap.Received(1).CreateDirectory("C:\\Temp\\Test");
             _fileWrap.Received(1).WriteAllText(_userStore.FilePath, contents);
         }

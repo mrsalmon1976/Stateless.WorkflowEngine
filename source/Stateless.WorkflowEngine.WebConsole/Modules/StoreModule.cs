@@ -49,10 +49,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         public dynamic Default()
         {
             var id = Request.Query["id"];
-            var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
 
             StoreViewModel model = new StoreViewModel();
-            model.Connection = _userStore.GetUser(currentUser.UserName).Connections.Where(x => x.Id == id).SingleOrDefault();
+            model.Connection = _userStore.GetConnection(id);
 
             if (model.Connection == null)
             {
@@ -69,15 +68,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
 
             // get the connection and load the workflows
-            ConnectionModel connection = _userStore.GetUser(currentUser.UserName).Connections.Where(x => x.Id == id).SingleOrDefault();
+            ConnectionModel connection = _userStore.GetConnection(id);
             if (connection == null)
             {
                 return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
                 //throw new Exception("No connection found matching the supplied id.");
             }
             
-            //List<string> documents = _workflowStoreFactory.GetWorkflowStore(connection).GetIncompleteWorkflowsAsJson(50).ToList();
-            //IEnumerable<UIWorkflow> workflows = _workflowInfoService.ConvertWorkflowDocuments(documents, connection.WorkflowStoreType);
             IEnumerable<UIWorkflow> workflows = _workflowInfoService.GetIncompleteWorkflows(connection, 50);
             
             WorkflowListViewModel model = new WorkflowListViewModel();
@@ -95,7 +92,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
 
             // get the connection and load the workflows
-            ConnectionModel connection = _userStore.GetUser(currentUser.UserName).Connections.Where(x => x.Id == connId).SingleOrDefault();
+            ConnectionModel connection = _userStore.GetConnection(connId);
 
             IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
             string json = store.GetWorkflowAsJson(workflowId);

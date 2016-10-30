@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using SystemWrapper.IO;
@@ -24,11 +25,23 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         List<UserModel> Users { get; }
 
         /// <summary>
+        /// Gets/sets the configured connections.
+        /// </summary>
+        List<ConnectionModel> Connections { get; set; }
+
+        /// <summary>
         /// Gets a user by user name.
         /// </summary>
         /// <param name="userName"></param>
         /// <returns></returns>
         UserModel GetUser(string userName);
+
+        /// <summary>
+        /// Gets a connection by it's unique id.
+        /// </summary>
+        /// <param name="connectionId"></param>
+        /// <returns></returns>
+        ConnectionModel GetConnection(Guid connectionId);
 
         /// <summary>
         /// Loads the users for the app from the file on disk.
@@ -55,14 +68,21 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             _dirWrap = dirWrap;
             _passwordProvider = passwordProvider;
             this.Users = new List<UserModel>();
+            this.Connections = new List<ConnectionModel>();
         }
 
+        [IgnoreDataMember]
         public string FilePath { get; set; }
 
         /// <summary>
         /// Gets the users of the application.
         /// </summary>
         public List<UserModel> Users { get; private set; }
+
+        /// <summary>
+        /// Gets/sets the configured connections.
+        /// </summary>
+        public List<ConnectionModel> Connections { get; set; }
 
         /// <summary>
         /// Gets a user by user name.
@@ -75,15 +95,26 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         }
 
         /// <summary>
+        /// Gets a connection by it's unique id.
+        /// </summary>
+        /// <param name="connectionId"></param>
+        /// <returns></returns>
+        public ConnectionModel GetConnection(Guid connectionId)
+        {
+            return this.Connections.Where(x => x.Id == connectionId).SingleOrDefault();
+        }
+
+        /// <summary>
         /// Loads the users for the app from the file on disk.
         /// </summary>
         public void Load()
         {
             if (_fileWrap.Exists(this.FilePath))
             {
-                string sUsers = _fileWrap.ReadAllText(this.FilePath);
-                List<UserModel> users = JsonConvert.DeserializeObject<List<UserModel>>(sUsers);
-                this.Users.AddRange(users);
+                string text = _fileWrap.ReadAllText(this.FilePath);
+                UserStore store = JsonConvert.DeserializeObject<UserStore>(text);
+                this.Users.AddRange(store.Users);
+                this.Connections.AddRange(store.Connections);
             }
             else
             {
@@ -102,7 +133,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// </summary>
         public void Save()
         {
-            string contents = JsonConvert.SerializeObject(this.Users);
+            string contents = JsonConvert.SerializeObject(this, Formatting.Indented);
             _dirWrap.CreateDirectory(Path.GetDirectoryName(this.FilePath));
             _fileWrap.WriteAllText(this.FilePath, contents);
         }

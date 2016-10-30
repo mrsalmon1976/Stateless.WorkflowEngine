@@ -11,7 +11,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
         public UserModel()
         {
             this.Id = Guid.NewGuid();
-            this.Connections = new List<ConnectionModel>();
         }
 
         public Guid Id { get; set; }
@@ -22,6 +21,5 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 
         public string Role { get; set; }
 
-        public List<ConnectionModel> Connections { get; set; }
     }
 }

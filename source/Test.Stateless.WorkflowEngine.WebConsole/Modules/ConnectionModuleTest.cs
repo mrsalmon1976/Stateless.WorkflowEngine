@@ -66,10 +66,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>();
+            _userStore.Connections.Returns(new List<ConnectionModel>());
 
             // execute
             var response = browser.Post(Actions.Connection.Delete, (with) =>
@@ -97,13 +94,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 Id = connectionId
             };
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            connections.Add(connection);
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>() { connection };
-
-            Assert.AreEqual(1, currentUser.Connections.Count);
+            _userStore.Connections.Returns(connections);
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             // execute
             var response = browser.Post(Actions.Connection.Delete, (with) =>
@@ -116,7 +111,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
 
-            Assert.AreEqual(0, currentUser.Connections.Count);
+            Assert.AreEqual(0, _userStore.Connections.Count);
+            Assert.AreEqual(0, connections.Count);
             _userStore.Received(1).Save();
         }
         #endregion
@@ -132,17 +128,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
             int connectionCount = new Random().Next(3, 9);
-            UserModel user = new UserModel()
-            {
-                Id = bootstrapper.CurrentUser.Id,
-                UserName = bootstrapper.CurrentUser.UserName,
-            };
+            List<ConnectionModel> connections = new List<ConnectionModel>();
             for (var i = 0; i < connectionCount; i++)
             {
-                ConnectionModel conn = new ConnectionModel();
-                user.Connections.Add(conn);
+                connections.Add(new ConnectionModel());
             }
-            _userStore.GetUser(user.UserName).Returns(user);
+            _userStore.Connections.Returns(connections);
 
             // execute
             var response = browser.Get(Actions.Connection.List, (with) =>
@@ -192,6 +183,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+            _userStore.Connections.Returns(new List<ConnectionModel>());
 
             // execute
             var response = browser.Post(Actions.Connection.Save, (with) =>
@@ -226,6 +218,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _encryptionProvider.NewKey().Returns(key);
             _encryptionProvider.SimpleEncrypt(password, key, null).Returns(encryptedPassword);
 
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            _userStore.Connections.Returns(connections);
+
             // execute
             var response = browser.Post(Actions.Connection.Save, (with) =>
             {
@@ -242,7 +237,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             Assert.AreEqual(0, result.Messages.Count);
             _encryptionProvider.Received(1).SimpleEncrypt(password, key, null);
 
-            Assert.AreEqual(encryptedPassword, _userStore.Users[0].Connections[0].Password);
+            Assert.AreEqual(1, _userStore.Connections.Count);
+            Assert.AreEqual(encryptedPassword, _userStore.Connections[0].Password);
             _userStore.Received(1).Save();
         }
 

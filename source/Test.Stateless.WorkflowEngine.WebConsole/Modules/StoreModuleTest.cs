@@ -59,11 +59,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var bootstrapper = this.ConfigureBootstrapperAndUser(false);
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>();
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             // execute
             var response = browser.Get(Actions.Store.Default, (with) =>
@@ -76,6 +74,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // assert
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
             Assert.IsTrue(response.Body.AsString().Contains("No connection found"));
+            _userStore.Received(1).GetConnection(connectionId);
         }
 
         [Test]
@@ -92,12 +91,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 Host = "myserver"
             };
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>() { connection };
-
-            Assert.AreEqual(1, currentUser.Connections.Count);
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             // execute
             var response = browser.Get(Actions.Store.Default, (with) =>
@@ -128,11 +122,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var bootstrapper = this.ConfigureBootstrapperAndUser(false);
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>();
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             // execute
             var response = browser.Post(Actions.Store.List, (with) =>
@@ -144,8 +136,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
-
-            //_workflowInfoService.DidNotReceive().GetIncompleteWorkflows(Arg.Any<ConnectionModel>(), Arg.Any<int>());
+            _userStore.Received(1).GetConnection(connectionId);
         }
 
         [Test]
@@ -163,10 +154,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 Host = "myserver"
             };
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>() { connection };
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             List<UIWorkflow> workflows = new List<UIWorkflow>();
             for (int i = 0; i < count; i++)
@@ -220,10 +208,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 Host = "myserver"
             };
 
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>() { connection };
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             string json = null;
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
@@ -257,11 +242,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 Id = connectionId,
                 Host = "myserver"
             };
-
-            List<UserModel> users = ConfigureUsers(bootstrapper);
-            UserModel currentUser = users[0];
-            _userStore.GetUser(currentUser.UserName).Returns(currentUser);
-            currentUser.Connections = new List<ConnectionModel>() { connection };
+            _userStore.GetConnection(connectionId).Returns(connection);
 
             var dummyWorkflow = new { DummyId = workflowId };
             string json = JsonConvert.SerializeObject(dummyWorkflow);
