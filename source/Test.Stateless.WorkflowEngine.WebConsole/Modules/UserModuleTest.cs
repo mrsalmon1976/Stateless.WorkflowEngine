@@ -116,7 +116,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 Id = bootstrapper.CurrentUser.Id,
                 UserName = bootstrapper.CurrentUser.UserName,
-                Role = bootstrapper.CurrentUser.Claims.First(),
                 Password = oldPassword
             };
             List<UserModel> users = new List<UserModel>() { user };
@@ -154,10 +153,47 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Save Tests
 
         [Test]
+        public void Save_AuthTest()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapper();
+            var browser = new Browser(bootstrapper);
+
+            _userStore.Users.Returns(new List<UserModel>() { });
+            _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
+
+            foreach (string claim in Claims.AllClaims)
+            {
+
+                bootstrapper.CurrentUser.Claims = new string[] { claim };
+
+                // execute
+                var response = browser.Post(Actions.User.Save, (with) =>
+                {
+                    with.HttpRequest();
+                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    //with.FormValue("id", connectionId.ToString());
+                });
+
+                // assert
+                if (claim == Claims.UserAdd)
+                {
+                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                }
+                else
+                {
+                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                }
+            }
+
+        }
+
+        [Test]
         public void Save_InvalidUser_ReturnsFailure()
         {
             // setup
             var bootstrapper = this.ConfigureBootstrapper();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser(bootstrapper);
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult("error"));
@@ -187,6 +223,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var bootstrapper = this.ConfigureBootstrapper();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser(bootstrapper);
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
@@ -218,6 +255,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             const string password = "password1";
 
             var bootstrapper = this.ConfigureBootstrapper();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser(bootstrapper);
             _userStore.Users.Returns(new List<UserModel>());
 
@@ -256,6 +294,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             const string password = "password1";
 
             var bootstrapper = this.ConfigureBootstrapper();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser(bootstrapper);
             _userStore.Users.Returns(new List<UserModel>());
 

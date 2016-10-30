@@ -31,8 +31,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             _userValidator = userValidator;
             _passwordProvider = passwordProvider;
 
-            this.RequiresClaims(new[] { Roles.Admin });
-
             Get[Actions.User.Default] = (x) =>
             {
                 AddScript(Scripts.UserView);
@@ -40,6 +38,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             };
             Get[Actions.User.List] = (x) =>
             {
+                this.RequiresClaims(new[] { Claims.UserList });
                 return List();
             };
             Post[Actions.User.ChangePassword] = (x) =>
@@ -48,6 +47,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             };
             Post[Actions.User.Save] = (x) =>
             {
+                this.RequiresClaims(new[] { Claims.UserAdd });
                 return Save();
             };
         }

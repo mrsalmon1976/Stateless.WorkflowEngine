@@ -112,6 +112,7 @@
     <Compile Include="BLL\Factories\WorkflowStoreFactory.cs" />
     <Compile Include="BLL\Models\UIWorkflow.cs" />
     <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
+    <Compile Include="BLL\Security\Claims.cs" />
     <Compile Include="BLL\Security\EncryptionProvider.cs" />
     <Compile Include="BLL\Security\PasswordProvider.cs" />
     <Compile Include="BLL\Security\Roles.cs" />

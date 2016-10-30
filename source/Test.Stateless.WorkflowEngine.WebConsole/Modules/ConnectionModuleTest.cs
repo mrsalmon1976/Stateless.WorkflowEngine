@@ -59,6 +59,47 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Delete Tests
 
         [Test]
+        public void Delete_AuthTest()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId
+            };
+            _userStore.Connections.Returns(new List<ConnectionModel>() { connection });
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            foreach (string claim in Claims.AllClaims)
+            {
+
+                bootstrapper.CurrentUser.Claims = new string[] { claim };
+
+                // execute
+                var response = browser.Post(Actions.Connection.Delete, (with) =>
+                {
+                    with.HttpRequest();
+                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.FormValue("id", connectionId.ToString());
+                });
+
+                // assert
+                if (claim == Claims.ConnectionDelete)
+                {
+                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                }
+                else
+                {
+                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                }
+            }
+
+        }
+
+        [Test]
         public void Delete_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
@@ -67,6 +108,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var connectionId = Guid.NewGuid();
 
             _userStore.Connections.Returns(new List<ConnectionModel>());
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionDelete };
 
             // execute
             var response = browser.Post(Actions.Connection.Delete, (with) =>
@@ -86,7 +128,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_ConnectionFound_RemovesConnection()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -96,6 +138,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             };
             List<ConnectionModel> connections = new List<ConnectionModel>();
             connections.Add(connection);
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionDelete };
 
             _userStore.Connections.Returns(connections);
             _userStore.GetConnection(connectionId).Returns(connection);
@@ -152,10 +195,54 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Save Tests
 
         [Test]
+        public void Save_AuthTest()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId
+            };
+            _userStore.Connections.Returns(new List<ConnectionModel>() { connection });
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            foreach (string claim in Claims.AllClaims)
+            {
+                _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+
+                bootstrapper.CurrentUser.Claims = new string[] { claim };
+
+                // execute
+                var response = browser.Post(Actions.Connection.Save, (with) =>
+                {
+                    with.HttpRequest();
+                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.FormValue("id", connectionId.ToString());
+                });
+
+                // assert
+                if (claim == Claims.ConnectionAdd)
+                {
+                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                }
+                else
+                {
+                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                }
+            }
+
+        }
+
+        [Test]
         public void Save_InvalidModel_ReturnsError()
         {
             // setup
             var bootstrapper = this.ConfigureBootstrapperAndUser();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
@@ -181,6 +268,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var bootstrapper = this.ConfigureBootstrapperAndUser();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
             _userStore.Connections.Returns(new List<ConnectionModel>());
@@ -213,6 +302,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             string encryptedPassword = Guid.NewGuid().ToString();
 
             var bootstrapper = this.ConfigureBootstrapperAndUser();
+            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
             _encryptionProvider.NewKey().Returns(key);
@@ -360,7 +451,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 Id = bootstrapper.CurrentUser.Id,
                 UserName = bootstrapper.CurrentUser.UserName,
-                Role = bootstrapper.CurrentUser.Claims.First()
+                Role = Roles.User,
+                Claims = new string[] { }
             };
             List<UserModel> users = new List<UserModel>() { user };
             _userStore.Users.Returns(users);

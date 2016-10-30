@@ -62,7 +62,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 Id = Guid.NewGuid(),
                 UserName = "Joe Soap",
-                Claims = new string[] { Roles.Admin }
+                Claims = new string[] { }
             };
             return this.CurrentUser;
         }

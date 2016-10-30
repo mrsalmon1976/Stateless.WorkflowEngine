@@ -26,7 +26,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = userStore;
             _workflowInfoService = workflowInfoService;
             _workflowStoreFactory = workflowStoreFactory;
-            this.RequiresAnyClaim(Roles.AllRoles);
 
             // default action - used to display a single connection
             Get[Actions.Store.Default] = (x) =>

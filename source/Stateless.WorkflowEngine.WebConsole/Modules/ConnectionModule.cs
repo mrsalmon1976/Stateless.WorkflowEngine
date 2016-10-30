@@ -41,25 +41,25 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // lists all connections for the current user
             Get[Actions.Connection.List] = (x) =>
             {
-                this.RequiresAnyClaim(Roles.AllRoles);
+                //this.RequiresAnyClaim(Claims.AllClaims);
                 return this.List();
             };
             // deletes a connection for the current user
             Post[Actions.Connection.Delete] = (x) =>
             {
-                this.RequiresAnyClaim(Roles.AllRoles);
+                this.RequiresClaims(Claims.ConnectionDelete);
                 return DeleteConnection();
             };
             // saves a connection for the current user
             Post[Actions.Connection.Save] = (x) =>
             {
-                this.RequiresAnyClaim(Roles.AllRoles);
+                this.RequiresClaims(Claims.ConnectionAdd);
                 return Save();
             };
             // tests a new connection for the current user
             Post[Actions.Connection.Test] = (x) =>
             {
-                this.RequiresAnyClaim(Roles.AllRoles);
+                //this.RequiresAnyClaim(Claims.ConnectionAdd);
                 return Test();
             };
         }

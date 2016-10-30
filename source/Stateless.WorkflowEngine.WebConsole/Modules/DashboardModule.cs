@@ -19,7 +19,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         {
             Get[Actions.Dashboard.Default] = (x) =>
             {
-                this.RequiresAnyClaim(Roles.AllRoles);
                 AddScript(Scripts.DashboardView);
                 return this.View[Views.Dashboard.Default, this.Default()];
             };

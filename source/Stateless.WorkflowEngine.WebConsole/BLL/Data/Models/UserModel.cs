@@ -21,5 +21,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 
         public string Role { get; set; }
 
+        public string[] Claims { get; set; }
+
     }
 }
