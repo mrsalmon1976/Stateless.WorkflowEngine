@@ -1,6 +1,12 @@
 ﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Connection.ConnectionListViewModel>
 @using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 @using Stateless.WorkflowEngine.WebConsole.Navigation
+@using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using Stateless.WorkflowEngine.WebConsole.BLL.Security
+@using Nancy.Security
+@{
+    IUserIdentity currentUser = ViewBag.CurrentUser;
+}
 @functions {
     public string FormatConnectionNumber(long? no) {
         if (!no.HasValue)
@@ -49,7 +55,10 @@
                 <span class="caret"></span>
               </a>
               <ul class="dropdown-menu conn-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
-                <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
+                @if (DisplayUtils.HasClaim(currentUser, Claims.ConnectionDelete))
+                {
+                    <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
+                }
                 <li><a href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)"><i class="fa fa-table"></i> View incomplete workflows</a></li>
               </ul>
             </div>

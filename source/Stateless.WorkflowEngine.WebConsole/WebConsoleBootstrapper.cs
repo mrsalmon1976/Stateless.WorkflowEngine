@@ -88,7 +88,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             {
                 if (ctx.CurrentUser != null)
                 {
-                    ctx.ViewBag.CurrentUserName = ctx.CurrentUser.UserName;
+                    ctx.ViewBag.CurrentUser = ctx.CurrentUser;
                 }
                 return null;
             };

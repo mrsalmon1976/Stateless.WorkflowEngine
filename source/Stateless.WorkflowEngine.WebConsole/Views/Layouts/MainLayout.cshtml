@@ -1,8 +1,15 @@
-﻿@using Stateless.WorkflowEngine.WebConsole.Navigation
+﻿@using Nancy.Security
+@using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using System.Linq
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@using Stateless.WorkflowEngine.WebConsole.BLL.Security
 @functions {
     public string MenuActiveClass(string title) {
        return (ViewBag.Title.ToString().Contains(title) ? " active" : "");
     }
+}
+@{
+    IUserIdentity currentUser = ViewBag.CurrentUser;
 }
 <html class=" js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths" lang="en">
     <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -30,7 +37,7 @@
         <li>
           <a href="#" id="mnu-change-password">
             <i class="fa fa-user"></i>
-            @ViewBag.CurrentUserName
+            @currentUser.UserName
           </a>
         </li>
         <li>
@@ -50,10 +57,13 @@
                 <i class="fa fa-dashboard"></i>
                 <a href="@Actions.Dashboard.Default">Dashboard</a>
                 </li>
-                <li class="launcher@(MenuActiveClass("Users"))">
-                <i class="fa fa-users"></i>
-                <a href="@Actions.User.Default">Users</a>
-                </li>
+                @if (DisplayUtils.HasAnyClaim(currentUser, Claims.UserList, Claims.UserAdd))
+                {
+                    <li class="launcher@(MenuActiveClass("Users"))">
+                    <i class="fa fa-users"></i>
+                    <a href="@Actions.User.Default">Users</a>
+                    </li>
+                }
             </ul>
             <div data-toggle="tooltip" id="beaker" title="" data-original-title="Made by lab2023"></div>
         </section>
@@ -65,7 +75,7 @@
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">@ViewBag.CurrentUserName :: Change your password</h4>
+                    <h4 class="modal-title">@currentUser.UserName :: Change your password</h4>
                 </div>
                 <div class="modal-body">
                     <div id="profile-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>

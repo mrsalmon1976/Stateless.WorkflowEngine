@@ -1,10 +1,14 @@
 ﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+@using Nancy.Security
 @using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 @using Stateless.WorkflowEngine.WebConsole.Navigation
+@using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using Stateless.WorkflowEngine.WebConsole.BLL.Security
 @model Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard.DashboardViewModel
 @{
     Layout = "Views/Layouts/MainLayout.cshtml";
     ViewBag.Title = "Stateless.WorkflowEngine Console :: Dashboard";
+    IUserIdentity currentUser = ViewBag.CurrentUser;
 }
 <!-- Tools -->
 <section id="tools">
@@ -16,9 +20,12 @@
             <a id="btn-refresh" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
                 <i class="fa fa-refresh"></i>
             </a>
-            <a id="btn-add-connection" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
-                <i class="fa fa-plus"></i>
-            </a>
+            @if (DisplayUtils.HasClaim(currentUser, Claims.ConnectionAdd))
+            {
+                <a id="btn-add-connection" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
+                    <i class="fa fa-plus"></i>
+                </a>
+            }
         </div>
     </div>
 </section>
