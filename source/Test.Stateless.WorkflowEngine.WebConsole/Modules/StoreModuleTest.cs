@@ -214,6 +214,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
             workflowStore.GetWorkflowAsJson(workflowId).Returns(json);
+
             // execute
             var response = browser.Post(Actions.Store.Workflow, (with) =>
             {
@@ -278,6 +279,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 container.Register<IWorkflowInfoService>(_workflowInfoService);
                 container.Register<IWorkflowStoreFactory>(_workflowStoreFactory);
             };
+            bootstrapper.ConfigureRequestStartupCallback = (container, pipelines, context) =>
+                {
+                    context.ViewBag.CurrentUser = bootstrapper.CurrentUser;
+                };
 
             if (configureUsers)
             {
