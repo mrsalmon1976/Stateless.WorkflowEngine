@@ -264,6 +264,45 @@ namespace Stateless.WorkflowEngine.MongoDb
             }
         }
 
+        /// <summary>
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void SuspendWorkflow(Guid id)
+        {
+            BsonValue val = BsonValue.Create(id);
+            var coll = this.MongoDatabase.GetCollection(this.CollectionActive);
+            BsonDocument doc = coll.FindOneById(val);
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(true);
+                coll.Save(doc);
+            }
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void UnsuspendWorkflow(Guid id)
+        {
+            BsonValue val = BsonValue.Create(id);
+            var coll = this.MongoDatabase.GetCollection(this.CollectionActive);
+            BsonDocument doc = coll.FindOneById(id);
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(false);
+                workflowElement["RetryCount"] = BsonValue.Create(0);
+                workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
+                coll.Save(doc);
+            }
+
+        }
+
+
 
     }
 }

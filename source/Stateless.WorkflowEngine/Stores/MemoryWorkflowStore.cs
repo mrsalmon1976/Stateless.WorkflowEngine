@@ -171,7 +171,28 @@ namespace Stateless.WorkflowEngine.Stores
             }
         }
 
+        /// <summary>
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void SuspendWorkflow(Guid id)
+        {
+            Workflow w = this.Get(id);
+            w.IsSuspended = true;
+        }
 
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void UnsuspendWorkflow(Guid id)
+        {
+            Workflow w = this.Get(id);
+            w.IsSuspended = false;
+            w.RetryCount = 0;
+            w.ResumeOn = DateTime.UtcNow;
+        }
 
     }
 }

@@ -138,6 +138,19 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        void SuspendWorkflow(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        void UnsuspendWorkflow(Guid id);
     }
 
     public abstract class WorkflowStore : IWorkflowStore
@@ -319,6 +332,20 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         public abstract void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public abstract void SuspendWorkflow(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public abstract void UnsuspendWorkflow(Guid id);
+
 
     }
     

@@ -506,6 +506,62 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region Suspend Tests
+
+        [Test]
+        public void Suspend_OnSuspension_UpdatesWorkflowAndSaves()
+        {
+            IWorkflowStore store = GetStore();
+
+            // setup a new workflow
+            BasicWorkflow wf = new BasicWorkflow("Start");
+            wf.CreatedOn = DateTime.UtcNow.AddMinutes(-1);
+            wf.RetryCount = 0;
+            wf.IsSuspended = false;
+            store.Save(wf);
+
+            // execute
+            store.SuspendWorkflow(wf.Id);
+
+            // assert: fetch the workflow - it should be available and suspended
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.IsSuspended);
+        }
+
+        #endregion
+
+        #region Unsuspend Tests
+
+        [Test]
+        public void Ususpend_OnUnsuspension_UpdatesWorkflowAndSaves()
+        {
+            IWorkflowStore store = GetStore();
+
+            // setup a new workflow
+            BasicWorkflow wf = new BasicWorkflow("Start");
+            wf.CreatedOn = DateTime.UtcNow.AddMinutes(-1);
+            wf.RetryCount = 3;
+            wf.ResumeOn = DateTime.UtcNow.AddDays(1);
+            wf.IsSuspended = true;
+            store.Save(wf);
+
+            // execute
+            DateTime beforeSuspend = DateTime.UtcNow;
+            store.UnsuspendWorkflow(wf.Id);
+            DateTime afterSuspend = DateTime.UtcNow;
+
+            // assert: fetch the workflow - it should be available and unsuspended
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.IsNotNull(result);
+            Assert.IsFalse(result.IsSuspended);
+            Assert.AreEqual(0, result.RetryCount);
+            Assert.GreaterOrEqual(result.ResumeOn, beforeSuspend);
+            Assert.LessOrEqual(result.ResumeOn, afterSuspend);
+        }
+
+        #endregion
+
 
     }
 }
