@@ -556,8 +556,8 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Assert.IsNotNull(result);
             Assert.IsFalse(result.IsSuspended);
             Assert.AreEqual(0, result.RetryCount);
-            Assert.GreaterOrEqual(result.ResumeOn, beforeSuspend);
-            Assert.LessOrEqual(result.ResumeOn, afterSuspend);
+            Assert.Greater(result.ResumeOn, beforeSuspend.AddMilliseconds(-1));
+            Assert.Less(result.ResumeOn, afterSuspend.AddMilliseconds(1));
         }
 
         #endregion
