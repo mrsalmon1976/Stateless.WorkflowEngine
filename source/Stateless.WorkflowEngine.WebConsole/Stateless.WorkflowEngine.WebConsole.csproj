@@ -143,6 +143,8 @@
     <Compile Include="ViewModels\MultiSelectItem.cs" />
     <Compile Include="ViewModels\Store\StoreViewModel.cs" />
     <Compile Include="ViewModels\Store\WorkflowListViewModel.cs" />
+    <Compile Include="ViewModels\Store\WorkflowSuspensionModel.cs" />
+    <Compile Include="ViewModels\Store\WorkflowViewModel.cs" />
     <Compile Include="ViewModels\User\UserListViewModel.cs" />
     <Compile Include="ViewModels\User\UserViewModel.cs" />
     <Compile Include="WebConsoleBootstrapper.cs" />

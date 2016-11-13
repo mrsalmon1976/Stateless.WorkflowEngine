@@ -24,6 +24,14 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
         IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
 
+        /// <summary>
+        /// Converts a JSON workflow into a UIWorkflow object.
+        /// </summary>
+        /// <param name="json"></param>
+        /// <param name="workflowStoreType"></param>
+        /// <returns></returns>
+        UIWorkflow GetWorkflowInfoFromJson(string json, WorkflowStoreType workflowStoreType);
+
     }
 
 
@@ -63,28 +71,38 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             // for MongoDb, we can't use the GetIncomplete call because the Bson Deserialization call will fail 
             // with unknown types
-            if (connectionModel.WorkflowStoreType == WorkflowStoreType.MongoDb)
+            foreach (string doc in documents)
             {
-                foreach (string doc in documents)
-                {
-                    //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
-                    UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(doc);
-                    wc.Workflow.WorkflowType = wc.WorkflowType;
-                    workflows.Add(wc.Workflow);
-                }
-            }
-            else
-            {
-                foreach (string doc in documents)
-                {
-                    //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
-                    UIWorkflow wf = JsonConvert.DeserializeObject<UIWorkflow>(doc);
-                    workflows.Add(wf);
-                }
+                var wf = GetWorkflowInfoFromJson(doc, connectionModel.WorkflowStoreType);
+                workflows.Add(wf);
             }
 
             return workflows;
         }
+
+        /// <summary>
+        /// Converts a JSON workflow into a UIWorkflow object.
+        /// </summary>
+        /// <param name="json"></param>
+        /// <param name="workflowStoreType"></param>
+        /// <returns></returns>
+        public UIWorkflow GetWorkflowInfoFromJson(string json, WorkflowStoreType workflowStoreType)
+        {
+            // for MongoDb, we can't use the GetIncomplete call because the Bson Deserialization call will fail 
+            // with unknown types
+            if (workflowStoreType == WorkflowStoreType.MongoDb)
+            {
+                //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
+                UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(json);
+                wc.Workflow.WorkflowType = wc.WorkflowType;
+                return wc.Workflow;
+            }
+            else
+            {
+                return JsonConvert.DeserializeObject<UIWorkflow>(json);
+            }
+        }
+
 
 
         public void PopulateWorkflowStoreInfo(WorkflowStoreModel workflowStoreModel)

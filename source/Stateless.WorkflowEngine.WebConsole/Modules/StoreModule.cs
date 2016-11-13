@@ -1,4 +1,5 @@
 ﻿using Nancy;
+using Nancy.ModelBinding;
 using Nancy.Security;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
@@ -37,6 +38,16 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             Post[Actions.Store.List] = (x) =>
             {
                 return List();
+            };
+            // suspends a collection of workflows in a single database
+            Post[Actions.Store.Suspend] = (x) =>
+            {
+                return Suspend();
+            };
+            // unsuspends a collection of workflows in a single database
+            Post[Actions.Store.Unsuspend] = (x) =>
+            {
+                return Unsuspend();
             };
             // loads a single workflow
             Post[Actions.Store.Workflow] = (x) =>
@@ -84,22 +95,66 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
         }
 
+        public dynamic Suspend()
+        {
+            var model = this.Bind<WorkflowSuspensionModel>();
+            
+            // get the connection and load the workflows
+            ConnectionModel connection = _userStore.GetConnection(model.ConnectionId);
+            if (connection == null)
+            {
+                return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
+            }
+
+            IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connection);
+            foreach (var workflowId in model.WorkflowIds)
+            {
+                workflowStore.SuspendWorkflow(workflowId);
+            }
+            return Response.AsJson("{ }");
+        }
+
+        public dynamic Unsuspend()
+        {
+            var model = this.Bind<WorkflowSuspensionModel>();
+
+            // get the connection and load the workflows
+            ConnectionModel connection = _userStore.GetConnection(model.ConnectionId);
+            if (connection == null)
+            {
+                return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
+            }
+
+            IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connection);
+            foreach (var workflowId in model.WorkflowIds)
+            {
+                workflowStore.UnsuspendWorkflow(workflowId);
+            }
+            return Response.AsJson("{ }");
+        }
+
         public dynamic Workflow()
         {
             var workflowId = Request.Form["WorkflowId"];
             var connId = Request.Form["ConnectionId"];
             var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
 
-            // get the connection and load the workflows
+            // get the connection and load the workflow store
             ConnectionModel connection = _userStore.GetConnection(connId);
-
             IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
+
+            // extract the data we need to display the workflow
             string json = store.GetWorkflowAsJson(workflowId);
             if (json == null)
             {
-                return this.Response.AsJson(new { Message = "No workflow found matching the supplied workflow and connection" }, HttpStatusCode.NotFound);
+                return this.Response.AsJson(new { Message = "No workflow found matching the supplied workflow and connection (the workflow may have completed)." }, HttpStatusCode.NotFound);
             }
-            return Response.AsText(json);
+            UIWorkflow wf = _workflowInfoService.GetWorkflowInfoFromJson(json, connection.WorkflowStoreType);
+
+            WorkflowViewModel viewModel = new WorkflowViewModel();
+            viewModel.WorkflowJson = json;
+            viewModel.IsSuspended = wf.IsSuspended;
+            return this.Response.AsJson(viewModel);
 
         }
 

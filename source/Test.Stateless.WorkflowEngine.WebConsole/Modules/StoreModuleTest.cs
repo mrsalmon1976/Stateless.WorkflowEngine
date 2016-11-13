@@ -191,6 +191,212 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         }
         #endregion
 
+        #region Suspend Tests
+
+        [Test]
+        public void Suspend_NoConnectionFound_ReturnsNotFoundResponse()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Post(Actions.Store.Suspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
+        }
+
+        [Test]
+        public void Suspend_SingleWorkflow_SuspendsWorkflow()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Suspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).SuspendWorkflow(workflowId);
+        }
+
+        [Test]
+        public void Suspend_MultipleWorkflows_SuspendsWorkflows()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId1 = Guid.NewGuid();
+            var workflowId2 = Guid.NewGuid();
+            var workflowId3 = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Suspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId1.ToString());
+                with.FormValue("WorkflowIds", workflowId2.ToString());
+                with.FormValue("WorkflowIds", workflowId3.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).SuspendWorkflow(workflowId1);
+            workflowStore.Received(1).SuspendWorkflow(workflowId2);
+            workflowStore.Received(1).SuspendWorkflow(workflowId3);
+        }
+        #endregion
+
+        #region Unsuspend Tests
+
+        [Test]
+        public void Unsuspend_NoConnectionFound_ReturnsNotFoundResponse()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Post(Actions.Store.Unsuspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
+        }
+
+        [Test]
+        public void Unsuspend_SingleWorkflow_UnuspendsWorkflow()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Unsuspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).UnsuspendWorkflow(workflowId);
+        }
+
+        [Test]
+        public void Unsuspend_MultipleWorkflows_UnsuspendsWorkflows()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var browser = new Browser(bootstrapper);
+            var workflowId1 = Guid.NewGuid();
+            var workflowId2 = Guid.NewGuid();
+            var workflowId3 = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Unsuspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId1.ToString());
+                with.FormValue("WorkflowIds", workflowId2.ToString());
+                with.FormValue("WorkflowIds", workflowId3.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).UnsuspendWorkflow(workflowId1);
+            workflowStore.Received(1).UnsuspendWorkflow(workflowId2);
+            workflowStore.Received(1).UnsuspendWorkflow(workflowId3);
+        }
+        #endregion
+
         #region Workflow Methods
 
         [Test]
@@ -237,19 +443,25 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
+            UIWorkflow uiWorkflow = new UIWorkflow();
+            uiWorkflow.IsSuspended = DateTime.Now.Second > 30;
 
             ConnectionModel connection = new ConnectionModel()
             {
                 Id = connectionId,
-                Host = "myserver"
+                Host = "myserver",
+                WorkflowStoreType = WorkflowStoreType.MongoDb
             };
             _userStore.GetConnection(connectionId).Returns(connection);
 
-            var dummyWorkflow = new { DummyId = workflowId };
-            string json = JsonConvert.SerializeObject(dummyWorkflow);
+            string json = JsonConvert.SerializeObject(uiWorkflow);
+            
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
             workflowStore.GetWorkflowAsJson(workflowId).Returns(json);
+
+            _workflowInfoService.GetWorkflowInfoFromJson(json, WorkflowStoreType.MongoDb).Returns(uiWorkflow);
+            
             // execute
             var response = browser.Post(Actions.Store.Workflow, (with) =>
             {
@@ -261,8 +473,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual("text/plain", response.ContentType);
-            Assert.AreEqual(json, response.Body.AsString());
+            Assert.AreEqual("application/json; charset=utf-8", response.ContentType);
+
+            WorkflowViewModel wvm = JsonConvert.DeserializeObject<WorkflowViewModel>(response.Body.AsString());
+            Assert.IsNotNull(wvm);
+            Assert.AreEqual(json, wvm.WorkflowJson);
+            Assert.AreEqual(uiWorkflow.IsSuspended, wvm.IsSuspended);
         }
 
         #endregion

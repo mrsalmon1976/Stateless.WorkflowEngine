@@ -33,6 +33,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
 
             public const string List = "/store/list";
 
+            public const string Suspend = "/store/suspend";
+            
+            public const string Unsuspend = "/store/unsuspend";
+            
             public const string Workflow = "/store/workflow";
 
         }
