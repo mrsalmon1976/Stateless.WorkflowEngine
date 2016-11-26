@@ -6,6 +6,7 @@
     <table class="table table-striped table-hover table-bordered font90">
         <thead>
             <tr>
+                <th><input id="chk-workflow-all" type="checkbox" /></th>
                 <th>Id</th>
                 <th>Type</th>
                 <th>Resumes</th>
@@ -20,6 +21,7 @@
             @foreach (var wf in Model.Workflows)
             {
                 <tr @if (wf.IsSuspended) {  <text>class="danger"</text> }>
+                    <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
                     <td><a href="#" data-id="@wf.Id" data-type="@wf.WorkflowClassName" class="workflow-id">@wf.Id</a></td>
                     <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
                     <td>@wf.ResumeOn.ToLocalTime()</td>
@@ -32,6 +34,10 @@
             }
         </tbody>
     </table>
+    <div>
+        <button id="btn-suspend" class="btn btn-danger">Suspend Workflows</button>
+        <button id="btn-unsuspend" class="btn btn-primary">Unsuspend Workflows</button>
+    </div>
 }
 else
 {
