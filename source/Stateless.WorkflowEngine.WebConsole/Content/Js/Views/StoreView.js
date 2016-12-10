@@ -19,7 +19,7 @@ var StoreView = function () {
 
     this.init = function () {
         $('#btn-refresh').on('click', function () { that.loadWorkflows(); });
-        $('#btn-suspend').on('click', function () { that.workflowViewModel.toggleWorkflowSuspension(); });
+        $('#btn-suspend-single').on('click', function () { that.workflowViewModel.toggleWorkflowSuspension(); });
         this.loadWorkflows();
     };
 
@@ -161,9 +161,9 @@ var StoreViewWorkflowViewModel = function () {
         that.closeDialogCallback = closeDialogCallback;
         $('#txt-workflow-json').val('').show();
         $('#dlg-workflow').modal('show');
-        $('#workflow-spinner').show();
+        $('#spinner-suspend-single').show();
         $('#workflow-msg-error').hide();
-        $('#btn-suspend').prop('disabled', true);
+        $('#btn-suspend-single').prop('disabled', true);
 
         var request = $.ajax({
             url: "/store/workflow",
@@ -178,8 +178,8 @@ var StoreViewWorkflowViewModel = function () {
             $('#workflow-header-id').html(workflowTypeName + ' :: ' + that.workflowId);
 
             // pull stats we need from the json
-            $('#btn-suspend').html(response.isSuspended ? 'Unsuspend' : 'Suspend');
-            $('#btn-suspend').prop('disabled', false);
+            $('#btn-suspend-single').html(response.isSuspended ? 'Unsuspend' : 'Suspend');
+            $('#btn-suspend-single').prop('disabled', false);
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
@@ -195,15 +195,15 @@ var StoreViewWorkflowViewModel = function () {
             $('#workflow-msg-error').show().removeClass('hidden');
         });
         request.always(function (xhr, textStatus) {
-            $('#workflow-spinner').hide();
+            $('#spinner-suspend-single').hide();
         });
     };
 
     this.toggleWorkflowSuspension = function () {
         //debugger;
-        var suspend = ($('#btn-suspend').html() == 'Suspend');
-        $('#spinner-suspend').show();
-        $('#btn-suspend').prop('disabled', true);
+        var suspend = ($('#btn-suspend-single').html() == 'Suspend');
+        $('#spinner-suspend-single').show();
+        $('#btn-suspend-single').prop('disabled', true);
 
         var model = {
             "WorkflowIds": [that.workflowId],
@@ -230,8 +230,8 @@ var StoreViewWorkflowViewModel = function () {
             bootbox.alert({ message: "Failed to suspend workflow: " + errorThrown, size: 'small' });
         });
         request.always(function (xhr, textStatus) {
-            $('#spinner-suspend').hide();
-            $('#btn-suspend').prop('disabled', false);
+            $('#spinner-suspend-single').hide();
+            $('#btn-suspend-single').prop('disabled', false);
         });
     };
 
