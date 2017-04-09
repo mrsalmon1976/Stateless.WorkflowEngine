@@ -94,7 +94,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             Parallel.ForEach(workflowStoreModels, _workflowStoreService.PopulateWorkflowStoreInfo);
 
             ConnectionListViewModel model = new ConnectionListViewModel();
-            model.WorkflowStores.AddRange(workflowStoreModels);
+            model.WorkflowStores.AddRange(workflowStoreModels.OrderBy(x => x.ConnectionModel.Host).ThenBy(x => x.ConnectionModel.Database));
+            model.CurrentUserCanDeleteConnection = this.Context.CurrentUser.HasClaim(Claims.ConnectionDelete);
             return this.View[Views.Connection.List, model]; ;
 
         }

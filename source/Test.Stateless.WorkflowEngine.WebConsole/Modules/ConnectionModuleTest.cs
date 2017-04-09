@@ -18,6 +18,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 using Stateless.WorkflowEngine.WebConsole.Modules;
 using Stateless.WorkflowEngine.WebConsole.Navigation;
 using Stateless.WorkflowEngine.WebConsole.ViewModels;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Login;
 using System;
 using System.Collections.Generic;
@@ -62,7 +63,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_AuthTest()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -103,7 +104,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -128,7 +129,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_ConnectionFound_RemovesConnection()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -166,9 +167,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_OnExecute_LoadsAllConnectionsForCurrentUser()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
             int connectionCount = new Random().Next(3, 9);
             List<ConnectionModel> connections = new List<ConnectionModel>();
@@ -190,6 +190,84 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         }
 
+        [Test]
+        public void List_OnExecute_OrdersConnectionsByHostThenDatabase()
+        {
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            connections.Add(new ConnectionModel() { Host = "Z", Database = "A" });
+            connections.Add(new ConnectionModel() { Host = "Y", Database = "Z" });
+            connections.Add(new ConnectionModel() { Host = "Y", Database = "B" });
+            connections.Add(new ConnectionModel() { Host = "Z", Database = "B" });
+            connections.Add(new ConnectionModel() { Host = "A", Database = "A" });
+            connections.Add(new ConnectionModel() { Host = "A", Database = "B" });
+            _userStore.Connections.Returns(connections);
+
+            // execute
+            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            module.Context = new NancyContext();
+            var result = module.List();
+
+            // assert
+            ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
+            Assert.IsNotNull(model);
+            Assert.AreEqual(model.WorkflowStores[0].ConnectionModel.Host, "A");
+            Assert.AreEqual(model.WorkflowStores[0].ConnectionModel.Database, "A");
+            Assert.AreEqual(model.WorkflowStores[1].ConnectionModel.Host, "A");
+            Assert.AreEqual(model.WorkflowStores[1].ConnectionModel.Database, "B");
+            Assert.AreEqual(model.WorkflowStores[2].ConnectionModel.Host, "Y");
+            Assert.AreEqual(model.WorkflowStores[2].ConnectionModel.Database, "B");
+            Assert.AreEqual(model.WorkflowStores[3].ConnectionModel.Host, "Y");
+            Assert.AreEqual(model.WorkflowStores[3].ConnectionModel.Database, "Z");
+            Assert.AreEqual(model.WorkflowStores[4].ConnectionModel.Host, "Z");
+            Assert.AreEqual(model.WorkflowStores[4].ConnectionModel.Database, "A");
+            Assert.AreEqual(model.WorkflowStores[5].ConnectionModel.Host, "Z");
+            Assert.AreEqual(model.WorkflowStores[5].ConnectionModel.Database, "B");
+        }
+
+        [Test]
+        public void List_UserHasConnectionDeleteClaim_CurrentUserCanDeleteConnectionOnModelIsTrue()
+        {
+            // setup
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            _userStore.Connections.Returns(connections);
+
+            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            module.Context = new NancyContext();
+            module.Context.CurrentUser = new UserIdentity()
+            {
+                Claims = new string[] { Claims.ConnectionDelete }
+            };
+
+            // execute
+            var result = module.List();
+
+            // assert
+            ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
+            Assert.IsTrue(model.CurrentUserCanDeleteConnection);
+        }
+
+        [Test]
+        public void List_UserHasConnectionDeleteClaim_CurrentUserCannotDeleteConnectionOnModelIsFalse()
+        {
+            // setup
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            _userStore.Connections.Returns(connections);
+
+            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
+            module.Context = new NancyContext();
+            module.Context.CurrentUser = new UserIdentity()
+            {
+                Claims = new string[] { }
+            };
+
+            // execute
+            var result = module.List();
+
+            // assert
+            ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
+            Assert.IsFalse(model.CurrentUserCanDeleteConnection);
+        }
+
         #endregion
 
         #region Save Tests
@@ -198,7 +276,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_AuthTest()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -240,7 +318,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_InvalidModel_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
 
             var browser = new Browser(bootstrapper);
@@ -267,7 +345,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_NoPassword_DoesNotEncrypt()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
 
             var browser = new Browser(bootstrapper);
@@ -301,7 +379,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             string password = "testPassword";
             string encryptedPassword = Guid.NewGuid().ToString();
 
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
 
             var browser = new Browser(bootstrapper);
@@ -342,7 +420,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_InvalidModel_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
@@ -366,7 +444,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_ConnectionFails_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
 
@@ -395,7 +473,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_ConnectionSucceeds_ReturnsSuccess()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
 
@@ -424,7 +502,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapperAndUser(bool configureUsers = true)
+        private ModuleTestBootstrapper ConfigureBootstrapper(params string[] claims)
         {
             var bootstrapper = new ModuleTestBootstrapper();
             bootstrapper.Login();
@@ -437,26 +515,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 container.Register<IWorkflowStoreFactory>(_workflowStoreFactory);
             };
 
-            if (configureUsers)
-            {
-                ConfigureUsers(bootstrapper);
-            }
-            return bootstrapper;
-        }
-
-        private List<UserModel> ConfigureUsers(ModuleTestBootstrapper bootstrapper)
-        {
             // set up the logged in user
             UserModel user = new UserModel()
             {
                 Id = bootstrapper.CurrentUser.Id,
                 UserName = bootstrapper.CurrentUser.UserName,
                 Role = Roles.User,
-                Claims = new string[] { }
+                Claims = claims
             };
             List<UserModel> users = new List<UserModel>() { user };
             _userStore.Users.Returns(users);
-            return users;
+
+            return bootstrapper;
         }
 
         #endregion

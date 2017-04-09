@@ -118,7 +118,6 @@
     <Compile Include="BLL\Security\Roles.cs" />
     <Compile Include="BLL\Security\UserIdentity.cs" />
     <Compile Include="BLL\Services\WorkflowInfoService.cs" />
-    <Compile Include="BLL\Utils\DisplayUtils.cs" />
     <Compile Include="BLL\Utils\ParsedAssemblyQualifiedName.cs" />
     <Compile Include="BLL\Validators\ConnectionValidator.cs" />
     <Compile Include="BLL\Validators\UserValidator.cs" />

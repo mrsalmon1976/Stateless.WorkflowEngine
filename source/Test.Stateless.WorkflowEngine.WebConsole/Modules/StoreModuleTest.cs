@@ -56,7 +56,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Default_NoConnectionFound_ReturnsInternalServerError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
@@ -81,7 +81,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Default_ConnectionFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
 
@@ -102,10 +102,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
+            string responseBody = response.Body.AsString();
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.AreEqual(response.ContentType, "text/html");
             
-            // string responseBody = response.Body.AsString();
 
             response.Body["title"]
                 .ShouldExistOnce()
@@ -119,7 +119,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
@@ -143,7 +143,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_ConnectionFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var connectionId = Guid.NewGuid();
             int count = new Random().Next(5, 20);
@@ -197,7 +197,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -223,7 +223,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_SingleWorkflow_SuspendsWorkflow()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -257,7 +257,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_MultipleWorkflows_SuspendsWorkflows()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
@@ -300,7 +300,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -326,7 +326,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_SingleWorkflow_UnuspendsWorkflow()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -360,7 +360,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_MultipleWorkflows_UnsuspendsWorkflows()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
@@ -403,7 +403,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Workflow_NoWorkflowFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -439,7 +439,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Workflow_WorkflowFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser(false);
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
             var browser = new Browser(bootstrapper);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -485,7 +485,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapperAndUser(bool configureUsers = true)
+        private ModuleTestBootstrapper ConfigureBootstrapperAndUser(params string[] claims)
         {
             var bootstrapper = new ModuleTestBootstrapper();
             bootstrapper.Login();
@@ -500,21 +500,19 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                     context.ViewBag.CurrentUser = bootstrapper.CurrentUser;
                 };
 
-            if (configureUsers)
-            {
-                ConfigureUsers(bootstrapper);
-            }
+            ConfigureUsers(bootstrapper, claims);
             return bootstrapper;
         }
 
-        private List<UserModel> ConfigureUsers(ModuleTestBootstrapper bootstrapper)
+        private List<UserModel> ConfigureUsers(ModuleTestBootstrapper bootstrapper, string[] claims)
         {
             // set up the logged in user
             UserModel user = new UserModel()
             {
                 Id = bootstrapper.CurrentUser.Id,
                 UserName = bootstrapper.CurrentUser.UserName,
-                Role = bootstrapper.CurrentUser.Claims.First()
+                Role = Roles.User,
+                Claims = claims
             };
             List<UserModel> users = new List<UserModel>() { user };
             _userStore.Users.Returns(users);

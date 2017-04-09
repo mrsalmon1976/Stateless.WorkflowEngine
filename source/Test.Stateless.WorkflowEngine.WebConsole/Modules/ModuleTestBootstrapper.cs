@@ -105,7 +105,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             //FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
 
             context.ViewBag.Scripts = new List<string>();
+            context.ViewBag.Claims = new List<string>();
             context.CurrentUser = this.CurrentUser;
+            if (this.CurrentUser != null)
+            {
+                context.ViewBag.CurrentUserName = this.CurrentUser.UserName;
+            }
 
         }
 

@@ -14,7 +14,9 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
             this.WorkflowStores = new List<WorkflowStoreModel>();
         }
 
-        public List<WorkflowStoreModel> WorkflowStores { get; private set; }
+        public List<WorkflowStoreModel> WorkflowStores { get; set; }
+
+        public bool CurrentUserCanDeleteConnection { get; set; }
 
     }
 }

@@ -1,5 +1,6 @@
 ﻿@using Nancy.Security
 @using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using System.Collections.Generic
 @using System.Linq
 @using Stateless.WorkflowEngine.WebConsole.Navigation
 @using Stateless.WorkflowEngine.WebConsole.BLL.Security
@@ -9,7 +10,8 @@
     }
 }
 @{
-    IUserIdentity currentUser = ViewBag.CurrentUser;
+    List<string> currentUserClaims = ViewBag.Claims;
+    string currentUserName = ViewBag.CurrentUserName;
 }
 <html class=" js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths" lang="en">
     <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -37,7 +39,7 @@
         <li>
           <a href="#" id="mnu-change-password">
             <i class="fa fa-user"></i>
-            @currentUser.UserName
+            @currentUserName
           </a>
         </li>
         <li>
@@ -57,7 +59,7 @@
                 <i class="fa fa-dashboard"></i>
                 <a href="@Actions.Dashboard.Default">Dashboard</a>
                 </li>
-                @if (DisplayUtils.HasAnyClaim(currentUser, Claims.UserList, Claims.UserAdd))
+                @if (currentUserClaims.Contains(Claims.UserList) || currentUserClaims.Contains(Claims.UserAdd))
                 {
                     <li class="launcher@(MenuActiveClass("Users"))">
                     <i class="fa fa-users"></i>
@@ -75,7 +77,7 @@
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">@currentUser.UserName :: Change your password</h4>
+                    <h4 class="modal-title">@currentUserName :: Change your password</h4>
                 </div>
                 <div class="modal-body">
                     <div id="profile-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>

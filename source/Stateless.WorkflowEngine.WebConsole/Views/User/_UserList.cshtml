@@ -2,10 +2,11 @@
 @using Stateless.WorkflowEngine.WebConsole.Navigation
 @using Nancy.Security
 @using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using System.Collections.Generic
 @using System.Linq
 @using Stateless.WorkflowEngine.WebConsole.BLL.Security
 @{
-    IUserIdentity currentUser = ViewBag.CurrentUser;
+    List<string> currentUserClaims = ViewBag.Claims;
 }
 @if (Model.Users.Count > 0)
 {
@@ -32,7 +33,7 @@
                             <i class="fa fa-edit"></i>
                         </a>
                         *@
-                        @if (DisplayUtils.HasClaim(currentUser, Claims.UserDelete))
+                        @if (currentUserClaims.Contains(Claims.UserDelete))
                         {
                             <a class="btn btn-danger disabled" href="#">
                                 <i class="fa fa-trash"></i>
