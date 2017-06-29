@@ -9,14 +9,31 @@ using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Stateless.WorkflowEngine;
 using System.Threading;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
+using Stateless.WorkflowEngine.Exceptions;
 
 namespace Test.Stateless.WorkflowEngine
 {
     [TestFixture]
     public class WorkflowEngineExceptionHandlerTest
     {
+        [TestCase(true)]
+        [TestCase(false)]
+        [ExpectedException(ExpectedException = typeof(WorkflowException), ExpectedMessage = "RetryInterval property of workflow contains no values")]
+        public void HandleWorkflowException_RetryIntervalEmpty_ThrowsException(bool isSingleInstance)
+        {
+            BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            workflow.RetryIntervals = new int[] { };
+            workflow.IsSingleInstance = isSingleInstance;
+
+            // execute
+            IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
+            exceptionHandler.HandleWorkflowException(workflow, new Exception("Dummy exception"));
+        }
+
         [Test]
-        public void HandleMultipleInstanceWorkflowException_RetryCountNotExceeded_SetsResumeOnToFuture()
+        public void HandleWorkflowException_MultipleInstanceRetryCountNotExceeded_SetsResumeOnToFuture()
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
@@ -27,7 +44,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
+            exceptionHandler.HandleWorkflowException(workflow, ex);
             Thread.Sleep(100);
 
             Assert.AreEqual(ex.ToString(), workflow.LastException);
@@ -37,7 +54,7 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void HandleMultipleInstanceWorkflowException_RetryCountExceeded_SuspendsWorkflow()
+        public void HandleWorkflowException_MultipleInstanceRetryCountExceeded_SuspendsWorkflow()
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
@@ -49,7 +66,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
+            exceptionHandler.HandleWorkflowException(workflow, ex);
 
             Assert.AreEqual(ex.ToString(), workflow.LastException);
             Assert.AreEqual(DateTime.MinValue, workflow.ResumeOn);
@@ -57,36 +74,19 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void HandleMultipleInstanceWorkflowException_OnWorkflowSuspended_ExecutesOnSuspend()
-        {
-            Workflow workflow = Substitute.For<Workflow>();
-            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
-            workflow.ResumeTrigger = BrokenWorkflow.Trigger.DoStuff.ToString();
-            workflow.RetryIntervals = new int[] { 10, 10, 10 };
-            workflow.RetryCount = workflow.RetryIntervals.Length;
-
-            Exception ex = new Exception("Dummy exception");
-
-            // execute
-            IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
-
-            workflow.Received(1).OnSuspend();
-        }
-
-        [Test]
-        public void HandleSingleInstanceWorkflowException_RetryIntervalLengthNotExceeded_SleepsForSpecifiedTime()
+        public void HandleWorkflowException_SingleInstanceRetryIntervalLengthNotExceeded_SleepsForSpecifiedTime()
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
             workflow.RetryIntervals = new int[] { 10, 10, 10 };
+            workflow.IsSingleInstance = true;
 
             Exception ex = new Exception("Dummy exception");
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
+            exceptionHandler.HandleWorkflowException(workflow, ex);
             Thread.Sleep(100);
 
             Assert.AreEqual(ex.ToString(), workflow.LastException);
@@ -95,28 +95,29 @@ namespace Test.Stateless.WorkflowEngine
             Assert.IsFalse(workflow.IsSuspended);
         }
 
-        [TestCase(3)]
-        [TestCase(7)]
-        public void HandleSingleInstanceWorkflowException_RetryIntervalLengthNotExceeded_SleepsForSpecifiedTime(int retryCount)
+        [TestCase(10, 3)]
+        [TestCase(20, 7)]
+        public void HandleWorkflowException_SingleInstanceRetryIntervalLengthNotExceeded_SleepsForSpecifiedTime(int lastRetryInterval, int retryCount)
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
             workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-            workflow.RetryIntervals = new int[] {  };
+            workflow.RetryIntervals = new int[] { 2, 5, lastRetryInterval };
             workflow.RetryCount = retryCount;
+            workflow.IsSingleInstance = true;
 
             Exception ex = new Exception("Dummy exception");
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
+            exceptionHandler.HandleWorkflowException(workflow, ex);
             Thread.Sleep(100);
 
             Assert.AreEqual(ex.ToString(), workflow.LastException);
 
-            int approximateSeconds = retryCount * 60;
-            Assert.IsTrue(workflow.ResumeOn > DateTime.UtcNow.AddSeconds(approximateSeconds - 1));
-            Assert.IsTrue(workflow.ResumeOn < DateTime.UtcNow.AddSeconds(approximateSeconds + 10));
+            // we only have one retry interval on this workflow, 
+            Assert.IsTrue(workflow.ResumeOn > DateTime.UtcNow.AddSeconds(lastRetryInterval - 1));
+            Assert.IsTrue(workflow.ResumeOn < DateTime.UtcNow.AddSeconds(lastRetryInterval + 10));
             Assert.IsFalse(workflow.IsSuspended);
         }
 

@@ -110,23 +110,20 @@ namespace Stateless.WorkflowEngine
             }
             catch (Exception ex)
             {
-                if (workflow.IsSingleInstance)
-                {
-                    _exceptionHandler.HandleSingleInstanceWorkflowException(workflow, ex);
-                }
-                else
-                {
-                    _exceptionHandler.HandleMultipleInstanceWorkflowException(workflow, ex);
-                }
                 workflow.CurrentState = initialState;
+                _exceptionHandler.HandleWorkflowException(workflow, ex);
 
                 // raise the exception handler
                 workflow.OnError(ex);
 
                 // if the workflow is suspended, raise the events
-                if (workflow.IsSuspended && this.WorkflowSuspended != null)
+                if (workflow.IsSuspended)
                 {
-                    this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                    workflow.OnSuspend();
+                    if (this.WorkflowSuspended != null)
+                    {
+                        this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                    }
                 }
 
                 // exit out, nothing else to do here

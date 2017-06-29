@@ -148,7 +148,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
             workflowServer.ExecuteWorkflow(workflow);
 
-            exceptionHandler.Received(1).HandleSingleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
+            exceptionHandler.Received(1).HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
         }
 
         [Test]
@@ -183,7 +183,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
             workflowServer.ExecuteWorkflow(workflow);
 
-            exceptionHandler.Received(1).HandleMultipleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
+            exceptionHandler.Received(1).HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
 
         }
 
@@ -220,7 +220,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // make sure the workflow is suspended
             IWorkflowExceptionHandler workflowExceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
-            workflowExceptionHandler.WhenForAnyArgs(x => x.HandleMultipleInstanceWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>())).Do(x => { workflow.IsSuspended = true; });
+            workflowExceptionHandler.WhenForAnyArgs(x => x.HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>())).Do(x => { workflow.IsSuspended = true; });
 
             // execute
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), workflowExceptionHandler);
