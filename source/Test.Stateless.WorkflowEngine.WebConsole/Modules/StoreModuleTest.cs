@@ -191,6 +191,109 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         }
         #endregion
 
+        #region Remove Tests
+
+        [Test]
+        public void Remove_NoConnectionFound_ReturnsNotFoundResponse()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Post(Actions.Store.Remove, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
+        }
+
+        [Test]
+        public void Remove_SingleWorkflow_DeletesWorkflow()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            var workflowId = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Remove, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).Delete(workflowId);
+        }
+
+        [Test]
+        public void Remove_MultipleWorkflows_DeletesWorkflows()
+        {
+            // setup
+            var bootstrapper = this.ConfigureBootstrapperAndUser();
+            var browser = new Browser(bootstrapper);
+            var workflowId1 = Guid.NewGuid();
+            var workflowId2 = Guid.NewGuid();
+            var workflowId3 = Guid.NewGuid();
+            var connectionId = Guid.NewGuid();
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            // execute
+            var response = browser.Post(Actions.Store.Remove, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", workflowId1.ToString());
+                with.FormValue("WorkflowIds", workflowId2.ToString());
+                with.FormValue("WorkflowIds", workflowId3.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
+            workflowStore.Received(1).Delete(workflowId1);
+            workflowStore.Received(1).Delete(workflowId2);
+            workflowStore.Received(1).Delete(workflowId3);
+        }
+        #endregion
+
         #region Suspend Tests
 
         [Test]

@@ -1,0 +1,25 @@
+{
+    "_id" : LUUID("ba9884c8-d47d-f94c-a3ef-c8d06917a4cb"),
+    "Workflow" : {
+        "_t" : "BasicWorkflow",
+        "_id" : LUUID("ba9884c8-d47d-f94c-a3ef-c8d06917a4cb"),
+        "CreatedOn" : ISODate("2017-10-11T09:12:47.125Z"),
+        "IsSuspended" : false,
+        "LastException" : null,
+        "ResumeOn" : Date(-62135596800000),
+        "ResumeTrigger" : null,
+        "RetryCount" : 0,
+        "RetryIntervals" : [ 
+            5, 
+            10, 
+            15, 
+            30, 
+            60
+        ],
+        "CurrentState" : "Start",
+        "IsComplete" : false,
+        "IsSingleInstance" : false,
+        "BasicMetaData" : null
+    },
+    "WorkflowType" : "Test.Stateless.WorkflowEngine.Workflows.Basic.BasicWorkflow, Test.Stateless.WorkflowEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+}

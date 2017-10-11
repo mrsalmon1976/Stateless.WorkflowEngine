@@ -39,6 +39,11 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             {
                 return List();
             };
+            // deletes a collection of workflows in a single database
+            Post[Actions.Store.Remove] = (x) =>
+            {
+                return Remove();
+            };
             // suspends a collection of workflows in a single database
             Post[Actions.Store.Suspend] = (x) =>
             {
@@ -71,7 +76,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             return this.View[Views.Store.Default, model];
         }
 
-
         public dynamic List()
         {
             var id = Request.Form["id"];
@@ -93,6 +97,25 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
             return this.View[Views.Store.ListPartial, model];
 
+        }
+
+        public dynamic Remove()
+        {
+            var model = this.Bind<WorkflowDeleteModel>();
+
+            // get the connection and load the workflows
+            ConnectionModel connection = _userStore.GetConnection(model.ConnectionId);
+            if (connection == null)
+            {
+                return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
+            }
+
+            IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connection);
+            foreach (var workflowId in model.WorkflowIds)
+            {
+                workflowStore.Delete(workflowId);
+            }
+            return Response.AsJson("{ }");
         }
 
         public dynamic Suspend()

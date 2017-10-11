@@ -20,7 +20,33 @@ var StoreView = function () {
     this.init = function () {
         $('#btn-refresh').on('click', function () { that.loadWorkflows(); });
         $('#btn-suspend-single').on('click', function () { that.workflowViewModel.toggleWorkflowSuspension(); });
+        $('#btn-delete-single').on('click', function () { that.workflowViewModel.confirmWorkflowDelete(); });
         this.loadWorkflows();
+    };
+
+    this.deleteWorkflows = function () {
+        var workflowIds = this.getSelectedWorkflowIds();
+        if (workflowIds.length == 0) {
+            return;
+        }
+        bootbox.confirm({
+            message: "Are you sure you want to delete all selected workflows?  Workflows will be deleted permanently.",
+            buttons: {
+                confirm: {
+                    label: ' Yes ',
+                    className: 'btn-danger'
+                },
+                cancel: {
+                    label: ' No ',
+                    className: 'btn-default'
+                }
+            },
+            callback: function (result) {
+                if (result === true) {
+                    that.submitWorkflowActions(workflowIds, '/store/remove');
+                }
+            }
+        });
     };
 
     this.loadWorkflows = function () {
@@ -34,6 +60,7 @@ var StoreView = function () {
         $('#chk-workflow-all').off('click');
         $('#btn-suspend').off('click');
         $('#btn-unsuspend').off('click');
+        $('#btn-delete').off('click');
 
         var request = $.ajax({
             url: "/store/list",
@@ -49,6 +76,7 @@ var StoreView = function () {
             $('#chk-workflow-all').on('click', function () { that.toggleWorkflowCheckboxes($(this)); });
             $('#btn-suspend').on('click', function () { that.suspendWorkflows(); });
             $('#btn-unsuspend').on('click', function () { that.unsuspendWorkflows(); });
+            $('#btn-delete').on('click', function () { that.deleteWorkflows(); });
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
@@ -161,9 +189,10 @@ var StoreViewWorkflowViewModel = function () {
         that.closeDialogCallback = closeDialogCallback;
         $('#txt-workflow-json').val('').show();
         $('#dlg-workflow').modal('show');
-        $('#spinner-suspend-single').show();
+        $('#spinner-single').show();
         $('#workflow-msg-error').hide();
         $('#btn-suspend-single').prop('disabled', true);
+        $('#btn-delete-single').prop('disabled', true);
 
         var request = $.ajax({
             url: "/store/workflow",
@@ -180,6 +209,7 @@ var StoreViewWorkflowViewModel = function () {
             // pull stats we need from the json
             $('#btn-suspend-single').html(response.isSuspended ? 'Unsuspend' : 'Suspend');
             $('#btn-suspend-single').prop('disabled', false);
+            $('#btn-delete-single').prop('disabled', false);
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
@@ -195,15 +225,73 @@ var StoreViewWorkflowViewModel = function () {
             $('#workflow-msg-error').show().removeClass('hidden');
         });
         request.always(function (xhr, textStatus) {
-            $('#spinner-suspend-single').hide();
+            $('#spinner-single').hide();
+        });
+    };
+
+    this.confirmWorkflowDelete = function () {
+        bootbox.confirm({
+            message: "Are you sure you want to delete all this workflow?  The workflow will be permanently deleted.",
+            buttons: {
+                confirm: {
+                    label: ' Yes ',
+                    className: 'btn-danger'
+                },
+                cancel: {
+                    label: ' No ',
+                    className: 'btn-default'
+                }
+            },
+            callback: function (result) {
+                if (result === true) {
+                    that.deleteWorkflow();
+                }
+            }
+        });
+    };
+
+    this.deleteWorkflow = function () {
+        $('#spinner-single').show();
+        $('#btn-suspend-single').prop('disabled', true);
+        $('#btn-delete-single').prop('disabled', true);
+
+        var model = {
+            "WorkflowIds": [that.workflowId],
+            "ConnectionId": that.connectionId
+        };
+
+        var request = $.ajax({
+            url: "/store/remove",
+            method: "POST",
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify(model)
+        });
+
+        request.done(function (response) {
+            $('#dlg-workflow').modal('hide');
+            if (that.closeDialogCallback != null) {
+                that.closeDialogCallback();
+                that.closeDialogCallback = null;
+            }
+        });
+
+        request.fail(function (xhr, textStatus, errorThrown) {
+            bootbox.alert({ message: "Failed to delete workflow: " + errorThrown, size: 'small' });
+        });
+        request.always(function (xhr, textStatus) {
+            $('#spinner-single').hide();
+            $('#btn-suspend-single').prop('disabled', false);
+            $('#btn-delete-single').prop('disabled', false);
         });
     };
 
     this.toggleWorkflowSuspension = function () {
         //debugger;
         var suspend = ($('#btn-suspend-single').html() == 'Suspend');
-        $('#spinner-suspend-single').show();
+        $('#spinner-single').show();
         $('#btn-suspend-single').prop('disabled', true);
+        $('#btn-delete-single').prop('disabled', true);
 
         var model = {
             "WorkflowIds": [that.workflowId],
@@ -230,8 +318,9 @@ var StoreViewWorkflowViewModel = function () {
             bootbox.alert({ message: "Failed to suspend workflow: " + errorThrown, size: 'small' });
         });
         request.always(function (xhr, textStatus) {
-            $('#spinner-suspend-single').hide();
+            $('#spinner-single').hide();
             $('#btn-suspend-single').prop('disabled', false);
+            $('#btn-delete-single').prop('disabled', false);
         });
     };
 
