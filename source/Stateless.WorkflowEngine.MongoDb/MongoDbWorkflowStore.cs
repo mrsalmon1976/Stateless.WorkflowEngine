@@ -134,7 +134,7 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
         {
-            var docs = this.MongoDatabase.GetCollection(this.CollectionActive).FindAll().Take(count);
+            var docs = this.MongoDatabase.GetCollection(this.CollectionActive).FindAll().SetLimit(count);
             List<string> workflows = new List<string>();
             foreach (BsonDocument document in docs)
             {
@@ -202,10 +202,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var collection = GetCollection();
             var query = Query<MongoDbWorkflowContainer>.Where(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow));
-            return from s in collection.Find(query)
+            return from s in collection.Find(query).SetLimit(count)
                 .OrderByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
-                .Take(count)
                    select s.Workflow;
         }
 
@@ -218,10 +217,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var collection = GetCollection();
             var query = Query<MongoDbWorkflowContainer>.Where(x => (x.Workflow.ResumeOn <= DateTime.UtcNow));
-            return from s in collection.Find(query)
+            return from s in collection.Find(query).SetLimit(count)
                 .OrderByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
-                .Take(count)
                    select s.Workflow;
         }
 
