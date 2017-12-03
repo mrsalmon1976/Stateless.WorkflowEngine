@@ -4,3 +4,4 @@ source/Stateless.Workflow.Tests.VisualState.xml
 /deployment/Output
 source/CompiledIndexCache/
 source/.vs/
+deployment/*.zip

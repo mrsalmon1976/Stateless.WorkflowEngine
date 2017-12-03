@@ -287,6 +287,10 @@
       <Project>{650ff1f8-3dcc-4aa5-9d18-e4f77db03c78}</Project>
       <Name>Stateless.WorkflowEngine.MongoDb</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj">
+      <Project>{61162277-aae8-4189-aa1a-dc8545f87ae7}</Project>
+      <Name>Stateless.WorkflowEngine.RavenDb</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj">
       <Project>{eb4615d8-4123-4316-8d92-285680d6100c}</Project>
       <Name>Stateless.WorkflowEngine</Name>
