@@ -48,10 +48,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Stateless.WorkflowEngine\Properties\AssemblyInfo.cs">
+      <Link>Properties\AssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="MongoDbWorkflow.cs" />
     <Compile Include="MongoDbWorkflowContainer.cs" />
     <Compile Include="MongoDbWorkflowStore.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

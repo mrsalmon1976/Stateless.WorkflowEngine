@@ -58,7 +58,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\Stateless.WorkflowEngine\Properties\AssemblyInfo.cs">
+      <Link>Properties\AssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="RavenDbWorkflowStore.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -4,7 +4,6 @@
     <assembly path="Test.Stateless.WorkflowEngine\bin\Debug\Test.Stateless.WorkflowEngine.dll" />
     <assembly path="Test.Stateless.WorkflowEngine.MongoDb\bin\Debug\Test.Stateless.WorkflowEngine.MongoDb.dll" />
     <assembly path="Test.Stateless.WorkflowEngine.RavenDb\bin\Debug\Test.Stateless.WorkflowEngine.RavenDb.dll" />
-    <assembly path="Test.Stateless.WorkflowEngine.UI.Console\bin\Debug\Test.Stateless.WorkflowEngine.UI.Console.dll" />
     <assembly path="Test.Stateless.WorkflowEngine.WebConsole\bin\Debug\Test.Stateless.WorkflowEngine.WebConsole.dll" />
   </Config>
   <Config name="Release" binpathtype="Auto" />
