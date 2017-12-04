@@ -45,7 +45,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 cfg.CreateMap<UserViewModel, UserModel>();
             });
+        }
 
+        [TearDown]
+        public void UserModuleTest_TearDown()
+        {
+            Mapper.Reset();
         }
 
         #region ChangePassword Tests

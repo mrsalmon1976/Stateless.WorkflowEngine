@@ -57,6 +57,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         }
 
+        [TearDown]
+        public void ConnectionModuleTest_TearDown()
+        {
+            Mapper.Reset();
+        }
+
         #region Delete Tests
 
         [Test]
