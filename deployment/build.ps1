@@ -6,7 +6,7 @@ function ZipFile
 	)
 
 	set-alias sz "C:\Program Files\7-Zip\7z.exe"  
-	sz a -tzip $zipFile $sourceFile | Out-Null
+	sz a -tzip -r $zipFile $sourceFile | Out-Null
 }
 
 $root = $PSScriptRoot
