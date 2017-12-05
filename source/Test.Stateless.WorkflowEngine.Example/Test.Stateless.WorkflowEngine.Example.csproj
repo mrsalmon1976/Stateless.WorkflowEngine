@@ -56,17 +56,14 @@
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.2.6.3\lib\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="Raven.Abstractions">
-      <HintPath>..\packages\RavenDB.Database.3.0.30143\lib\net45\Raven.Abstractions.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Raven.Abstractions, Version=3.5.4.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
+      <HintPath>..\packages\RavenDB.Database.3.5.4\lib\net45\Raven.Abstractions.dll</HintPath>
     </Reference>
-    <Reference Include="Raven.Client.Lightweight">
-      <HintPath>..\packages\RavenDB.Client.3.0.30143\lib\net45\Raven.Client.Lightweight.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Raven.Client.Lightweight, Version=3.5.4.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
+      <HintPath>..\packages\RavenDB.Client.3.5.4\lib\net45\Raven.Client.Lightweight.dll</HintPath>
     </Reference>
-    <Reference Include="Raven.Database">
-      <HintPath>..\packages\RavenDB.Database.3.0.30143\lib\net45\Raven.Database.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Raven.Database, Version=3.5.4.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
+      <HintPath>..\packages\RavenDB.Database.3.5.4\lib\net45\Raven.Database.dll</HintPath>
     </Reference>
     <Reference Include="Stateless, Version=4.0.0.0, Culture=neutral, PublicKeyToken=93038f0927583c9a, processorArchitecture=MSIL">
       <HintPath>..\packages\Stateless.4.0.0\lib\net45\Stateless.dll</HintPath>
@@ -111,11 +108,12 @@
     <Compile Include="Workflows\FileCreation\FileCreationWorkflow.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-    <None Include="packages.config" />
-    <None Include="Raven.Studio.Html5.zip">
+    <None Include="..\packages\RavenDB.Database.3.5.4\tools\Raven.Studio.Html5.zip">
+      <Link>Raven.Studio.Html5.zip</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="App.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj">
