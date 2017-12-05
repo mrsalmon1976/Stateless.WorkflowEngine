@@ -28,7 +28,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class UserModuleTest
     {
-        private UserModule _userModule;
         private IUserStore _userStore;
         private IUserValidator _userValidator;
         private IPasswordProvider _passwordProvider;
@@ -39,7 +38,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = Substitute.For<IUserStore>();
             _userValidator = Substitute.For<IUserValidator>();
             _passwordProvider = Substitute.For<IPasswordProvider>();
-            _userModule = new UserModule(_userStore, _userValidator, _passwordProvider);
 
             Mapper.Initialize((cfg) =>
             {
@@ -55,14 +53,19 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void ChangePassword_InvalidPassword_ReturnsError(string password)
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             // execute
             var response = browser.Post(Actions.User.ChangePassword, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("Password", password);
                 with.FormValue("ConfirmPassword", "ConfirmPasswordIsOk");
             });
@@ -79,14 +82,19 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void ChangePassword_PasswordDoesNotMatchConfirm_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             // execute
             var response = browser.Post(Actions.User.ChangePassword, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("Password", "IsValidPassword");
                 with.FormValue("ConfirmPassword", "ButDoesNotMatch");
             });
@@ -109,13 +117,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             string newHashedPassword = Guid.NewGuid().ToString();
 
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             UserModel user = new UserModel()
             {
-                Id = bootstrapper.CurrentUser.Id,
-                UserName = bootstrapper.CurrentUser.UserName,
+                Id = currentUser.Id,
+                UserName = currentUser.UserName,
                 Password = oldPassword
             };
             List<UserModel> users = new List<UserModel>() { user };
@@ -128,7 +141,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.User.ChangePassword, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("Password", newPassword);
                 with.FormValue("ConfirmPassword", newPassword);
             });
@@ -156,8 +169,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_AuthTest()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             _userStore.Users.Returns(new List<UserModel>() { });
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
@@ -165,13 +183,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             foreach (string claim in Claims.AllClaims)
             {
 
-                bootstrapper.CurrentUser.Claims = new string[] { claim };
+                currentUser.Claims = new string[] { claim };
 
                 // execute
                 var response = browser.Post(Actions.User.Save, (with) =>
                 {
                     with.HttpRequest();
-                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                     //with.FormValue("id", connectionId.ToString());
                 });
 
@@ -192,9 +210,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_InvalidUser_ReturnsFailure()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.UserAdd };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult("error"));
 
@@ -202,7 +225,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.User.Save, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("Password", "password");
                 with.FormValue("ConfirmPassword", "password");
             });
@@ -222,9 +245,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_PasswordsDoNotMatch_ReturnsFailure()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.UserAdd };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
 
@@ -232,7 +260,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.User.Save, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("ConfirmPassword", Guid.NewGuid().ToString());
             });
 
@@ -254,9 +282,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             const string userName = "TestUser";
             const string password = "password1";
 
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.UserAdd };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
             _userStore.Users.Returns(new List<UserModel>());
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
@@ -265,7 +298,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.User.Save, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("UserName", userName);
                 with.FormValue("Password", password);
                 with.FormValue("ConfirmPassword", password);
@@ -293,9 +326,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             const string userName = "TestUser";
             const string password = "password1";
 
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.UserAdd };
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.UserAdd };
+            var browser = new Browser((bootstrapper) =>
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
+                    .RequestStartup((container, pipelines, context) => {
+                        context.CurrentUser = currentUser;
+                    })
+                );
             _userStore.Users.Returns(new List<UserModel>());
 
             _userValidator.Validate(Arg.Any<UserModel>()).Returns(new ValidationResult());
@@ -309,7 +347,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.User.Save, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("UserName", userName);
                 with.FormValue("Password", password);
                 with.FormValue("ConfirmPassword", password);
@@ -332,24 +370,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #endregion
 
-        #region Private Methods
-
-        private ModuleTestBootstrapper ConfigureBootstrapper()
-        {
-            var bootstrapper = new ModuleTestBootstrapper();
-            bootstrapper.Login();
-            bootstrapper.ConfigureRequestContainerCallback = (container) =>
-            {
-                container.Register<IUserStore>(_userStore);
-                container.Register<IUserValidator>(_userValidator);
-                container.Register<IPasswordProvider>(_passwordProvider);
-            };
-            return bootstrapper;
-        }
-
-
-
-        #endregion
 
 
     }

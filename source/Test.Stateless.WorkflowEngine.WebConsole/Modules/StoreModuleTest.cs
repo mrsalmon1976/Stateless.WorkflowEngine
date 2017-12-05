@@ -34,7 +34,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class StoreModuleTest
     {
-        private StoreModule _storeModule;
         private IUserStore _userStore;
         private IWorkflowInfoService _workflowInfoService;
         private IWorkflowStoreFactory _workflowStoreFactory;
@@ -45,9 +44,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = Substitute.For<IUserStore>();
             _workflowInfoService = Substitute.For<IWorkflowInfoService>();
             _workflowStoreFactory = Substitute.For<IWorkflowStoreFactory>();
-
-            _storeModule = new StoreModule(_userStore, _workflowInfoService, _workflowStoreFactory);
-
         }
 
         #region Default Tests
@@ -56,24 +52,33 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Default_NoConnectionFound_ReturnsInternalServerError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
 
             _userStore.GetConnection(connectionId).Returns(connection);
 
             // execute
-            var response = browser.Get(Actions.Store.Default, (with) =>
+            try
             {
-                with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
-                with.Query("id", connectionId.ToString());
-            });
-
-            // assert
-            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-            Assert.IsTrue(response.Body.AsString().Contains("No connection found"));
+                var response = browser.Get(Actions.Store.Default, (with) =>
+                {
+                    with.HttpRequest();
+                    with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.Query("id", connectionId.ToString());
+                });
+                Assert.Fail("Expected exception to be thrown with invalid connection id supplied");
+            }
+            catch (Exception ex)
+            {
+                // assert
+                //Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+                //Assert.IsTrue(response.Body.AsString().Contains("No connection found"));
+                Assert.IsInstanceOf<ArgumentException>(ex.InnerException.InnerException);
+                Assert.IsTrue(ex.InnerException.InnerException.Message.Contains("No connection found"));
+            }
             _userStore.Received(1).GetConnection(connectionId);
         }
 
@@ -81,8 +86,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Default_ConnectionFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
 
             ConnectionModel connection = new ConnectionModel()
@@ -97,7 +102,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Get(Actions.Store.Default, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.Query("id", connectionId.ToString());
             });
 
@@ -119,8 +124,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
 
@@ -130,7 +135,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.List, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("id", connectionId.ToString());
             });
 
@@ -143,8 +148,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_ConnectionFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
             int count = new Random().Next(5, 20);
 
@@ -170,7 +175,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.List, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("id", connectionId.ToString());
             });
 
@@ -197,8 +202,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Remove_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
@@ -209,7 +214,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Remove, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -223,8 +228,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Remove_SingleWorkflow_DeletesWorkflow()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
@@ -242,7 +247,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Remove, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -257,8 +262,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Remove_MultipleWorkflows_DeletesWorkflows()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
             var workflowId3 = Guid.NewGuid();
@@ -278,7 +283,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Remove, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId1.ToString());
                 with.FormValue("WorkflowIds", workflowId2.ToString());
                 with.FormValue("WorkflowIds", workflowId3.ToString());
@@ -300,8 +305,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
@@ -312,7 +317,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Suspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -326,8 +331,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_SingleWorkflow_SuspendsWorkflow()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
@@ -345,7 +350,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Suspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -360,8 +365,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Suspend_MultipleWorkflows_SuspendsWorkflows()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
             var workflowId3 = Guid.NewGuid();
@@ -381,7 +386,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Suspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId1.ToString());
                 with.FormValue("WorkflowIds", workflowId2.ToString());
                 with.FormValue("WorkflowIds", workflowId3.ToString());
@@ -403,8 +408,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             ConnectionModel connection = null;
@@ -415,7 +420,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Unsuspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -429,8 +434,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_SingleWorkflow_UnuspendsWorkflow()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
@@ -448,7 +453,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Unsuspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -463,8 +468,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Unsuspend_MultipleWorkflows_UnsuspendsWorkflows()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
             var workflowId3 = Guid.NewGuid();
@@ -484,7 +489,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Unsuspend, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowIds", workflowId1.ToString());
                 with.FormValue("WorkflowIds", workflowId2.ToString());
                 with.FormValue("WorkflowIds", workflowId3.ToString());
@@ -506,8 +511,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Workflow_NoWorkflowFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
 
@@ -528,7 +533,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Workflow, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowId", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -542,8 +547,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Workflow_WorkflowFound_SetsModelAndReturnsView()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapperAndUser();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
             UIWorkflow uiWorkflow = new UIWorkflow();
@@ -569,7 +574,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Store.Workflow, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("WorkflowId", workflowId.ToString());
                 with.FormValue("ConnectionId", connectionId.ToString());
             });
@@ -588,32 +593,32 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapperAndUser(params string[] claims)
+        private Browser CreateBrowser(UserIdentity currentUser)
         {
-            var bootstrapper = new ModuleTestBootstrapper();
-            bootstrapper.Login();
-            bootstrapper.ConfigureRequestContainerCallback = (container) =>
-            {
-                container.Register<IUserStore>(_userStore);
-                container.Register<IWorkflowInfoService>(_workflowInfoService);
-                container.Register<IWorkflowStoreFactory>(_workflowStoreFactory);
-            };
-            bootstrapper.ConfigureRequestStartupCallback = (container, pipelines, context) =>
-                {
-                    context.ViewBag.CurrentUser = bootstrapper.CurrentUser;
-                };
-
-            ConfigureUsers(bootstrapper, claims);
-            return bootstrapper;
+            var browser = new Browser((bootstrapper) =>
+                            bootstrapper.Module(new StoreModule(_userStore, _workflowInfoService, _workflowStoreFactory))
+                                .RootPathProvider(new TestRootPathProvider())
+                                .RequestStartup((container, pipelines, context) => {
+                                    context.CurrentUser = currentUser;
+                                    context.ViewBag.Scripts = new List<string>();
+                                    context.ViewBag.Claims = new List<string>();
+                                    context.CurrentUser = currentUser;
+                                    if (currentUser != null)
+                                    {
+                                        context.ViewBag.CurrentUserName = currentUser.UserName;
+                                    }
+                                })
+                            );
+            return browser;
         }
 
-        private List<UserModel> ConfigureUsers(ModuleTestBootstrapper bootstrapper, string[] claims)
+        private List<UserModel> ConfigureUsers(UserIdentity currentUser, string[] claims)
         {
             // set up the logged in user
             UserModel user = new UserModel()
             {
-                Id = bootstrapper.CurrentUser.Id,
-                UserName = bootstrapper.CurrentUser.UserName,
+                Id = currentUser.Id,
+                UserName = currentUser.UserName,
                 Role = Roles.User,
                 Claims = claims
             };

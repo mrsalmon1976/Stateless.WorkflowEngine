@@ -1,6 +1,7 @@
 ﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.Store.WorkflowListViewModel>
 @using Stateless.WorkflowEngine;
 @using Stateless.WorkflowEngine.WebConsole.Navigation
+@using Stateless.WorkflowEngine.WebConsole.BLL.Models
 @if (Model.Workflows.Count > 0)
 {
     <table class="table table-striped table-hover table-bordered font90">

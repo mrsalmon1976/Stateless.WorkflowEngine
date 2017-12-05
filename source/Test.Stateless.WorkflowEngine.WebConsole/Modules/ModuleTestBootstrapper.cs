@@ -103,7 +103,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             //    UserMapper = container.Resolve<IUserMapper>(),
             //};
             //FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
-
             context.ViewBag.Scripts = new List<string>();
             context.ViewBag.Claims = new List<string>();
             context.CurrentUser = this.CurrentUser;

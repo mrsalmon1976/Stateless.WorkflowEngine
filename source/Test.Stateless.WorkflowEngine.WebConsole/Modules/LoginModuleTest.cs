@@ -25,7 +25,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class LoginModuleTest
     {
-        private LoginModule _loginModule;
         private IUserStore _userStore;
         private IPasswordProvider _passwordProvider;
 
@@ -35,8 +34,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = Substitute.For<IUserStore>();
             _userStore.Users.Returns(new List<UserModel>());
             _passwordProvider = Substitute.For<IPasswordProvider>();
-
-            _loginModule = new LoginModule(_userStore, _passwordProvider);
         }
 
         #region LoginGet Tests
@@ -45,15 +42,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginGet_UserLoggedIn_RedirectsToDashboard()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.Login();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
 
             // execute
             var response = browser.Get(Actions.Login.Default, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -64,8 +60,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginGet_NoReturnUrl_DefaultsToDashboard()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper); 
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Get(Actions.Login.Default, (with) =>
@@ -85,8 +80,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginGet_WithReturnUrl_SetsReturnUrlFormValue()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Get(Actions.Login.Default, (with) =>
@@ -111,8 +105,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginPost_NoUserName_LoginFailsWithoutCheck()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
@@ -133,8 +126,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void LoginPost_NoPassword_LoginFailsWithoutCheck()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
@@ -157,9 +149,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             bool userStoreChecked = false;
             _userStore.Users.Returns(new List<UserModel>()).AndDoes((c) => { userStoreChecked = true; });
-            var bootstrapper = this.ConfigureBootstrapper();
-
-            var browser = new Browser(bootstrapper);
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
@@ -194,8 +184,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             _passwordProvider.CheckPassword(Arg.Any<string>(), Arg.Any<string>()).Returns(false);
 
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var browser = CreateBrowser(null);
 
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
@@ -230,17 +219,21 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             _passwordProvider.CheckPassword(Arg.Any<string>(), Arg.Any<string>()).Returns(true);
 
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.ConfigureRequestStartupCallback = (container, pipelines, context) =>
-            {
-                var formsAuthConfiguration = new FormsAuthenticationConfiguration()
-                {
-                    RedirectUrl = "~/login",
-                    UserMapper = container.Resolve<IUserMapper>(),
-                };
-                FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
-            };
-            var browser = new Browser(bootstrapper);
+
+            var browser = new Browser((bootstrapper) =>
+                            bootstrapper.Module(new LoginModule(_userStore, _passwordProvider))
+                                .RootPathProvider(new TestRootPathProvider())
+                                .RequestStartup((container, pipelines, context) => {
+                                    container.Register<IUserMapper, UserMapper>();
+                                    container.Register<IUserStore>(Substitute.For<IUserStore>());
+                                    var formsAuthConfiguration = new FormsAuthenticationConfiguration()
+                                    {
+                                        RedirectUrl = "~/login",
+                                        UserMapper = container.Resolve<IUserMapper>(),
+                                    };
+                                    FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
+                                })
+                            );
 
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
@@ -262,15 +255,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapper()
+        private Browser CreateBrowser(UserIdentity currentUser)
         {
-            var bootstrapper = new ModuleTestBootstrapper();
-            bootstrapper.ConfigureRequestContainerCallback = (container) =>
-            {
-                container.Register<IUserStore>(_userStore);
-                container.Register<IPasswordProvider>(_passwordProvider);
-            };
-            return bootstrapper;
+            var browser = new Browser((bootstrapper) =>
+                            bootstrapper.Module(new LoginModule(_userStore, _passwordProvider))
+                                .RootPathProvider(new TestRootPathProvider())
+                                .RequestStartup((container, pipelines, context) => {
+                                    context.CurrentUser = currentUser;
+                                })
+                            );
+            return browser;
         }
 
         #endregion

@@ -70,7 +70,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
             if (model.Connection == null)
             {
-                throw new Exception("No connection found matching the supplied id");
+                throw new ArgumentException("No connection found matching the supplied id");
             }
 
             return this.View[Views.Store.Default, model];
