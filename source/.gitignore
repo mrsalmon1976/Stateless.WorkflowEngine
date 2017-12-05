@@ -4,5 +4,6 @@ packages/*
 !packages/repositories.config
 *.nupkg
 Assemblies/
-Raven/
 CompiledIndexCache/
+Raven/
+

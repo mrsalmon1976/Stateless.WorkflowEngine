@@ -32,7 +32,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class ConnectionModuleTest
     {
-        private ConnectionModule _connectionModule;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
@@ -47,8 +46,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _connectionValidator = Substitute.For<IConnectionValidator>();
             _workflowStoreService = Substitute.For<IWorkflowInfoService>();
             _workflowStoreFactory = Substitute.For<IWorkflowStoreFactory>();
-
-            _connectionModule = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
 
             Mapper.Initialize((cfg) =>
             {
@@ -69,8 +66,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_AuthTest()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
 
             ConnectionModel connection = new ConnectionModel()
@@ -83,13 +80,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             foreach (string claim in Claims.AllClaims)
             {
 
-                bootstrapper.CurrentUser.Claims = new string[] { claim };
+                currentUser.Claims = new string[] { claim };
 
                 // execute
                 var response = browser.Post(Actions.Connection.Delete, (with) =>
                 {
                     with.HttpRequest();
-                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                     with.FormValue("id", connectionId.ToString());
                 });
 
@@ -110,18 +107,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
 
             _userStore.Connections.Returns(new List<ConnectionModel>());
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionDelete };
 
             // execute
             var response = browser.Post(Actions.Connection.Delete, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("id", connectionId.ToString());
             });
 
@@ -135,8 +132,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Delete_ConnectionFound_RemovesConnection()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
 
             ConnectionModel connection = new ConnectionModel()
@@ -145,7 +143,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             };
             List<ConnectionModel> connections = new List<ConnectionModel>();
             connections.Add(connection);
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionDelete };
 
             _userStore.Connections.Returns(connections);
             _userStore.GetConnection(connectionId).Returns(connection);
@@ -154,7 +151,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Connection.Delete, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                 with.FormValue("id", connectionId.ToString());
             });
 
@@ -173,8 +170,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void List_OnExecute_LoadsAllConnectionsForCurrentUser()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
 
             int connectionCount = new Random().Next(3, 9);
             List<ConnectionModel> connections = new List<ConnectionModel>();
@@ -188,7 +185,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Get(Actions.Connection.List, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -282,8 +279,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_AuthTest()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             var connectionId = Guid.NewGuid();
 
             ConnectionModel connection = new ConnectionModel()
@@ -297,13 +294,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
 
-                bootstrapper.CurrentUser.Claims = new string[] { claim };
+                currentUser.Claims = new string[] { claim };
 
                 // execute
                 var response = browser.Post(Actions.Connection.Save, (with) =>
                 {
                     with.HttpRequest();
-                    with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                    with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
                     with.FormValue("id", connectionId.ToString());
                 });
 
@@ -324,17 +321,17 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_InvalidModel_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var browser = CreateBrowser(currentUser);
 
-            var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
             // execute
             var response = browser.Post(Actions.Connection.Save, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -351,10 +348,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Save_NoPassword_DoesNotEncrypt()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var browser = CreateBrowser(currentUser);
 
-            var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
             _userStore.Connections.Returns(new List<ConnectionModel>());
 
@@ -363,7 +360,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 with.HttpRequest();
                 with.FormValue("Password", "");
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -385,10 +382,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             string password = "testPassword";
             string encryptedPassword = Guid.NewGuid().ToString();
 
-            var bootstrapper = this.ConfigureBootstrapper();
-            bootstrapper.CurrentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var browser = CreateBrowser(currentUser);
 
-            var browser = new Browser(bootstrapper);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
             _encryptionProvider.NewKey().Returns(key);
             _encryptionProvider.SimpleEncrypt(password, key, null).Returns(encryptedPassword);
@@ -401,7 +398,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 with.HttpRequest();
                 with.FormValue("Password", password);
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -426,15 +423,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_InvalidModel_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
 
             // execute
             var response = browser.Post(Actions.Connection.Test, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -450,8 +447,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_ConnectionFails_ReturnsError()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
 
             // set up the workflow store to throw an exception
@@ -463,7 +460,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Connection.Test, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -479,8 +476,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void Test_ConnectionSucceeds_ReturnsSuccess()
         {
             // setup
-            var bootstrapper = this.ConfigureBootstrapper();
-            var browser = new Browser(bootstrapper);
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
             _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
 
             // set up the workflow store to throw an exception
@@ -491,7 +488,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var response = browser.Post(Actions.Connection.Test, (with) =>
             {
                 with.HttpRequest();
-                with.FormsAuth(bootstrapper.CurrentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
             // assert
@@ -508,31 +505,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
         #region Private Methods
 
-        private ModuleTestBootstrapper ConfigureBootstrapper(params string[] claims)
+        private Browser CreateBrowser(UserIdentity currentUser)
         {
-            var bootstrapper = new ModuleTestBootstrapper();
-            bootstrapper.Login();
-            bootstrapper.ConfigureRequestContainerCallback = (container) =>
-            {
-                container.Register<IUserStore>(_userStore);
-                container.Register<IEncryptionProvider>(_encryptionProvider);
-                container.Register<IConnectionValidator>(_connectionValidator);
-                container.Register<IWorkflowInfoService>(_workflowStoreService);
-                container.Register<IWorkflowStoreFactory>(_workflowStoreFactory);
-            };
-
-            // set up the logged in user
-            UserModel user = new UserModel()
-            {
-                Id = bootstrapper.CurrentUser.Id,
-                UserName = bootstrapper.CurrentUser.UserName,
-                Role = Roles.User,
-                Claims = claims
-            };
-            List<UserModel> users = new List<UserModel>() { user };
-            _userStore.Users.Returns(users);
-
-            return bootstrapper;
+            var browser = new Browser((bootstrapper) =>
+                            bootstrapper.Module(new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory))
+                                .RootPathProvider(new TestRootPathProvider())
+                                .RequestStartup((container, pipelines, context) => {
+                                    context.CurrentUser = currentUser;
+                                })
+                            );
+            return browser;
         }
 
         #endregion
