@@ -1,14 +1,14 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Stateless.WorkflowEngine.WebConsole")]
-[assembly: AssemblyDescription("Assembly used for the administration of workflows via a web GUI.")]
+[assembly: AssemblyTitle("Stateless.WorkflowEngine.RavenDb")]
+[assembly: AssemblyDescription("Assembly required for the pesistence of workflows to a RavenDb database")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyProduct("Stateless.WorkflowEngine.WebConsole")]
+[assembly: AssemblyProduct("Stateless.WorkflowEngine.RavenDb")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 
@@ -16,5 +16,4 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("c2b227f5-c507-4871-acc5-7fc86224dac7")]
-
+[assembly: Guid("748fba90-115d-4511-8a37-0ea11914a076")]
