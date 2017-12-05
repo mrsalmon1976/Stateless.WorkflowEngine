@@ -177,7 +177,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             var doc = this.MongoDatabase.GetCollection(this.CollectionActive).FindOne(_queryByIdJson(id));
             if (doc != null)
             {
-                var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, CloseOutput = true, Indent = true };
+                var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
                 //UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
                 //wc.Workflow.WorkflowType = wc.WorkflowType;

@@ -114,6 +114,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var bootstrapper = this.ConfigureBootstrapper();
             var browser = new Browser(bootstrapper);
 
+            //var browser = new Browser(with => with.Module(new LoginModule(_userStore, _passwordProvider)));
+
             // execute
             var response = browser.Post(Actions.Login.Default, (with) =>
             {
