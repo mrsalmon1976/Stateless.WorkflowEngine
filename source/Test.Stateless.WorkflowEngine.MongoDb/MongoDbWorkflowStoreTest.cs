@@ -31,8 +31,8 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
         #region SetUp and TearDown
 
-        [TestFixtureSetUp]
-        public void MongoDbWorkflowStoreTest_FixtureSetUp()
+        [OneTimeSetUp]
+        public void MongoDbWorkflowStoreTest_OneTimeSetUp()
         {
             var connectionString = "mongodb://localhost";
             var client = new MongoClient(connectionString);
@@ -40,8 +40,8 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             _database = server.GetDatabase("StatelessWorkflowTest");
         }
 
-        [TestFixtureTearDown]
-        public void MongoDbWorkflowStoreTest_FixtureTearDown()
+        [OneTimeTearDown]
+        public void MongoDbWorkflowStoreTest_OneTimeTearDown()
         {
         }
 

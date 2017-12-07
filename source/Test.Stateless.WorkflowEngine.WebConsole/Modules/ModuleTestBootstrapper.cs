@@ -18,6 +18,7 @@ using System.Security.Principal;
 using Nancy.Security;
 using Nancy.ViewEngines.Razor;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
+using NUnit.Framework;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -143,7 +144,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     {
         public string GetRootPath()
         {
-            return Environment.CurrentDirectory;
+            return TestContext.CurrentContext.TestDirectory; 
         }
     }
 

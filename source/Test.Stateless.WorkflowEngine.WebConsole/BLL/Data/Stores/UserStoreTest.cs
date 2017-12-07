@@ -72,7 +72,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             Assert.AreEqual(user.Id, _userStore.Users[0].Id);
             Assert.AreEqual(user.UserName, _userStore.Users[0].UserName);
             Assert.AreEqual(Roles.Admin, _userStore.Users[0].Role);
-            Assert.IsNotNullOrEmpty(_userStore.Users[0].Password);
+            Assert.IsNotNull(_userStore.Users[0].Password);
+            Assert.IsNotEmpty(_userStore.Users[0].Password);
         }
 
         [Test]

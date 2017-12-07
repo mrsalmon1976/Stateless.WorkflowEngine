@@ -72,11 +72,12 @@ namespace Test.Stateless.WorkflowEngine.Stores
         #region Get Tests
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(WorkflowNotFoundException))]
         public void Get_InvalidId_ThrowsException()
         {
             IWorkflowStore store = GetStore();
-            store.Get(Guid.NewGuid());
+            TestDelegate del = () => store.Get(Guid.NewGuid());
+            Assert.Throws<WorkflowNotFoundException>(del);
+
         }
 
         [Test]

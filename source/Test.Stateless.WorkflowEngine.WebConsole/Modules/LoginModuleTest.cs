@@ -247,10 +247,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             Assert.AreEqual(HttpStatusCode.SeeOther, response.StatusCode);
-            Assert.IsNotNullOrEmpty(response.Headers["Location"]);
+            Assert.IsNotNull(response.Headers["Location"]);
+            Assert.IsNotEmpty(response.Headers["Location"]);
             _passwordProvider.Received(1).CheckPassword(Arg.Any<string>(), Arg.Any<string>());
             Assert.IsTrue(userStoreChecked);
-            Assert.IsNullOrEmpty(response.Body.AsString());
+            Assert.IsEmpty(response.Body.AsString());
         }
 
         #endregion

@@ -18,7 +18,6 @@ namespace Test.Stateless.WorkflowEngine
     {
         [TestCase(true)]
         [TestCase(false)]
-        [ExpectedException(ExpectedException = typeof(WorkflowException), ExpectedMessage = "RetryInterval property of workflow contains no values")]
         public void HandleWorkflowException_RetryIntervalEmpty_ThrowsException(bool isSingleInstance)
         {
             BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
@@ -29,7 +28,10 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            exceptionHandler.HandleWorkflowException(workflow, new Exception("Dummy exception"));
+            TestDelegate del = () => exceptionHandler.HandleWorkflowException(workflow, new Exception("Dummy exception"));
+
+            // assert
+            Assert.Throws<WorkflowException>(del);
         }
 
         [Test]

@@ -13,11 +13,11 @@ namespace Test.Stateless.WorkflowEngine
     {
         [TestCase("")]
         [TestCase(null)]
-        [ExpectedException(ExpectedException = typeof(WorkflowException))]
         public void Fire_WithNullOrEmptyTriggerName_ThrowsException(string triggerName)
         {
             SimpleTwoStateWorkflow wf = new SimpleTwoStateWorkflow(SimpleTwoStateWorkflow.State.Start);
-            wf.Fire(triggerName);
+            TestDelegate del = () => wf.Fire(triggerName);
+            Assert.Throws<WorkflowException>(del);
         }
     }
 }

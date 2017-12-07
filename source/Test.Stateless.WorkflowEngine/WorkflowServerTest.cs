@@ -25,11 +25,11 @@ namespace Test.Stateless.WorkflowEngine
         #region ExecuteWorkflow Tests
 
         [Test]
-        [ExpectedException(ExpectedException=typeof(NullReferenceException))]
         public void ExecuteWorkflow_NullWorkflow_RaisesException()
         {
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            workflowServer.ExecuteWorkflow(null);
+            TestDelegate del = () => workflowServer.ExecuteWorkflow(null);
+            Assert.Throws<NullReferenceException>(del);
         }
 
         [Test]

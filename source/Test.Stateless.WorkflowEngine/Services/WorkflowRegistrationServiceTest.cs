@@ -37,7 +37,6 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(WorkflowException))]
         public void IsSingleInstanceWorkflowRegistered_WorkflowRegisteredNotSingleInstance_ThrowsException()
         {
             // set up the store and the workflows
@@ -49,7 +48,9 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
-            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+            TestDelegate del = () => regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+            // assert
+            Assert.Throws<WorkflowException>(del);
 
         }
 
@@ -75,7 +76,6 @@ namespace Test.Stateless.WorkflowEngine
         #region RegisterWorkflow Tests
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(SingleInstanceWorkflowAlreadyExistsException))]
         public void RegisterWorkflow_SingleInstanceWorkflowRegistered_ThrowsExceptionIfAlreadyExists()
         {
             // set up the store and the workflows
@@ -85,8 +85,8 @@ namespace Test.Stateless.WorkflowEngine
             SingleInstanceWorkflow workflow = new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start);
 
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
-            regService.RegisterWorkflow(workflowStore, workflow);
-           
+            TestDelegate del = () => regService.RegisterWorkflow(workflowStore, workflow);
+            Assert.Throws<SingleInstanceWorkflowAlreadyExistsException>(del);
         }
 
         [Test]

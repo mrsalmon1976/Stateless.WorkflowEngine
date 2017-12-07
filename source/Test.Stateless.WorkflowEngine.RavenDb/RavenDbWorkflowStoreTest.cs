@@ -33,20 +33,21 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
 
         #region SetUp and TearDown
 
-        [TestFixtureSetUp]
-        public void RavenDbWorkflowStoreTest_FixtureSetUp()
+        [OneTimeSetUp]
+        public void RavenDbWorkflowStoreTest_OneTimeSetUp()
         {
 
             // default usage: use an in-mrmory database for unit test.  Make sure you apply the ds.Convenstions.DefaultQueryingConsistency 
             // line below, otherwise you will randomly get errors when querying the store after a write
             _documentStore = new EmbeddableDocumentStore { RunInMemory = true };
             _documentStore.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
+            _documentStore.Configuration.Storage.Voron.AllowOn32Bits = true;
             _documentStore.Initialize();
 
         }
 
-        [TestFixtureTearDown]
-        public void RavenDbWorkflowStoreTest_FixtureTearDown()
+        [OneTimeTearDown]
+        public void RavenDbWorkflowStoreTest_OneTimeTearDown()
         {
             _documentStore.Dispose();
         }

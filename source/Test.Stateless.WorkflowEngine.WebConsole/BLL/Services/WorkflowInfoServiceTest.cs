@@ -30,10 +30,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
         #region PopulateWorkflowStoreInfo Tests
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
         public void PopulateWorkflowStoreInfo_ModelIsNull_ThrowsException()
         {
-            _workflowInfoService.PopulateWorkflowStoreInfo(null);
+            TestDelegate del = () => _workflowInfoService.PopulateWorkflowStoreInfo(null);
+            // assert
+            Assert.Throws<ArgumentNullException>(del);
         }
 
         [Test]

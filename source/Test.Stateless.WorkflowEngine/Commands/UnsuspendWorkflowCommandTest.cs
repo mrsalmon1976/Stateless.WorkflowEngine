@@ -9,6 +9,7 @@ using NSubstitute;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
+using NUnit.Framework.Constraints;
 
 namespace Test.Stateless.WorkflowEngine.Commands
 {
@@ -25,9 +26,9 @@ namespace Test.Stateless.WorkflowEngine.Commands
         #region Execute Tests
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(CommandConfigurationException), ExpectedMessage = "Workflow not found", MatchType = MessageMatch.Contains)]
         public void Execute_WorkflowDoesNotExist_RaisesException()
         {
+            // arrange
             Guid workflowId = Guid.NewGuid();
             Workflow workflow = null;
 
@@ -36,8 +37,12 @@ namespace Test.Stateless.WorkflowEngine.Commands
 
             _command.WorkflowStore = workflowStore;
             _command.WorkflowId = workflowId;
-            _command.Execute();
 
+            // act
+            TestDelegate del = () => _command.Execute();
+
+            // assert
+            Assert.Throws(typeof(CommandConfigurationException), del);
             
         }
 
@@ -84,19 +89,21 @@ namespace Test.Stateless.WorkflowEngine.Commands
         #region Validate Tests
 
         [Test]
-        [ExpectedException(ExpectedException=typeof(CommandConfigurationException), ExpectedMessage="Workflow store", MatchType = MessageMatch.Contains)]
         public void Validate_WorkflowStoreNull_RaisesException()
         {
             _command.WorkflowId = Guid.NewGuid();
-            _command.Validate();
+
+            TestDelegate del = () => _command.Validate();
+
+            Assert.Throws<CommandConfigurationException>(del);
         }
 
         [Test]
-        [ExpectedException(ExpectedException = typeof(CommandConfigurationException), ExpectedMessage = "Workflow id", MatchType = MessageMatch.Contains)]
         public void Validate_WorkflowIdEmpty_RaisesException()
         {
             _command.WorkflowStore = Substitute.For<IWorkflowStore>();
-            _command.Validate();
+            TestDelegate del = () => _command.Validate();
+            Assert.Throws<CommandConfigurationException>(del);
         }
 
         #endregion
