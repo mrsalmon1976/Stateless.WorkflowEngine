@@ -29,8 +29,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Factories
 
                 var url = urlBuilder.ToMongoUrl();
                 var client = new MongoClient(url);
-                var server = client.GetServer();
-                var db = server.GetDatabase(connectionModel.Database);
+                var db = client.GetDatabase(connectionModel.Database);
 
                 workflowStore = new MongoDbWorkflowStore(db, connectionModel.ActiveCollection, connectionModel.CompletedCollection);
             }

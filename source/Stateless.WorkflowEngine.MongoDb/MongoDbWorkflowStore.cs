@@ -4,7 +4,7 @@ using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
-using MongoDB.Driver.Builders;
+//using MongoDB.Driver.Builders;
 using Stateless.WorkflowEngine.Stores;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
@@ -17,18 +17,14 @@ namespace Stateless.WorkflowEngine.MongoDb
     public class MongoDbWorkflowStore : WorkflowStore
     {
 
-        private Func<Guid, IMongoQuery> _queryById = delegate(Guid id) { return Query<WorkflowContainer>.EQ(x => x.Id, id); };
-        private Func<Guid, IMongoQuery> _queryCompletedById = delegate(Guid id) { return Query<CompletedWorkflow>.EQ(x => x.Id, id); };
-        private Func<Guid, IMongoQuery> _queryByIdJson = delegate(Guid id) { return Query.EQ("_id", BsonValue.Create(id)); };
-
         public const string DefaultCollectionActive = "Workflows";
         public const string DefaultCollectionCompleted = "CompletedWorkflows";
 
-        public MongoDbWorkflowStore(MongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted)
+        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted)
         {
         }
 
-        public MongoDbWorkflowStore(MongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName)
+        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName)
         {
             this.MongoDatabase = mongoDatabase;
             this.CollectionActive = activeCollectionName;
@@ -48,14 +44,14 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <summary>
         /// Gets/sets the mongo database associated with the store.
         /// </summary>
-        public MongoDatabase MongoDatabase { get; set; }
+        public IMongoDatabase MongoDatabase { get; set; }
 
-        public MongoCollection<WorkflowContainer> GetCollection()
+        public IMongoCollection<WorkflowContainer> GetCollection()
         {
             return this.MongoDatabase.GetCollection<WorkflowContainer>(this.CollectionActive);
         }
 
-        public MongoCollection<CompletedWorkflow> GetCompletedCollection()
+        public IMongoCollection<CompletedWorkflow> GetCompletedCollection()
         {
             return this.MongoDatabase.GetCollection<CompletedWorkflow>(this.CollectionCompleted);
         }
@@ -67,11 +63,10 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Archive(Workflow workflow)
         {
             var coll = GetCollection();
-            coll.Remove(_queryById(workflow.Id));
+            coll.DeleteOne(x => x.Id == workflow.Id);
 
             var collCompleted = GetCompletedCollection();
-            collCompleted.Insert(new CompletedWorkflow(workflow));
-
+            collCompleted.InsertOne(new CompletedWorkflow(workflow));
         }
 
         /// <summary>
@@ -81,7 +76,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Delete(Guid id)
         {
             var coll = GetCollection();
-            coll.Remove(_queryById(id));
+            coll.DeleteOne(x => x.Id == id);
         }
 
         /// <summary>
@@ -91,8 +86,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override long GetIncompleteCount()
         {
             var collection = GetCollection();
-            var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == false);
-            return collection.Find(query).Count();
+            return collection
+                .Find(x => x.Workflow.IsSuspended == false)
+                .Count();
         }
 
         /// <summary>
@@ -102,11 +98,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
         {
             var collection = GetCollection();
-            var query = Query<WorkflowContainer>.Where(x => x.WorkflowType == workflowType);
-            return from s in collection.Find(query)
-                .OrderByDescending(x => x.Workflow.RetryCount)
+            return collection.Find(x => x.WorkflowType == workflowType)
+                .SortByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
-                   select s.Workflow;
+                .Project(y => y.Workflow).ToEnumerable();
+
         }
 
         /// <summary>
@@ -116,7 +112,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override long GetCompletedCount()
         {
             var collection = GetCompletedCollection();
-            return collection.Count();
+            return collection.Count(new BsonDocument());
         }
 
 
@@ -129,19 +125,20 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override CompletedWorkflow GetCompletedOrDefault(Guid id)
         {
             var collection = GetCompletedCollection();
-            return collection.FindOne(_queryCompletedById(id));
+            return collection.Find(x => x.Id == id).SingleOrDefault();
         }
 
         public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
         {
-            var docs = this.MongoDatabase.GetCollection(this.CollectionActive).FindAll().SetLimit(count);
+            var docs = this.MongoDatabase
+                .GetCollection<BsonDocument>(this.CollectionActive)
+                .Find(new BsonDocument())
+                .Limit(count)
+                .ToEnumerable();
             List<string> workflows = new List<string>();
             foreach (BsonDocument document in docs)
             {
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
-                //UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
-                //wc.Workflow.WorkflowType = wc.WorkflowType;
-                //workflows.Add(wc.Workflow);
                 workflows.Add(json);
 
             }
@@ -158,7 +155,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             Workflow workflow = null;
             var collection = GetCollection();
-            WorkflowContainer wc = collection.FindOne(_queryById(id));
+            WorkflowContainer wc = collection.Find(x => x.Id == id).SingleOrDefault();
             if (wc != null)
             {
                 workflow = wc.Workflow;
@@ -174,19 +171,15 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <returns></returns>
         public override string GetWorkflowAsJson(Guid id)
         {
-            var doc = this.MongoDatabase.GetCollection(this.CollectionActive).FindOne(_queryByIdJson(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var doc = this.MongoDatabase
+                .GetCollection<BsonDocument>(this.CollectionActive)
+                .Find(filter)
+                .SingleOrDefault();
             if (doc != null)
             {
                 var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
-                //UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(document);
-                //wc.Workflow.WorkflowType = wc.WorkflowType;
-                //workflows.Add(wc.Workflow);
-                //workflows.Add(json);
-
-                //doc.Add("Id", doc.GetValue("_id"));
-                //doc.Set("CreatedOn", BsonValue.Create(doc.GetValue("CreatedOn").ToString()));
-                //return doc.ToJson(settings);
                 return json;
             }
             return null;
@@ -201,11 +194,13 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override IEnumerable<Workflow> GetActive(int count)
         {
             var collection = GetCollection();
-            var query = Query<MongoDbWorkflowContainer>.Where(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow));
-            return from s in collection.Find(query).SetLimit(count)
-                .OrderByDescending(x => x.Workflow.RetryCount)
-                .ThenBy(x => x.Workflow.CreatedOn)
-                   select s.Workflow;
+            return collection
+                   .Find(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow))
+                   .Limit(count)
+                   .SortByDescending(x => x.Workflow.RetryCount)
+                   .ThenBy(x => x.Workflow.CreatedOn)
+                   .Project(y => y.Workflow)
+                   .ToEnumerable();
         }
 
         /// <summary>
@@ -216,11 +211,14 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override IEnumerable<Workflow> GetIncomplete(int count)
         {
             var collection = GetCollection();
-            var query = Query<MongoDbWorkflowContainer>.Where(x => (x.Workflow.ResumeOn <= DateTime.UtcNow));
-            return from s in collection.Find(query).SetLimit(count)
-                .OrderByDescending(x => x.Workflow.RetryCount)
+            return
+                collection
+                .Find(x => (x.Workflow.ResumeOn <= DateTime.UtcNow))
+                .Limit(count)
+                .SortByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
-                   select s.Workflow;
+                .Project(x => x.Workflow)
+                .ToEnumerable();
         }
 
 
@@ -231,8 +229,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override long GetSuspendedCount()
         {
             var collection = GetCollection();
-            var query = Query<WorkflowContainer>.Where(x => x.Workflow.IsSuspended == true);
-            return collection.Find(query).Count();
+            return collection
+                .Find(x => x.Workflow.IsSuspended == true)
+                .Count();
         }
 
 
@@ -242,8 +241,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// </summary>
         public override void RegisterType(Type t)
         {
-                //logger.Info("Registering workflow type {0}", t.FullName);
-                MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(t);
+            MongoDB.Bson.Serialization.BsonClassMap.LookupClassMap(t);
         }
 
 
@@ -254,7 +252,8 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Save(Workflow workflow)
         {
             var coll = GetCollection();
-            coll.Save(new WorkflowContainer(workflow));
+            WorkflowContainer wc = new WorkflowContainer(workflow);
+            coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
         }
 
         /// <summary>
@@ -264,8 +263,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Save(IEnumerable<Workflow> workflows)
         {
             var coll = GetCollection();
-            foreach (Workflow wf in workflows) {
-                coll.Save(new WorkflowContainer(wf));
+            var containers = workflows.Select(x => new WorkflowContainer(x));
+            foreach (Workflow wf in workflows)
+            {
+                WorkflowContainer wc = new WorkflowContainer(wf);
+                coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
             }
         }
 
@@ -275,14 +277,19 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <param name="id"></param>
         public override void SuspendWorkflow(Guid id)
         {
+            var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
             BsonValue val = BsonValue.Create(id);
-            var coll = this.MongoDatabase.GetCollection(this.CollectionActive);
-            BsonDocument doc = coll.FindOneById(val);
+
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var doc = coll
+                .Find(filter)
+                .SingleOrDefault();
+
             if (doc != null)
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(true);
-                coll.Save(doc);
+                coll.ReplaceOne(filter, doc, new UpdateOptions() { IsUpsert = false });
             }
         }
 
@@ -293,18 +300,22 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <param name="id"></param>
         public override void UnsuspendWorkflow(Guid id)
         {
+            var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
             BsonValue val = BsonValue.Create(id);
-            var coll = this.MongoDatabase.GetCollection(this.CollectionActive);
-            BsonDocument doc = coll.FindOneById(id);
+
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var doc = coll
+                .Find(filter)
+                .SingleOrDefault();
+
             if (doc != null)
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(false);
                 workflowElement["RetryCount"] = BsonValue.Create(0);
                 workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
-                coll.Save(doc);
+                coll.ReplaceOne(filter, doc, new UpdateOptions() { IsUpsert = false });
             }
-
         }
 
 

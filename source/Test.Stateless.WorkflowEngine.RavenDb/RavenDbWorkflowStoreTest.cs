@@ -37,11 +37,25 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
         public void RavenDbWorkflowStoreTest_OneTimeSetUp()
         {
 
-            // default usage: use an in-mrmory database for unit test.  Make sure you apply the ds.Convenstions.DefaultQueryingConsistency 
+            Raven.Database.Server.NonAdminHttp.EnsureCanListenToWhenInNonAdminContext(8080);
+
+            // default usage: use an in-memory database for unit test.  Make sure you apply the ds.Convenstions.DefaultQueryingConsistency 
             // line below, otherwise you will randomly get errors when querying the store after a write
-            _documentStore = new EmbeddableDocumentStore { RunInMemory = true };
-            _documentStore.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
+            _documentStore = new EmbeddableDocumentStore
+            {
+                RunInMemory = true,
+                UseEmbeddedHttpServer = true,
+                //DataDirectory = "~\\App_Data\\Database"
+            };
+            //_documentStore.Configuration.RunInMemory = true;
+            //_documentStore.Configuration.Port = 8887;
+
+            //_documentStore.RegisterListener(new NoStaleQueriesAllowedListener());
+            //_documentStore.Conventions.DefaultQueryingConsistency = ConsistencyOptions.AlwaysWaitForNonStaleResultsAsOfLastWrite;
             _documentStore.Configuration.Storage.Voron.AllowOn32Bits = true;
+            //_documentStore.Configuration.AnonymousUserAccessMode = Raven.Database.Server.AnonymousUserAccessMode.Admin;
+
+            //_documentStore.Configuration.EmbeddedFilesDirectory = Environment.CurrentDirectory;
             _documentStore.Initialize();
 
         }
