@@ -30,10 +30,12 @@ namespace Stateless.WorkflowEngine.RavenDb
         private IDocumentSession OpenSession()
         {
             // if no database is specified, we're assuming it's embedded so we can't use the 
-            // override
+            // override.  If it's embedded, make sure we wait for indexes after saves for testing purposes.
             if (String.IsNullOrWhiteSpace(this._database))
             {
-                return this._documentStore.OpenSession();
+                var session = this._documentStore.OpenSession();
+                session.Advanced.WaitForIndexesAfterSaveChanges();
+                return session;
             }
             return this._documentStore.OpenSession(this._database);
         }
