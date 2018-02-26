@@ -81,6 +81,8 @@
     <Compile Include="Workflows\Broken\BrokenWorkflow.cs" />
     <Compile Include="Workflows\Delayed\Actions\DelayedAction.cs" />
     <Compile Include="Workflows\Delayed\DelayedWorkflow.cs" />
+    <Compile Include="Workflows\DependencyInjection\Actions\NoDefaultConstructorAction.cs" />
+    <Compile Include="Workflows\DependencyInjection\DependencyInjectionWorkflow.cs" />
     <Compile Include="Workflows\SimpleTwoState\Actions\SendEmailAction.cs" />
     <Compile Include="Workflows\SimpleTwoState\Actions\LoadDataAction.cs" />
     <Compile Include="Workflows\SimpleTwoState\SimpleTwoStateWorkflow.cs" />

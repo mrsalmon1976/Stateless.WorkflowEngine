@@ -15,6 +15,8 @@ using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
 using Stateless.WorkflowEngine.Events;
+using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection.Actions;
+using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -314,6 +316,53 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [Test]
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndNoDependencyResolver_ThrowsException()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            DependencyInjectionWorkflow workflow = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = DependencyInjectionWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            Assert.AreEqual(0, workflow.RetryCount);
+
+            // execute
+            workflowServer.ExecuteWorkflows(10);
+
+            // we won't get an error, but check the workflow to see if any error occurred
+            Assert.AreEqual(1, workflow.RetryCount);
+            Assert.IsTrue(workflow.LastException.Contains("MissingMethodException"));
+        }
+
+        [Test]
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndDependencyResolver_ExecutesAction()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            DependencyInjectionWorkflow workflow = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = DependencyInjectionWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            MyDependencyResolver resolver = new MyDependencyResolver();// Substitute.For<IWorkflowEngineDependencyResolver>();
+            //resolver.GetInstance<NoDefaultConstructorAction>().Returns(new NoDefaultConstructorAction("test", 1));
+            workflowServer.DependencyResolver = resolver;
+
+            // execute
+            Assert.AreEqual(0, resolver.RunCount);
+            workflowServer.ExecuteWorkflows(10);
+            Assert.AreEqual(1, resolver.RunCount);
+
+        }
+
         #endregion
 
         #region IsSingleInstanceWorkflowRegistered Tests
@@ -373,6 +422,20 @@ namespace Test.Stateless.WorkflowEngine
 
         #endregion
 
+        private class MyDependencyResolver : IWorkflowEngineDependencyResolver
+        {
+            public int RunCount { get; set; }
+            public T GetInstance<T>()
+            {
+                RunCount++;
 
+                if (typeof(T) == typeof(NoDefaultConstructorAction))
+                {
+                    return (T)Convert.ChangeType(new NoDefaultConstructorAction("test", 1), typeof(T));
+                }
+
+                throw new NotImplementedException();
+            }
+        }
     }
 }

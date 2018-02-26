@@ -60,6 +60,7 @@
     <Compile Include="Commands\UnsuspendWorkflowCommand.cs" />
     <Compile Include="Events\WorkflowEventArgs.cs" />
     <Compile Include="Exceptions\CommandConfigurationException.cs" />
+    <Compile Include="IWorkflowEngineDependencyResolver.cs" />
     <Compile Include="Models\CompletedWorkflow.cs" />
     <Compile Include="Exceptions\WorkflowNotConfiguredException.cs" />
     <Compile Include="Exceptions\WorkflowEngineException.cs" />

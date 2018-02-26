@@ -15,6 +15,13 @@ namespace Stateless.WorkflowEngine
     public interface IWorkflowServer
     {
         /// <summary>
+        /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
+        /// This defaults to null, in which case classes are created with reflection.  Setting this property 
+        /// to your own resolver will allow you to control how workflow actions are created.
+        /// </summary>
+        IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+
+        /// <summary>
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
@@ -89,6 +96,13 @@ namespace Stateless.WorkflowEngine
         public event EventHandler<WorkflowEventArgs> WorkflowCompleted;
 
         /// <summary>
+        /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
+        /// This defaults to null, in which case classes are created with reflection.  Setting this property 
+        /// to your own resolver will allow you to control how workflow actions are created.
+        /// </summary>
+        public IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+
+        /// <summary>
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
@@ -98,6 +112,9 @@ namespace Stateless.WorkflowEngine
             {
                 throw new NullReferenceException("Workflow server asked to execute null workflow object");
             }
+
+            // set the dependency resolver on the workflow to allow for dependency injection
+            workflow.DependencyResolver = this.DependencyResolver;
 
             string initialState = workflow.CurrentState;
             try

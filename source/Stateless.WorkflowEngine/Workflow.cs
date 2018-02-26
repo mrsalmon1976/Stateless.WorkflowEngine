@@ -42,6 +42,13 @@ namespace Stateless.WorkflowEngine
         public virtual DateTime CreatedOn { get; set; }
 
         /// <summary>
+        /// Gets/sets the class used to resolve dependencies.  This will be set by the workflow server before 
+        /// executing a workflow step, and if a value is supplied, this will be used to create the workflow 
+        /// action.
+        /// </summary>
+        internal IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+
+        /// <summary>
         /// Marks a workflow as suspended.  This will be set to true when the maximum retry count is exceeded.
         /// </summary>
         /// <value>
@@ -125,7 +132,16 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         protected virtual void ExecuteWorkflowAction<T>() where T : IWorkflowAction
         {
-            IWorkflowAction workflowAction = CreateWorkflowActionInstance<T>();
+            IWorkflowAction workflowAction;
+
+            if (this.DependencyResolver == null)
+            {
+                workflowAction = this.CreateWorkflowActionInstance<T>();
+            }
+            else
+            {
+                workflowAction = this.DependencyResolver.GetInstance<T>();
+            }
             workflowAction.Execute(this);
         }
 

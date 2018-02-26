@@ -17,3 +17,5 @@ using System.Runtime.InteropServices;
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("4cf6ca74-340a-4398-8695-8368726b7551")]
+
+[assembly: InternalsVisibleTo("Test.Stateless.WorkflowEngine")]
