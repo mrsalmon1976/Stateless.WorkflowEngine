@@ -25,9 +25,10 @@
     </ul>
     <div id="toolbar">
         <div class="btn-group">
-            <a id="btn-refresh" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
-                <i class="fa fa-refresh"></i>
+            <a id="btn-refresh" class="btn" data-toggle="tooltip" data-placement="bottom" href="#" title="" data-original-title="Reload the workflow list">
+                <i class="fa fa-refresh"></i>&nbsp;
             </a>
+            <a id="btn-count" class="btn" data-toggle="tooltip" data-placement="bottom" href="#" title="" data-original-title="Set the number of workflows to display">0</a>
         </div>
     </div>
 </section>
@@ -62,7 +63,7 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="dlg-workflow-update" tabindex="-1" role="dialog" aria-labelledby="modal-title">
+<div class="modal fade" id="dlg-workflow-update" tabindex="-1" role="dialog" aria-labelledby="dlg-workflow-uodate-header">
     <div class="modal-dialog modal-wide" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -79,6 +80,28 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="dlg-workflow-count" tabindex="-1" role="dialog" aria-labelledby="dlg-workflow-count-title">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="dlg-workflow-count-title">Number of workflows to load</h4>
+            </div>
+            <div class="modal-body">
+                <form onsubmit="return false">
+                    <div class="form-group">
+                        <label for="txt-workflow-count">Show workflows:</label>
+                        <input type="number" class="form-control" id="txt-workflow-count" value="">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button id="btn-workflow-count-update" type="button" class="btn btn-primary">Update</button>
             </div>
         </div>
     </div>

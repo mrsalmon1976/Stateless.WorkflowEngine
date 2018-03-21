@@ -78,24 +78,24 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
         public dynamic List()
         {
-            var id = Request.Form["id"];
+            var model = this.Bind<WorkflowListModel>();
             var currentUser = _userStore.GetUser(this.Context.CurrentUser.UserName);
 
             // get the connection and load the workflows
-            ConnectionModel connection = _userStore.GetConnection(id);
+            ConnectionModel connection = _userStore.GetConnection(model.ConnectionId);
             if (connection == null)
             {
                 return this.Response.AsJson(new { Message = "No connection found matching the supplied id" }, HttpStatusCode.NotFound);
                 //throw new Exception("No connection found matching the supplied id.");
             }
             
-            IEnumerable<UIWorkflow> workflows = _workflowInfoService.GetIncompleteWorkflows(connection, 50);
+            IEnumerable<UIWorkflow> workflows = _workflowInfoService.GetIncompleteWorkflows(connection, model.WorkflowCount);
             
-            WorkflowListViewModel model = new WorkflowListViewModel();
-            model.ConnectionId = connection.Id;
-            model.Workflows.AddRange(workflows);
+            WorkflowListViewModel viewModel = new WorkflowListViewModel();
+            viewModel.ConnectionId = connection.Id;
+            viewModel.Workflows.AddRange(workflows);
 
-            return this.View[Views.Store.ListPartial, model];
+            return this.View[Views.Store.ListPartial, viewModel];
 
         }
 

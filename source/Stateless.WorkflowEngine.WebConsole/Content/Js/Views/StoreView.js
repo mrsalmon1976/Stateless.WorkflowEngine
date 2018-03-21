@@ -4,6 +4,7 @@ var StoreView = function () {
     var that = this;
 
     this.workflowViewModel = null;
+    this.workflowCount = 50;
 
     this.getSelectedWorkflowIds = function () {
         var selectedBoxes = $('.chk-workflow:checked');
@@ -21,6 +22,8 @@ var StoreView = function () {
         $('#btn-refresh').on('click', function () { that.loadWorkflows(); });
         $('#btn-suspend-single').on('click', function () { that.workflowViewModel.toggleWorkflowSuspension(); });
         $('#btn-delete-single').on('click', function () { that.workflowViewModel.confirmWorkflowDelete(); });
+        $('#btn-count').html(that.workflowCount).on('click', function () { that.onWorkflowToolbarButtonClick(); });
+        $('#btn-workflow-count-update').on('click', function () { that.onWorkflowCountUpdateButtonClick(); });
         this.loadWorkflows();
     };
 
@@ -66,7 +69,7 @@ var StoreView = function () {
             url: "/store/list",
             method: "POST",
             dataType: 'html',
-            data: { "id": connId }
+            data: { "ConnectionId": connId, "WorkflowCount": that.workflowCount }
         });
 
         request.done(function (response) {
@@ -77,6 +80,7 @@ var StoreView = function () {
             $('#btn-suspend').on('click', function () { that.suspendWorkflows(); });
             $('#btn-unsuspend').on('click', function () { that.unsuspendWorkflows(); });
             $('#btn-delete').on('click', function () { that.deleteWorkflows(); });
+            $('#txt-workflow-count').on('keyup', function () { that.validateWorkflowCountDialog(); });
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
@@ -87,6 +91,21 @@ var StoreView = function () {
             $('#pnl-loading').hide();
         });
     };
+
+    this.onWorkflowCountUpdateButtonClick = function () {
+        that.workflowCount = $('#txt-workflow-count').val();
+        $('#btn-count').html(that.workflowCount);
+        $('#dlg-workflow-count').modal('hide')
+        that.loadWorkflows();
+    };
+
+    this.onWorkflowToolbarButtonClick = function () {
+        $('#txt-workflow-count').val(that.workflowCount);
+        $('#dlg-workflow-count').modal('show').on('shown.bs.modal', function () {
+            $('#txt-workflow-count').focus().select();
+        });
+    };
+
 
     this.openWorkflowDialog = function (evtSource) {
 
@@ -170,6 +189,15 @@ var StoreView = function () {
                 }
             }
         });
+    };
+
+    this.validateWorkflowCountDialog = function () {
+        var count = $('#txt-workflow-count').val();
+        var isValid = !isNaN(count)
+            && parseInt(Number(count)) == count
+            && !isNaN(parseInt(count, 10))
+            && (parseInt(count) > 0);
+        $('#btn-workflow-count-update').prop('disabled', !isValid);
     };
 
 };

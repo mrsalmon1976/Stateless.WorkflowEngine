@@ -19,6 +19,7 @@ using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
+using System.Diagnostics;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -81,6 +82,10 @@ namespace Stateless.WorkflowEngine.WebConsole
 
             // set shared ViewBag details here
             context.ViewBag.AppVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
+            if (Debugger.IsAttached)
+            {
+                context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmssttt");
+            }
             context.ViewBag.Scripts = new List<string>();
             context.ViewBag.Claims = new List<string>();
 

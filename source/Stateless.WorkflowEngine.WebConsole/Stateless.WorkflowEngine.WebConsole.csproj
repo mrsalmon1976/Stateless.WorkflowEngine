@@ -148,6 +148,7 @@
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />
     <Compile Include="ViewModels\MultiSelectItem.cs" />
     <Compile Include="ViewModels\Store\StoreViewModel.cs" />
+    <Compile Include="ViewModels\Store\WorkflowListModel.cs" />
     <Compile Include="ViewModels\Store\WorkflowListViewModel.cs" />
     <Compile Include="ViewModels\Store\WorkflowDeleteModel.cs" />
     <Compile Include="ViewModels\Store\WorkflowSuspensionModel.cs" />
