@@ -37,6 +37,15 @@ CreateWorkflowActionInstance<T>()
 
 method which can be overridden if you want to take control over how workflow actions are instantiated.
 
+As of version 1.3.0, however, there is a better option.  The `WorkflowServer` class (required for the execution of workflows), has a `DependencyResolver` property, that implements the `IWorkflowEngineDependencyResolver` interface.  This can be set as part of your application's bootstrapping process:
+
+```
+MyDependencyResolver resolver = new MyDependencyResolver();
+workflowServer.DependencyResolver = resolver;
+```
+
+The interface has one method: `T GetInstance<T>` - which allows you to use your own DI framework to instantiate the action class.
+
 ### Events
 
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 
