@@ -136,7 +136,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 with.HttpRequest();
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
-                with.FormValue("id", connectionId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+                with.FormValue("WorkflowCount", "10");
             });
 
             // assert
@@ -176,7 +177,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 with.HttpRequest();
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
-                with.FormValue("id", connectionId.ToString());
+                with.FormValue("ConnectionId", connectionId.ToString());
+                with.FormValue("WorkflowCount", "10");
             });
 
             // assert
