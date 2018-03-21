@@ -13,6 +13,7 @@
                 <th>Resumes</th>
                 <th>Suspended</th>
                 <th>State</th>
+                <th>Trigger</th>
                 <th>Retry Count</th>
                 <th>Retry Intervals</th>
                 <th>Created</th>
@@ -28,6 +29,7 @@
                     <td>@wf.ResumeOn.ToLocalTime()</td>
                     <td>@(wf.IsSuspended ? "Yes" : "No")</td>
                     <td>@wf.CurrentState</td>
+                    <td>@wf.ResumeTrigger</td>
                     <td>@wf.RetryCount</td>
                     <td>@(String.Join(",", wf.RetryIntervals))</td>
                     <td>@wf.CreatedOn.ToLocalTime()</td>
