@@ -2,4 +2,4 @@
 2. Build the project in Debug and Release
 3. Run "build.ps1" - this will create the zip files
 4. Go to GitHub and add these as new release files
-5. Run publish.ps1 - make sure you edit the version numbers in the nuget push lines
+5. Run publish.ps1 - make sure you enter the correct version number when prompted
