@@ -28,6 +28,9 @@ namespace Stateless.WorkflowEngine.WebConsole
     {
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
+            // override maximum JSON length for Nancy
+            Nancy.Json.JsonSettings.MaxJsonLength = int.MaxValue;
+
             // register settings first as we will use that below
             IAppSettings settings = new AppSettings();
             container.Register<IAppSettings>(settings);
