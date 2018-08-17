@@ -57,3 +57,11 @@ not be picked up again by the WorkflowEngine until the problems have been resolv
 can be overridden at the workflow level. 
 2. WorkflowCompleted - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() 
 method is called.  The workflow.OnComplete() method can also be overridden and actioned at the workflow level instead of using this event.
+
+### Indexing on data stores
+
+Over time, workflow collections grow, and the CompletedWorkflows data store can get very large.  The following indexes are recommended.
+
+#### MongoDb
+
+```db.CompletedWorkflows.createIndex({'Workflow.CreatedOn':-1})```
