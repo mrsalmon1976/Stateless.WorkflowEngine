@@ -8,7 +8,8 @@
     IUserIdentity currentUser = ViewBag.CurrentUser;
 }
 @functions {
-    public string FormatConnectionNumber(long? no) {
+    public string FormatConnectionNumber(long? no)
+    {
         if (!no.HasValue)
         {
             return "n/a";
@@ -16,63 +17,70 @@
         return String.Format("{0:n0}", no);
     }
 
-    public string GetConnectionErrorClass(WorkflowStoreModel model) {
+    public string GetConnectionErrorClass(WorkflowStoreModel model)
+    {
         return (String.IsNullOrEmpty(model.ConnectionError) ? String.Empty : " error");
     }
 
-    public string GetConnectionStyle(long? no, long warningThreshold, long errorThreshold) {
-        if (!no.HasValue || no.Value > errorThreshold) return "progress-bar-danger";
-        if (no.Value > warningThreshold) return "progress-bar-warning";
-        return "progress-bar-success";
-    }
-
-    public string GetConnectionTitle(WorkflowStoreModel model)
+    public string GetConnectionStyle(long? no, long warningThreshold, long errorThreshold)
     {
-        return String.Format("{0} / {2}", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database);
+        if (!no.HasValue || no.Value > errorThreshold) return "conn-workflow-info-error";
+        if (no.Value > warningThreshold) return "conn-workflow-info-warning";
+        return "";
     }
 
     public string GetConnectionTitleTooltip(WorkflowStoreModel model)
     {
-        if (String.IsNullOrEmpty(model.ConnectionError)) {
+        if (String.IsNullOrEmpty(model.ConnectionError))
+        {
             string user = (String.IsNullOrEmpty(model.ConnectionModel.User) ? String.Empty : "(" + model.ConnectionModel.User + ")");
-            return String.Format("{0}:{1} / {2} (3)", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database, user);
+            return String.Format("{0}:{1} / {2} {3}", model.ConnectionModel.Host, model.ConnectionModel.Port, model.ConnectionModel.Database, user);
         }
         return model.ConnectionError;
     }
 }
-@if (Model.WorkflowStores.Count == 0) 
+@if (Model.WorkflowStores.Count == 0)
 {
     <h4>You have no saved connections.  Add new connections by clicking the button on the top right of this panel.</h4>
 }
 @foreach (var workflowStore in Model.WorkflowStores)
 {
     <div class="panel panel-default pull-left dashboard-panel font90">
-        <div class="panel-heading@(GetConnectionErrorClass(workflowStore))" title="@GetConnectionTitleTooltip(workflowStore)">
-            <img src="/Content/Images/mongo_24x24.png" alt="" title="" />
-            <div class="conn-title dropdown">
-              <a class="dropdown-toggle" id="mnu@(workflowStore.ConnectionModel.Id)" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                @GetConnectionTitle(workflowStore)
-                <span class="caret"></span>
-              </a>
-              <ul class="dropdown-menu conn-menu" aria-labelledby="mnu@(workflowStore.ConnectionModel.Id)">
+        <div class="panel-heading@(GetConnectionErrorClass(workflowStore))">
+            <div class="row conn-row">
+                <div class="conn-image pull-left">
+                    <img src="/Content/Images/mongo_24x24.png" alt="" title="">
+                </div>
+                <div class="conn-title pull-left">
+                    <a id="mnu@(workflowStore.ConnectionModel.Id)" href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)" title="@GetConnectionTitleTooltip(workflowStore)">
+                        @workflowStore.ConnectionModel.Database
+                    </a>
+                    <br>
+                    <small>@(workflowStore.ConnectionModel.Host):@(workflowStore.ConnectionModel.Port)</small>
+                </div>
                 @if (Model.CurrentUserCanDeleteConnection)
-                {   
-                    <li><a href="#" class="btn-delete" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o"></i> Delete</a></li>
+                {
+                    <div class="conn-icons pull-right">
+                        <a href="#" class="btn-delete" title="Delete this connection" data-model-id="@(workflowStore.ConnectionModel.Id)" data-model-db="@(workflowStore.ConnectionModel.Database)"><i class="fa fa-trash-o fa-lg"></i></a>
+                    </div>
                 }
-                <li><a href="@(Actions.Store.Default)?id=@(workflowStore.ConnectionModel.Id)"><i class="fa fa-table"></i> View incomplete workflows</a></li>
-              </ul>
-            </div>
+                </div>
         </div>
         <div class="panel-body">
-            <div class="progress" data-toggle="tooltip" data-placement="top" title="Collection: Workflows">
-                <div class="progress-bar @(GetConnectionStyle(workflowStore.ActiveCount, 100, 10000)) progress-bar-striped" style="width: 100%"><span>Active: @(FormatConnectionNumber(workflowStore.ActiveCount))</span></div>
-            </div>
-            <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Oldest: 2 years">
-                <div class="progress-bar @(GetConnectionStyle(workflowStore.SuspendedCount, 0, 0)) progress-bar-striped" style="width: 100%"><span>Suspended: @(FormatConnectionNumber(workflowStore.SuspendedCount))</span></div>
-            </div>
-            <div class="progress" data-toggle="tooltip" data-placement="bottom" title="Collection: CompletedWorkflows">
-                <div class="progress-bar @(GetConnectionStyle(workflowStore.CompletedCount, Int32.MaxValue, Int32.MaxValue)) progress-bar-striped" style="width: 100%"><span>Complete: @(FormatConnectionNumber(workflowStore.CompletedCount))</span></div>
+            <div class="row conn-row">
+                <div class="conn-workflow-info @(GetConnectionStyle(workflowStore.ActiveCount, 100, 10000))">
+                    @(FormatConnectionNumber(workflowStore.ActiveCount))<br>
+                    <small>Active</small>
+                </div>
+                <div class="conn-workflow-info-alt @(GetConnectionStyle(workflowStore.SuspendedCount, 0, 0))">
+                    @(FormatConnectionNumber(workflowStore.SuspendedCount))<br>
+                    <small>Suspended</small>
+                </div>
+                <div class="conn-workflow-info @(GetConnectionStyle(workflowStore.CompletedCount, Int32.MaxValue, Int32.MaxValue))">
+                    @(FormatConnectionNumber(workflowStore.CompletedCount))<br>
+                    <small>Complete</small>
+                </div>
             </div>
         </div>
     </div>
-}
+    }
