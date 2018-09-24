@@ -39,6 +39,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             _documentStore = new EmbeddableDocumentStore
             {
                 RunInMemory = true,
+                UseEmbeddedHttpServer = true,
             };
             _documentStore.Configuration.Storage.Voron.AllowOn32Bits = true;
             _documentStore.Initialize();

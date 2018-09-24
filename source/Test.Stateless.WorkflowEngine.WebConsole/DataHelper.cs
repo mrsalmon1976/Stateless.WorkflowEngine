@@ -16,13 +16,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole
             model.ActiveCollection = "Workflows";
             model.CompletedCollection = "CompletedWorkflows";
             model.Host = "localhost";
+            model.Database = "MyWorkflowStore";
+            model.User = "test";
             model.Password = "password";
             model.WorkflowStoreType = storeType;
 
             switch (storeType) {
                 case WorkflowStoreType.MongoDb:
                     model.Port = 27017;
-                    model.User = "test";
                     break;
             }
 

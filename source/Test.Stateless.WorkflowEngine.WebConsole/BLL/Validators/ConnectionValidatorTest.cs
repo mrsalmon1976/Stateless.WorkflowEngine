@@ -62,6 +62,21 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
         }
 
         [TestCase(WorkflowStoreType.MongoDb, "")]
+        [TestCase(WorkflowStoreType.MongoDb, "    ")]
+        [TestCase(WorkflowStoreType.MongoDb, null)]
+        public void Validate_InvalidDatabase_ReturnsFailure(WorkflowStoreType storeType, string database)
+        {
+            ConnectionModel model = DataHelper.CreateConnectionModel(storeType);
+            model.Database = database;
+
+            ValidationResult result = _connectionValidator.Validate(model);
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(1, result.Messages.Count);
+            Assert.IsTrue(result.Messages[0].Contains("Database"));
+        }
+
+        [TestCase(WorkflowStoreType.MongoDb, "")]
         [TestCase(WorkflowStoreType.MongoDb, "   ")]
         [TestCase(WorkflowStoreType.MongoDb, null)]
         public void Validate_InvalidActiveCollection_ReturnsFailure(WorkflowStoreType storeType, string activeCollection)

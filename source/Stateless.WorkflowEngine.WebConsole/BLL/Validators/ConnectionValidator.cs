@@ -26,6 +26,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Validators
             {
                 result.Messages.Add("Port must have a numeric value");
             }
+            if (String.IsNullOrWhiteSpace(model.Database))
+            {
+                result.Messages.Add("Database cannot be empty");
+            }
             if (String.IsNullOrWhiteSpace(model.ActiveCollection))
             {
                 result.Messages.Add("Active collection cannot be empty");
