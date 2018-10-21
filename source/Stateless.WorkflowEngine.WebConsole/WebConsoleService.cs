@@ -18,7 +18,7 @@ namespace Stateless.WorkflowEngine.WebConsole
 
         public void Start()
         {
-            _logger.Info("Apotheca Windows Service starting");
+            _logger.Info("Stateless.WorkflowEngine Windows Service starting");
             IAppSettings appSettings = new AppSettings();
             var hostConfiguration = new HostConfiguration
             {
@@ -32,7 +32,7 @@ namespace Stateless.WorkflowEngine.WebConsole
 
         public void Stop()
         {
-            _logger.Info("Apotheca Windows Service shutting down");
+            _logger.Info("Stateless.WorkflowEngine Windows Service shutting down");
             _host.Stop();
             _host.Dispose();
         }
