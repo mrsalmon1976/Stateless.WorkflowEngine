@@ -35,7 +35,7 @@ namespace Test.Stateless.WorkflowEngine.Example.Workflows.FileCreation
 
         public FileCreationWorkflow(string initialState) : base(initialState)
         {
-            this.IsSingleInstance = true;
+            this.IsSingleInstance = false;
         }
 
         public FileCreationWorkflow(State initialState)

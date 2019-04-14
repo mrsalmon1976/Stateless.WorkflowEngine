@@ -88,20 +88,20 @@ namespace Stateless.WorkflowEngine.MongoDb
             var collection = GetCollection();
             return collection
                 .Find(x => x.Workflow.IsSuspended == false)
-                .Count();
+                .CountDocuments();
         }
 
         /// <summary>
-        /// Gets all workflows of a specified type.
+        /// Gets all incomplete workflows of a specified type ordered by create date.
         /// </summary>
         /// <returns></returns>
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
         {
             var collection = GetCollection();
             return collection.Find(x => x.WorkflowType == workflowType)
-                .SortByDescending(x => x.Workflow.RetryCount)
-                .ThenBy(x => x.Workflow.CreatedOn)
-                .Project(y => y.Workflow).ToEnumerable();
+                .SortBy(x => x.Workflow.CreatedOn)
+                .Project(y => y.Workflow)
+                .ToEnumerable();
 
         }
 
@@ -112,7 +112,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override long GetCompletedCount()
         {
             var collection = GetCompletedCollection();
-            return collection.Count(new BsonDocument());
+            return collection.CountDocuments(_ => true);
         }
 
 
@@ -187,7 +187,8 @@ namespace Stateless.WorkflowEngine.MongoDb
 
 
         /// <summary>
-        /// Gets the first <c>count</c> unsuspended active workflows, ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -197,14 +198,15 @@ namespace Stateless.WorkflowEngine.MongoDb
             return collection
                    .Find(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow))
                    .Limit(count)
-                   .SortByDescending(x => x.Workflow.RetryCount)
+                   .SortByDescending(x => x.Workflow.Priority)
+                   .ThenByDescending(x => x.Workflow.RetryCount)
                    .ThenBy(x => x.Workflow.CreatedOn)
                    .Project(y => y.Workflow)
                    .ToEnumerable();
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -215,7 +217,8 @@ namespace Stateless.WorkflowEngine.MongoDb
                 collection
                 .Find(x => (x.Workflow.ResumeOn <= DateTime.UtcNow))
                 .Limit(count)
-                .SortByDescending(x => x.Workflow.RetryCount)
+                .SortByDescending(x => x.Workflow.Priority)
+                .ThenByDescending(x => x.Workflow.RetryCount)
                 .ThenBy(x => x.Workflow.CreatedOn)
                 .Project(x => x.Workflow)
                 .ToEnumerable();
@@ -231,7 +234,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             var collection = GetCollection();
             return collection
                 .Find(x => x.Workflow.IsSuspended == true)
-                .Count();
+                .CountDocuments();
         }
 
 

@@ -66,6 +66,7 @@ namespace Test.Stateless.WorkflowEngine.Example
             FileCreationWorkflow workflow = new FileCreationWorkflow(FileCreationWorkflow.State.Start);
             workflow.RootFolder = "C:\\Temp\\";
             workflow.ResumeTrigger = FileCreationWorkflow.Trigger.WriteFirstFile.ToString();
+            workflow.Priority = 5;
             workflowServer.RegisterWorkflow(workflow);
 
             while (!_shutdownEvent.WaitOne(0))

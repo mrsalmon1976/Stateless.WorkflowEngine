@@ -68,6 +68,12 @@ namespace Stateless.WorkflowEngine
         public virtual DateTime ResumeOn { get; set; }
 
         /// <summary>
+        /// Gets/sets the priority of the workflow.  Defaults to 0, but can be set at runtime.  Higher priority 
+        /// workflows (where 2 is higher than 1) will be executed first.
+        /// </summary>
+        public virtual int Priority { get; set; }
+
+        /// <summary>
         /// Gets or sets the trigger to be fire when the workflow resumes.
         /// </summary>
         /// <value>

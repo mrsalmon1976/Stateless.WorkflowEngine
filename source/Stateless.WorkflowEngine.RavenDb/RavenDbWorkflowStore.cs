@@ -84,7 +84,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
-        /// Gets all workflows of a specified type.
+        /// Gets all incomplete workflows of a specified type ordered by create date.
         /// </summary>
         /// <returns></returns>
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
@@ -93,8 +93,7 @@ namespace Stateless.WorkflowEngine.RavenDb
             {
                 return from s in session.Query<WorkflowContainer>()
                     .Where(x => x.WorkflowType == workflowType)
-                    .OrderByDescending(x => x.Workflow.RetryCount)
-                    .ThenBy(x => x.Workflow.CreatedOn)
+                    .OrderBy(x => x.Workflow.CreatedOn)
                     select s.Workflow;
             }
         }
@@ -148,7 +147,8 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> unsuspended active workflows, ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -158,7 +158,8 @@ namespace Stateless.WorkflowEngine.RavenDb
             {
                 return from s in session.Query<WorkflowContainer>()
                     .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)
-                    .OrderByDescending(x => x.Workflow.RetryCount)
+                    .OrderByDescending(x => x.Workflow.Priority)
+                    .ThenByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
                     select s.Workflow;
@@ -166,7 +167,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -176,7 +177,8 @@ namespace Stateless.WorkflowEngine.RavenDb
             {
                 return from s in session.Query<WorkflowContainer>()
                     .Where(x => x.Workflow.ResumeOn <= DateTime.UtcNow)
-                    .OrderByDescending(x => x.Workflow.RetryCount)
+                    .OrderByDescending(x => x.Workflow.Priority)
+                    .ThenByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
                        select s.Workflow;

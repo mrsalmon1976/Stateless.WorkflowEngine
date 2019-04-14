@@ -86,7 +86,8 @@ namespace Stateless.WorkflowEngine.Stores
 
 
         /// <summary>
-        /// Gets the first <c>count</c> active workflows, ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -229,7 +230,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// Gets all workflows of a specified type.
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<T> GetAllByType<T>() where T : Workflow
+        public virtual IEnumerable<T> GetAllByType<T>() where T : Workflow
         {
             IEnumerable<Workflow> workflows = this.GetAllByType(typeof(T).AssemblyQualifiedName);
             return workflows.Cast<T>();
@@ -295,7 +296,8 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> active workflows, ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>

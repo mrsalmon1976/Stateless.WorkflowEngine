@@ -44,15 +44,14 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
-        /// Gets all workflows of a specified type.
+        /// Gets all incomplete workflows of a specified type ordered by create date.
         /// </summary>
         /// <returns></returns>
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
         {
             return this._activeWorkflows.Values
                        .Where(x => x.GetType().AssemblyQualifiedName == workflowType)
-                       .OrderByDescending(x => x.RetryCount)
-                       .ThenBy(x => x.CreatedOn);
+                       .OrderBy(x => x.CreatedOn);
         }
 
         /// <summary>
@@ -97,7 +96,8 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> unsuspended active workflows, ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -105,13 +105,14 @@ namespace Stateless.WorkflowEngine.Stores
         {
             return _activeWorkflows.Values
                 .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow)
-                .OrderByDescending(x => x.RetryCount)
+                .OrderByDescending(x => x.Priority)
+                .ThenByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
         }
 
         /// <summary>
-        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
         /// </summary>
         /// <param name="count"></param>
         /// <returns></returns>
@@ -119,7 +120,8 @@ namespace Stateless.WorkflowEngine.Stores
         {
             return _activeWorkflows.Values
                 .Where(x => x.ResumeOn <= DateTime.UtcNow)
-                .OrderByDescending(x => x.RetryCount)
+                .OrderByDescending(x => x.Priority)
+                .ThenByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
         }

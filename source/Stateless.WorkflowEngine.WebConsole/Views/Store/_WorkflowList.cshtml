@@ -14,6 +14,7 @@
                 <th>Suspended</th>
                 <th>State</th>
                 <th>Trigger</th>
+                <th>Priority</th>
                 <th>Retry Count</th>
                 <th>Retry Intervals</th>
                 <th>Created</th>
@@ -22,18 +23,19 @@
         <tbody>
             @foreach (var wf in Model.Workflows)
             {
-                <tr @if (wf.IsSuspended) {  <text>class="danger"</text> }>
-                    <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
-                    <td><a href="#" data-id="@wf.Id" data-type="@wf.WorkflowClassName" class="workflow-id">@wf.Id</a></td>
-                    <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
-                    <td>@wf.ResumeOn.ToLocalTime()</td>
-                    <td>@(wf.IsSuspended ? "Yes" : "No")</td>
-                    <td>@wf.CurrentState</td>
-                    <td>@wf.ResumeTrigger</td>
-                    <td>@wf.RetryCount</td>
-                    <td>@(String.Join(",", wf.RetryIntervals))</td>
-                    <td>@wf.CreatedOn.ToLocalTime()</td>
-                </tr>
+            <tr @if (wf.IsSuspended) { <text> class="danger" </text> }>
+                <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
+                <td><a href="#" data-id="@wf.Id" data-type="@wf.WorkflowClassName" class="workflow-id">@wf.Id</a></td>
+                <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
+                <td>@wf.ResumeOn.ToLocalTime()</td>
+                <td>@(wf.IsSuspended ? "Yes" : "No")</td>
+                <td>@wf.CurrentState</td>
+                <td>@wf.ResumeTrigger</td>
+                <td>@wf.Priority</td>
+                <td>@wf.RetryCount</td>
+                <td>@(String.Join(",", wf.RetryIntervals))</td>
+                <td>@wf.CreatedOn.ToLocalTime()</td>
+            </tr>
             }
         </tbody>
     </table>

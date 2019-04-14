@@ -157,6 +157,40 @@ namespace Test.Stateless.WorkflowEngine.Stores
         }
 
         [Test]
+        public void GetActive_MultipleWorkflowsReturned_OrderedByPriorityBeforeRetryCount()
+        {
+            DateTime startTime = DateTime.Now;
+            // factory method for workflows
+            Func<int, int, BasicWorkflow> createWorkflow = (priority, retryCount) => {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.Priority = priority;
+                wf.RetryCount = retryCount;
+                wf.CreatedOn = startTime;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+            
+            Workflow workflow1 = createWorkflow(4, 3);
+            Workflow workflow2 = createWorkflow(5, 2);
+            Workflow workflow3 = createWorkflow(5, 3);
+            Workflow workflow4 = createWorkflow(4, 2);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3, workflow4 });
+
+            // fetch the workflows
+            List<Workflow> workflows = store.GetActive(10).ToList();
+
+            Assert.AreEqual(workflow3.Id, workflows[0].Id);
+            Assert.AreEqual(workflow2.Id, workflows[1].Id);
+            Assert.AreEqual(workflow1.Id, workflows[2].Id);
+            Assert.AreEqual(workflow4.Id, workflows[3].Id);
+        }
+
+        [Test]
         public void GetActive_MultipleWorkflowsReturned_OrderedByRetryCountBeforeCreateDate()
         {
             // factory method for workflows
@@ -169,7 +203,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // create the workflows - ensure they are added in an incorrect order
             DateTime baseDate = DateTime.UtcNow;
-            
+
             Workflow workflow1 = createWorkflow(baseDate.AddMinutes(1), 2);
             Workflow workflow2 = createWorkflow(baseDate.AddMinutes(-1), 1);
             Workflow workflow3 = createWorkflow(baseDate.AddMinutes(1), 3);
