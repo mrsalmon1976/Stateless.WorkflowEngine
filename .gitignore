@@ -2,6 +2,7 @@
 source/TestResult.xml
 source/Stateless.Workflow.Tests.VisualState.xml
 /deployment/Output
+/deployment/_apikey.txt
 source/CompiledIndexCache/
 source/.vs/
 deployment/*.zip

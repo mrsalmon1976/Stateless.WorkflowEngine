@@ -5,13 +5,25 @@ function ZipFile
 		[String]$zipFile
 	)
 
-	set-alias sz "C:\Program Files\7-Zip\7z.exe"  
+	$exeloc = ""
+	if (Test-Path -Path "C:\Program Files\7-Zip\7z.exe") {
+		$exeloc = "C:\Program Files\7-Zip\7z.exe"
+	}
+	elseif (Test-Path -Path "C:\Program Files (x86)\7-Zip\7z.exe") {
+		$exeloc = "C:\Program Files (x86)\7-Zip\7z.exe"
+	}
+	else {
+		Write-Host "Unable to find 7-zip executable" -BackgroundColor Red -ForegroundColor White
+		Exit 1
+	}
+
+	set-alias sz $exeloc  
 	sz a -tzip -r $zipFile $sourceFile | Out-Null
 }
 
 $root = $PSScriptRoot
 $source = $root.Replace("deployment", "") + "\source"
-$version = Read-Host -Prompt "What version are we building?"
+$version = Read-Host -Prompt "What version are we building? [e.g. 1.5.0.0]"
 
 # build for mongo db 
 Write-Host "Building Stateless.Workflow.MongoDB version $version"
