@@ -25,6 +25,14 @@ There is a full example application in the source code, in the Test.Stateless.Wo
 
 ## Code
 
+### Workflow Priority
+
+The workflow engine will process workflows in the order that they come in.  If a workflow fails, it will go to the back of the line, but will still get processed in date order.  In some cases, you may want particular workflows within a single workflow collection to be processed as a higher priority.  
+
+For example, you may have an email handler that processes emails, but when users register they should be sent an email immediately.  In this case, you may want to prioritise registration emails over any other emails.
+
+To cater for this, workflows have a "Priority" property that can be set.  This defaults to 0, but the higher the value, the more important the workflow is.  Workflows will get processed in order of priority (descending) before date.
+
 ### Dependency Injection
 
 Most of the classes in the code implement an interface, which allows for the inversion of control.  One exception to this is 
