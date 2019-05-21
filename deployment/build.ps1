@@ -18,12 +18,12 @@ function ZipFile
 	}
 
 	set-alias sz $exeloc  
-	sz a -tzip -r $zipFile $sourceFile | Out-Null
+	sz a -xr!'Data\users.json' -tzip -r $zipFile $sourceFile | Out-Null
 }
 
 $root = $PSScriptRoot
 $source = $root.Replace("deployment", "") + "\source"
-$version = Read-Host -Prompt "What version are we building? [e.g. 1.5.0.0]"
+$version = Read-Host -Prompt "What version are we building? [e.g. 1.5.0]"
 
 # build for mongo db 
 Write-Host "Building Stateless.Workflow.MongoDB version $version"

@@ -112,7 +112,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override long GetCompletedCount()
         {
             var collection = GetCompletedCollection();
-            return collection.CountDocuments(_ => true);
+            // use EstimatedDocumentCount for this, as CountDocuments does an actual scan of the underlying documents and can lead to 
+            // performance issues on very large collections
+            return collection.EstimatedDocumentCount();
         }
 
 
