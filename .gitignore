@@ -1,4 +1,5 @@
 *.suo
+*.csproj.user
 source/TestResult.xml
 source/Stateless.Workflow.Tests.VisualState.xml
 /deployment/Output
