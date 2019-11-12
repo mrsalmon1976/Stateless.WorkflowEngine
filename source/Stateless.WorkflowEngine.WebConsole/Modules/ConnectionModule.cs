@@ -102,18 +102,22 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
         public dynamic Save()
         {
-            var model = this.Bind<ConnectionModel>();
-            var validationResult = _connectionValidator.Validate(model);
+            var viewModel = this.Bind<ConnectionViewModel>();
+
+            var validationResult = _connectionValidator.Validate(viewModel);
 
             if (!validationResult.Success)
             {
                 return Response.AsJson<ValidationResult>(validationResult);
             }
 
+            ConnectionModel model = Mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+
             // encrypt the password if it's set
             if (!String.IsNullOrEmpty(model.Password))
             {
                 byte[] key = _encryptionProvider.NewKey();
+                model.Key = Convert.ToBase64String(key);
                 model.Password = _encryptionProvider.SimpleEncrypt(model.Password, key);
             }
 
@@ -126,8 +130,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
         public dynamic Test()
         {
-            var model = this.Bind<ConnectionModel>();
-            var validationResult = _connectionValidator.Validate(model);
+            var viewModel = this.Bind<ConnectionViewModel>();
+
+            var validationResult = _connectionValidator.Validate(viewModel);
 
             if (!validationResult.Success)
             {
@@ -137,6 +142,15 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // try and connect
             try
             {
+                ConnectionModel model = Mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+                // encrypt the password if it's set
+                if (!String.IsNullOrEmpty(model.Password))
+                {
+                    byte[] key = _encryptionProvider.NewKey();
+                    model.Key = Convert.ToBase64String(key);
+                    model.Password = _encryptionProvider.SimpleEncrypt(model.Password, key);
+                }
+
                 // create a store and try and get the active count - this will bomb out if there is a problem
                 IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(model);
                 store.GetIncompleteCount();
@@ -146,7 +160,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             }
             catch (Exception ex)
             {
-                return Response.AsJson<ValidationResult>(new ValidationResult("Connection failed: " + ex.Message));
+                string message = ex.Message;
+                if (message.ToLower().Contains("not authorized"))
+                {
+                    message = "Authentication failure";
+                }
+                return Response.AsJson<ValidationResult>(new ValidationResult("Connection failed: " + message));
             }
         }
 

@@ -20,6 +20,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using System.Diagnostics;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -48,6 +49,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             // set up mappings
             Mapper.Initialize((cfg) => {
                 cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
+                cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
                 cfg.CreateMap<UserViewModel, UserModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
             });
 
@@ -87,7 +89,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             context.ViewBag.AppVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
             if (Debugger.IsAttached)
             {
-                context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmssttt");
+                //context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmssttt");
             }
             context.ViewBag.Scripts = new List<string>();
             context.ViewBag.Claims = new List<string>();

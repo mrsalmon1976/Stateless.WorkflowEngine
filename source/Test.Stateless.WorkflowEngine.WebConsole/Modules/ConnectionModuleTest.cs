@@ -50,6 +50,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             Mapper.Initialize((cfg) =>
             {
                 cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();
+                cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
             });
 
         }
@@ -292,7 +293,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             foreach (string claim in Claims.AllClaims)
             {
-                _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+                _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
 
                 currentUser.Claims = new string[] { claim };
 
@@ -325,7 +326,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             currentUser.Claims = new string[] { Claims.ConnectionAdd };
             var browser = CreateBrowser(currentUser);
 
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult("error"));
 
             // execute
             var response = browser.Post(Actions.Connection.Save, (with) =>
@@ -352,7 +353,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             currentUser.Claims = new string[] { Claims.ConnectionAdd };
             var browser = CreateBrowser(currentUser);
 
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
             _userStore.Connections.Returns(new List<ConnectionModel>());
 
             // execute
@@ -386,7 +387,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             currentUser.Claims = new string[] { Claims.ConnectionAdd };
             var browser = CreateBrowser(currentUser);
 
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
             _encryptionProvider.NewKey().Returns(key);
             _encryptionProvider.SimpleEncrypt(password, key, null).Returns(encryptedPassword);
 
@@ -425,7 +426,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = CreateBrowser(currentUser);
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult("error"));
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult("error"));
 
             // execute
             var response = browser.Post(Actions.Connection.Test, (with) =>
@@ -449,7 +450,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = CreateBrowser(currentUser);
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
 
             // set up the workflow store to throw an exception
             IWorkflowStore store = Substitute.For<IWorkflowStore>();
@@ -478,7 +479,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = CreateBrowser(currentUser);
-            _connectionValidator.Validate(Arg.Any<ConnectionModel>()).Returns(new ValidationResult());
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
 
             // set up the workflow store to throw an exception
             IWorkflowStore store = Substitute.For<IWorkflowStore>();

@@ -163,6 +163,7 @@
     <Compile Include="Navigation\Views.cs" />
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\BasicResult.cs" />
+    <Compile Include="ViewModels\Connection\ConnectionViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />

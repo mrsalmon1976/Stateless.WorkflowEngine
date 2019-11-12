@@ -33,7 +33,7 @@
     <div class="navbar navbar-default" id="navbar">
       <a class="navbar-brand" href="@Actions.Dashboard.Default">
         <i class="fa fa-database"></i>
-        Stateless.WorkflowEngine Console
+        Stateless.WorkflowEngine Console <span id="version-header">v@(ViewBag.AppVersion)</span>
       </a>
       <ul class="nav navbar-nav pull-right">
         <li>
@@ -56,14 +56,14 @@
             <i class="icon-align-justify icon-large" id="toggle"></i>
             <ul id="dock">
                 <li class="launcher@(MenuActiveClass("Dashboard"))">
-                <i class="fa fa-dashboard"></i>
-                <a href="@Actions.Dashboard.Default">Dashboard</a>
+                    <i class="fa fa-dashboard"></i>
+                    <a href="@Actions.Dashboard.Default">Dashboard</a>
                 </li>
                 @if (currentUserClaims.Contains(Claims.UserList) || currentUserClaims.Contains(Claims.UserAdd))
                 {
                     <li class="launcher@(MenuActiveClass("Users"))">
-                    <i class="fa fa-users"></i>
-                    <a href="@Actions.User.Default">Users</a>
+                        <i class="fa fa-users"></i>
+                        <a href="@Actions.User.Default">Users</a>
                     </li>
                 }
             </ul>

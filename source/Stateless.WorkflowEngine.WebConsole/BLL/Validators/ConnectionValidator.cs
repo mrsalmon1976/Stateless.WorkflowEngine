@@ -1,4 +1,4 @@
-﻿using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+﻿using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,12 +9,12 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Validators
 {
     public interface IConnectionValidator
     {
-        ValidationResult Validate(ConnectionModel model);
+        ValidationResult Validate(ConnectionViewModel model);
     }
 
     public class ConnectionValidator : IConnectionValidator
     {
-        public ValidationResult Validate(ConnectionModel model)
+        public ValidationResult Validate(ConnectionViewModel model)
         {
             ValidationResult result = new ValidationResult();
 
@@ -37,6 +37,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Validators
             if (String.IsNullOrWhiteSpace(model.CompletedCollection))
             {
                 result.Messages.Add("Completed collection cannot be empty");
+            }
+            if (model.Password != model.PasswordConfirm)
+            {
+                result.Messages.Add("Password and confirmation password do not match");
             }
 
             return result;

@@ -1,5 +1,6 @@
 ﻿using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,15 +11,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole
 {
     public class DataHelper
     {
-        public static ConnectionModel CreateConnectionModel(WorkflowStoreType storeType)
+        public static ConnectionViewModel CreateConnectionViewModel(WorkflowStoreType storeType)
         {
-            ConnectionModel model = new ConnectionModel();
+            ConnectionViewModel model = new ConnectionViewModel();
             model.ActiveCollection = "Workflows";
             model.CompletedCollection = "CompletedWorkflows";
             model.Host = "localhost";
             model.Database = "MyWorkflowStore";
             model.User = "test";
             model.Password = "password";
+            model.PasswordConfirm = model.Password;
             model.WorkflowStoreType = storeType;
 
             switch (storeType) {

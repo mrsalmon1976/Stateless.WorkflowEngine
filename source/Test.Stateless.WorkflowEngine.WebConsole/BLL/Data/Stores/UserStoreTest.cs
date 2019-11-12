@@ -49,7 +49,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             ConnectionModel conn = new ConnectionModel();
             conn.Database = "MongoDb";
             conn.Host = "myserver";
-            conn.Key = key;
+            conn.Key = Convert.ToBase64String(key);
             conn.Password = "hullabaloo";
             conn.Port = new Random().Next(1000, 99999);
             conn.User = "mrplod";
@@ -128,7 +128,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                 {
                     Password = Guid.NewGuid().ToString(),
                     User = Guid.NewGuid().ToString(),
-                    Key = key,
+                    Key = Convert.ToBase64String(key),
                     Database = Guid.NewGuid().ToString(),
                     Port = r.Next(1000, 999999),
                     Host = Guid.NewGuid().ToString()

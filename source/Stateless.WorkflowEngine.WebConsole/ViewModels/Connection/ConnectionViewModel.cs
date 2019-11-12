@@ -1,20 +1,14 @@
-﻿using System;
+﻿using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
+namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
 {
-    public class ConnectionModel
+    public class ConnectionViewModel
     {
-        public ConnectionModel()
-        {
-            this.Id = Guid.NewGuid();
-        }
-
-        public Guid Id { get; set; }
-
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
         public string Host { get; set; }
@@ -25,15 +19,13 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
 
         public string Password { get; set; }
 
-        /// <summary>
-        /// Gets/sets the key used to generate the password (Base-64-encoded byte array)
-        /// </summary>
-        public string Key { get; set; }
+        public string PasswordConfirm { get; set; }
 
         public int? Port { get; set; }
-        
+
         public string ActiveCollection { get; set; }
-        
+
         public string CompletedCollection { get; set; }
+
     }
 }

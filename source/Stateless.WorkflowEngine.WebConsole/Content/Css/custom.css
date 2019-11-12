@@ -58,17 +58,24 @@
 .font90 {
     font-size: 90%;
 }
-.logo-icon
-{
-    width:75px;
-    height:75px;
-    margin:auto;
-    padding:15px;
+.logo-icon {
+    width: 75px;
+    height: 75px;
+    margin: auto;
+    padding: 15px;
     padding-top: 22px;
     margin-top: 10px;
-    border-radius:40px;
-    background:#2c3e50;
+    border-radius: 40px;
+    background: #2c3e50;
     color: #1abc9c;
+}
+#version-header {
+    font-size: 70%;
+}
+#version-login {
+    font-size: 80%;
+    color: #a0a0a0;
+    padding-top: 5px;
 }
 @media screen and (min-width: 768px) {
     .modal-wide {
