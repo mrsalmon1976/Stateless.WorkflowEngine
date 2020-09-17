@@ -72,4 +72,10 @@ Over time, workflow collections grow, and the CompletedWorkflows data store can 
 
 #### MongoDb
 
+On the CompletedWorkflows collection:
+
 ```db.CompletedWorkflows.createIndex({'Workflow.CreatedOn':-1})```
+
+On the Workflows collection (only create this if you generate a lot of workflows - usually your active workflow count should stay low so an index is not necessary):
+
+```db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : 'WorkflowActive' })```
