@@ -47,6 +47,16 @@ var DashboardView = function () {
         });
     };
 
+    this.getInfoPanelClass = function (num, warningThreshold, errorThreshold) {
+        if (num === null || num === '' || parseInt(num) > errorThreshold) {
+            return "conn-workflow-info-error";
+        }
+        if (parseInt(num) > warningThreshold) {
+            return "conn-workflow-info-warning";
+        }
+        return '';
+    };
+
     this.loadConnections = function () {
 
         $('#pnl-loading').show();
@@ -63,6 +73,7 @@ var DashboardView = function () {
             //debugger;
             $('#pnl-connections').html(response);
             $('a.btn-delete').on('click', that.confirmDeleteConnection);
+            that.loadConnectionInfo();
 
         });
 
@@ -73,6 +84,64 @@ var DashboardView = function () {
             //debugger;
             $('#pnl-loading').hide();
         });
+    };
+
+    this.loadConnectionInfo = function () {
+        $(".panel-connection").each(function (index) {
+
+            var connId = $(this).attr('data-model-id');
+            var pnl = $(this);
+
+            var request = $.ajax({
+                url: "/connection/info",
+                method: "POST",
+                dataType: 'json',
+                data: { id : connId }
+            });
+
+            request.done(function (response) {
+
+                var pnlHeading = pnl.find('.panel-heading');
+
+                // get the connection item panels and clear out any styles at the same time
+                var pnlActive = pnl.find('.conn-row-active').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+                var pnlSuspended = pnl.find('.conn-row-suspended').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+                var pnlComplete = pnl.find('.conn-row-complete').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+                var pnlTitle = pnl.find('.conn-title-link');
+
+                // if an error has come back, add the error class and also add the error to the title
+                if (response.connectionError != null && response.connectionError.length > 0) {
+                    pnlHeading.addClass('error');
+                    pnlActive.addClass('conn-workflow-info-error');
+                    pnlSuspended.addClass('conn-workflow-info-error');
+                    pnlComplete.addClass('conn-workflow-info-error');
+                    pnlTitle.attr('title', response.connectionError);
+                }
+                else {
+                    // the response is good - we can set the number and set any error/warning styles
+                    pnlHeading.removeClass('error');
+                    pnlActive.addClass(that.getInfoPanelClass(response.activeCount, 100, 10000));
+                    pnlSuspended.addClass(that.getInfoPanelClass(response.suspendedCount, 0, 0));
+                    pnlComplete.addClass(that.getInfoPanelClass(response.completeCount, Number.MAX_VALUE, Number.MAX_VALUE));
+                    pnlActive.find('.conn-row-span-active').text(numeral(response.activeCount).format('0,0'));
+                    pnlSuspended.find('.conn-row-span-suspended').text(numeral(response.suspendedCount).format('0,0'));
+                    pnlComplete.find('.conn-row-span-complete').text(numeral(response.completeCount).format('0,0'));
+                    pnlTitle.attr('title', pnlTitle.attr('data-title'));
+                }
+            });
+
+            request.fail(function (xhr, textStatus, errorThrown) {
+                pnlHeading.addClass('error');
+                pnlActive.addClass('conn-workflow-info-error');
+                pnlSuspended.addClass('conn-workflow-info-error');
+                pnlComplete.addClass('conn-workflow-info-error');
+                pnlTitle.attr('title', xhr.responseText);
+            });
+            request.always(function (xhr, textStatus) {
+                // always hide the loading image
+                pnl.find('.conn-row-img-loading').hide();
+            });
+         });
     };
 
     this.showError = function (error) {

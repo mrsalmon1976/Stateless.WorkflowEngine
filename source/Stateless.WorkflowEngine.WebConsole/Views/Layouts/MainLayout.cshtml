@@ -28,97 +28,99 @@
     <link href="/Content/Css/custom.css?v=@(ViewBag.AppVersion)" rel="stylesheet" type="text/css">
     
   </head>
-  <body class="main page" data-feedly-mini="yes">
-    <!-- Navbar -->
-    <div class="navbar navbar-default" id="navbar">
-      <a class="navbar-brand" href="@Actions.Dashboard.Default">
-        <i class="fa fa-database"></i>
-        Stateless.WorkflowEngine Console <span id="version-header">v@(ViewBag.AppVersion)</span>
-      </a>
-      <ul class="nav navbar-nav pull-right">
-        <li>
-          <a href="#" id="mnu-change-password">
-            <i class="fa fa-user"></i>
-            @currentUserName
-          </a>
-        </li>
-        <li>
-          <a href="@Actions.Login.Logout">
-            <i class="fa fa-sign-out"></i>
-            Sign out
-          </a>
-        </li>
-      </ul>
-    </div>
-    <div id="wrapper">
-      <!-- Sidebar -->
-        <section id="sidebar">
-            <i class="icon-align-justify icon-large" id="toggle"></i>
-            <ul id="dock">
-                <li class="launcher@(MenuActiveClass("Dashboard"))">
-                    <i class="fa fa-dashboard"></i>
-                    <a href="@Actions.Dashboard.Default">Dashboard</a>
+    <body class="main page" data-feedly-mini="yes">
+        <!-- Navbar -->
+        <div class="navbar navbar-default" id="navbar">
+            <a class="navbar-brand" href="@Actions.Dashboard.Default">
+                <i class="fa fa-database"></i>
+                Stateless.WorkflowEngine Console <span id="version-header">v@(ViewBag.AppVersion)</span>
+            </a>
+            <ul class="nav navbar-nav pull-right">
+                <li>
+                    <a href="#" id="mnu-change-password">
+                        <i class="fa fa-user"></i>
+                        @currentUserName
+                    </a>
                 </li>
-                @if (currentUserClaims.Contains(Claims.UserList) || currentUserClaims.Contains(Claims.UserAdd))
-                {
-                    <li class="launcher@(MenuActiveClass("Users"))">
-                        <i class="fa fa-users"></i>
-                        <a href="@Actions.User.Default">Users</a>
-                    </li>
-                }
+                <li>
+                    <a href="@Actions.Login.Logout">
+                        <i class="fa fa-sign-out"></i>
+                        Sign out
+                    </a>
+                </li>
             </ul>
-            <div data-toggle="tooltip" id="beaker" title="" data-original-title="Made by lab2023"></div>
-        </section>
-        @RenderBody()
-    </div>
-    <div class="modal fade" id="dlg-profile" tabindex="-1" role="dialog" aria-labelledby="dlg-title">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">@currentUserName :: Change your password</h4>
-                </div>
-                <div class="modal-body">
-                    <div id="profile-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
-                    <form id="form-profile" class="form-horizontal" role="form" method="post" action="@Actions.User.ChangePassword">
-                        <div class="form-group">
-                            <label class="col-sm-3 control-label">Password</label>
-                            <div class="col-sm-9">
-                                <input class="form-control" id="profile-password" placeholder="Password" name="password" type="password" value="">
+        </div>
+        <div id="wrapper">
+            <!-- Sidebar -->
+            <section id="sidebar">
+                <i class="icon-align-justify icon-large" id="toggle"></i>
+                <ul id="dock">
+                    <li class="launcher@(MenuActiveClass("Dashboard"))">
+                        <i class="fa fa-dashboard"></i>
+                        <a href="@Actions.Dashboard.Default">Dashboard</a>
+                    </li>
+                    @if (currentUserClaims.Contains(Claims.UserList) || currentUserClaims.Contains(Claims.UserAdd))
+                    {
+                        <li class="launcher@(MenuActiveClass("Users"))">
+                            <i class="fa fa-users"></i>
+                            <a href="@Actions.User.Default">Users</a>
+                        </li>
+                    }
+                </ul>
+                <div data-toggle="tooltip" id="beaker" title="" data-original-title="Made by lab2023"></div>
+            </section>
+            @RenderBody()
+        </div>
+        <div class="modal fade" id="dlg-profile" tabindex="-1" role="dialog" aria-labelledby="dlg-title">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">@currentUserName :: Change your password</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div id="profile-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
+                        <form id="form-profile" class="form-horizontal" role="form" method="post" action="@Actions.User.ChangePassword">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">Password</label>
+                                <div class="col-sm-9">
+                                    <input class="form-control" id="profile-password" placeholder="Password" name="password" type="password" value="">
+                                </div>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="col-sm-3 control-label">&nbsp;</label>
-                            <div class="col-sm-9">
-                                <input class="form-control" id="profile-confirmPassword" placeholder="Confirm Password" name="confirmpassword" type="password" value="">
+                            <div class="form-group">
+                                <label class="col-sm-3 control-label">&nbsp;</label>
+                                <div class="col-sm-9">
+                                    <input class="form-control" id="profile-confirmPassword" placeholder="Confirm Password" name="confirmpassword" type="password" value="">
+                                </div>
                             </div>
-                        </div>
-                    </form>                    
-                </div>
-                <div class="modal-footer">
-                    <i id="profile-spinner" class="hide fa fa-circle-o-notch fa-spin fa-lg fa-fw pull-right"></i>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button id="profile-btn-submit" type="button" class="btn btn-primary">Change password</button>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <i id="profile-spinner" class="hide fa fa-circle-o-notch fa-spin fa-lg fa-fw pull-right"></i>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button id="profile-btn-submit" type="button" class="btn btn-primary">Change password</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- Footer -->
-    <!-- Javascripts -->
-    <script src="/Content/Js/jquery.min.js"></script>
-    <script src="/Content/Js/jquery-ui.min.js" type="text/javascript"></script>
-    <script src="/Content/Js/hierapolis.js" type="text/javascript"></script>
-    <script src="/Content/Js/metisMenu.min.js"></script>
-    <script src="/Content/Js/modernizr.min.js" type="text/javascript"></script>
-    <script src="/Content/Js/bootstrap-multiselect.js"></script>
-    <script src="/Content/Js/bootbox.min.js"></script>
-    <script src="/Content/Js/custom.js?v=@(ViewBag.AppVersion)"></script>
-    @foreach (string script in ViewBag.Scripts)
-    {
-        <script src="@(script + "?v=" + ViewBag.AppVersion)"></script>
-    }
-  
-  </body>
+        <!-- Footer -->
+        <!-- Javascripts -->
+        <script src="/Content/Js/jquery.min.js"></script>
+        <script src="/Content/Js/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="/Content/Js/hierapolis.js" type="text/javascript"></script>
+        <script src="/Content/Js/metisMenu.min.js"></script>
+        <script src="/Content/Js/modernizr.min.js" type="text/javascript"></script>
+        <script src="/Content/Js/bootstrap-multiselect.js"></script>
+        <script src="/Content/Js/bootbox.min.js"></script>
+        <script src="/Content/Js/numeral.min.js"></script>
+        <script src="/Content/Js/custom.js?v=@(ViewBag.AppVersion)"></script>
+        @foreach (string script in ViewBag.Scripts)
+        {
+            <script src="@(script + "?v=" + ViewBag.AppVersion)"></script>
+        }
+
+    </body>
 
 </html>

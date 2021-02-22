@@ -21,12 +21,16 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using System.Diagnostics;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
+using Nancy.Cryptography;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
 
     public class WebConsoleBootstrapper : DefaultNancyBootstrapper
     {
+
+        private static CryptographyConfiguration _cryptographyConfiguration;
+
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
             // override maximum JSON length for Nancy
@@ -36,6 +40,11 @@ namespace Stateless.WorkflowEngine.WebConsole
             IAppSettings settings = new AppSettings();
             container.Register<IAppSettings>(settings);
 
+            // set up the crypto config
+            _cryptographyConfiguration = new CryptographyConfiguration(
+                new RijndaelEncryptionProvider(new PassphraseKeyGenerator($"AES_{settings.SecureKey}", new byte[] { 101, 2, 103, 4, 105, 6, 107, 8 })),
+                new DefaultHmacProvider(new PassphraseKeyGenerator($"HMAC_{settings.SecureKey}", new byte[] { 101, 2, 103, 4, 105, 6, 107, 8 })));
+
             // IO Wrappers
             container.Register<IDirectoryWrap, DirectoryWrap>();
             //container.Register<IPathWrap, PathWrap>();
@@ -43,13 +52,13 @@ namespace Stateless.WorkflowEngine.WebConsole
             //container.Register<IPathHelper, PathHelper>();
 
             // security
-            container.Register<IEncryptionProvider, AESGCM>();
+            container.Register<Encryption.IEncryptionProvider, Encryption.AESGCM>();
             container.Register<IPasswordProvider, PasswordProvider>();
 
             // set up mappings
             Mapper.Initialize((cfg) => {
-                cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
+                cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
                 cfg.CreateMap<UserViewModel, UserModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
             });
 
@@ -79,6 +88,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             base.RequestStartup(container, pipelines, context);
             var formsAuthConfiguration = new FormsAuthenticationConfiguration()
             {
+                CryptographyConfiguration = _cryptographyConfiguration,
                 RedirectUrl = "~/login",
                 UserMapper = container.Resolve<IUserMapper>(),
                 DisableRedirect = context.Request.IsAjaxRequest()    

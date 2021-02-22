@@ -13,6 +13,11 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
         /// Gets the port used for the application.
         /// </summary>
         int Port { get; }
+
+        /// <summary>
+        /// Gets/sets the application security key
+        /// </summary>
+        string SecureKey { get; }
     }
 
     public class AppSettings : IAppSettings
@@ -25,6 +30,17 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
             get
             {
                 return Int32.Parse(ConfigurationManager.AppSettings["Port"]);
+            }
+        }
+
+        /// <summary>
+        /// Gets/sets the application security key
+        /// </summary>
+        public string SecureKey
+        {
+            get
+            {
+                return (ConfigurationManager.AppSettings["SecureKey"] ?? "this a Def@ult security key if it is not specified in app.config");
             }
         }
 

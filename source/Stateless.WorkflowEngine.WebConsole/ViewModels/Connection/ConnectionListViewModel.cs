@@ -11,10 +11,10 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
     {
         public ConnectionListViewModel()
         {
-            this.WorkflowStores = new List<WorkflowStoreModel>();
+            this.Connections = new List<ConnectionViewModel>();
         }
 
-        public List<WorkflowStoreModel> WorkflowStores { get; set; }
+        public List<ConnectionViewModel> Connections { get; set; }
 
         public bool CurrentUserCanDeleteConnection { get; set; }
 

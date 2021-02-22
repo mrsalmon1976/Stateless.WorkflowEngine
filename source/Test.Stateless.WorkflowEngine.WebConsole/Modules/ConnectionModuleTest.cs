@@ -49,8 +49,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             Mapper.Initialize((cfg) =>
             {
-                cfg.CreateMap<ConnectionModel, WorkflowStoreModel>();
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
+                cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
             });
 
         }
@@ -165,45 +165,86 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         }
         #endregion
 
-        #region List Tests
+        #region Info Tests
 
         [Test]
-        public void List_OnExecute_LoadsAllConnectionsForCurrentUser()
+        public void Info_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
             var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid();
 
-            int connectionCount = new Random().Next(3, 9);
-            List<ConnectionModel> connections = new List<ConnectionModel>();
-            for (var i = 0; i < connectionCount; i++)
-            {
-                connections.Add(new ConnectionModel());
-            }
-            _userStore.Connections.Returns(connections);
+            _userStore.Connections.Returns(new List<ConnectionModel>());
 
             // execute
-            var response = browser.Get(Actions.Connection.List, (with) =>
+            var response = browser.Post(Actions.Connection.Info, (with) =>
             {
                 with.HttpRequest();
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
             });
 
             // assert
-            _workflowStoreService.Received(connectionCount).PopulateWorkflowStoreInfo(Arg.Any<WorkflowStoreModel>());
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
 
+            _workflowStoreService.DidNotReceive().GetWorkflowStoreInfo(Arg.Any<ConnectionModel>());
         }
+
+        [Test]
+        public void Info_ConnectionFound_ReturnsConnectionInfo()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
+            var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel conn = new ConnectionModel();
+            conn.Id = connectionId;
+            _userStore.GetConnection(connectionId).Returns(conn);
+
+            Random r = new Random();
+            ConnectionInfoViewModel infoViewModel = new ConnectionInfoViewModel();
+            infoViewModel.ActiveCount = r.Next(1, 10);
+            infoViewModel.SuspendedCount = r.Next(11, 20);
+            infoViewModel.CompleteCount = r.Next(100, 1000);
+            _workflowStoreService.GetWorkflowStoreInfo(conn).Returns(infoViewModel);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Info, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _workflowStoreService.Received(1).GetWorkflowStoreInfo(conn);
+
+            ConnectionInfoViewModel result = JsonConvert.DeserializeObject<ConnectionInfoViewModel>(response.Body.AsString());
+            Assert.AreEqual(infoViewModel.ActiveCount, result.ActiveCount);
+            Assert.AreEqual(infoViewModel.SuspendedCount, result.SuspendedCount);
+            Assert.AreEqual(infoViewModel.CompleteCount, result.CompleteCount);
+        }
+
+        #endregion
+
+        #region List Tests
 
         [Test]
         public void List_OnExecute_OrdersConnectionsByHostThenDatabase()
         {
             List<ConnectionModel> connections = new List<ConnectionModel>();
             connections.Add(new ConnectionModel() { Host = "Z", Database = "A" });
-            connections.Add(new ConnectionModel() { Host = "Y", Database = "Z" });
-            connections.Add(new ConnectionModel() { Host = "Y", Database = "B" });
+            connections.Add(new ConnectionModel() { Host = "Y", Database = "z" });
+            connections.Add(new ConnectionModel() { Host = "y", Database = "B" });
             connections.Add(new ConnectionModel() { Host = "Z", Database = "B" });
-            connections.Add(new ConnectionModel() { Host = "A", Database = "A" });
-            connections.Add(new ConnectionModel() { Host = "A", Database = "B" });
+            connections.Add(new ConnectionModel() { Host = "a", Database = "A" });
+            connections.Add(new ConnectionModel() { Host = "A", Database = "b" });
             _userStore.Connections.Returns(connections);
 
             // execute
@@ -214,18 +255,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // assert
             ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
             Assert.IsNotNull(model);
-            Assert.AreEqual(model.WorkflowStores[0].ConnectionModel.Host, "A");
-            Assert.AreEqual(model.WorkflowStores[0].ConnectionModel.Database, "A");
-            Assert.AreEqual(model.WorkflowStores[1].ConnectionModel.Host, "A");
-            Assert.AreEqual(model.WorkflowStores[1].ConnectionModel.Database, "B");
-            Assert.AreEqual(model.WorkflowStores[2].ConnectionModel.Host, "Y");
-            Assert.AreEqual(model.WorkflowStores[2].ConnectionModel.Database, "B");
-            Assert.AreEqual(model.WorkflowStores[3].ConnectionModel.Host, "Y");
-            Assert.AreEqual(model.WorkflowStores[3].ConnectionModel.Database, "Z");
-            Assert.AreEqual(model.WorkflowStores[4].ConnectionModel.Host, "Z");
-            Assert.AreEqual(model.WorkflowStores[4].ConnectionModel.Database, "A");
-            Assert.AreEqual(model.WorkflowStores[5].ConnectionModel.Host, "Z");
-            Assert.AreEqual(model.WorkflowStores[5].ConnectionModel.Database, "B");
+            Assert.AreEqual(model.Connections[0].Host, "a");
+            Assert.AreEqual(model.Connections[0].Database, "A");
+            Assert.AreEqual(model.Connections[1].Host, "A");
+            Assert.AreEqual(model.Connections[1].Database, "b");
+            Assert.AreEqual(model.Connections[2].Host, "y");
+            Assert.AreEqual(model.Connections[2].Database, "B");
+            Assert.AreEqual(model.Connections[3].Host, "Y");
+            Assert.AreEqual(model.Connections[3].Database, "z");
+            Assert.AreEqual(model.Connections[4].Host, "Z");
+            Assert.AreEqual(model.Connections[4].Database, "A");
+            Assert.AreEqual(model.Connections[5].Host, "Z");
+            Assert.AreEqual(model.Connections[5].Database, "B");
         }
 
         [Test]

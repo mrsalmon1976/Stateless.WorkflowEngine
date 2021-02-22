@@ -11,6 +11,8 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
     {
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
+        public Guid Id { get; set; }
+
         public string Host { get; set; }
 
         public string Database { get; set; }

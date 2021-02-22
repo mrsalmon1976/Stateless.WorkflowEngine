@@ -5,6 +5,7 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,35 +28,34 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             _workflowInfoService = new WorkflowInfoService(_workflowStoreFactory);
         }
 
-        #region PopulateWorkflowStoreInfo Tests
+        #region GetWorkflowStoreInfo Tests
 
         [Test]
-        public void PopulateWorkflowStoreInfo_ModelIsNull_ThrowsException()
+        public void GetWorkflowStoreInfo_ModelIsNull_ThrowsException()
         {
-            TestDelegate del = () => _workflowInfoService.PopulateWorkflowStoreInfo(null);
+            TestDelegate del = () => _workflowInfoService.GetWorkflowStoreInfo(null);
             // assert
             Assert.Throws<ArgumentNullException>(del);
         }
 
         [Test]
-        public void PopulateWorkflowStoreInfo_ClientErrorOccurs_PopulatesModelWithException()
+        public void GetWorkflowStoreInfo_ClientErrorOccurs_PopulatesModelWithException()
         {
             const string exceptionMessage = "test exception";
             ConnectionModel connectionModel = new ConnectionModel();
-            WorkflowStoreModel model = new WorkflowStoreModel(connectionModel);
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.When(x => x.GetIncompleteCount()).Do((ci) => { throw new Exception(exceptionMessage); });
             _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
 
-            _workflowInfoService.PopulateWorkflowStoreInfo(model);
+            ConnectionInfoViewModel model = _workflowInfoService.GetWorkflowStoreInfo(connectionModel);
 
             Assert.AreEqual(exceptionMessage, model.ConnectionError);
             Assert.IsNull(model.ActiveCount);
         }
 
         [Test]
-        public void PopulateWorkflowStoreInfo_NoClientErrorOccurs_PopulatesModelWithCounts()
+        public void GetWorkflowStoreInfo_NoClientErrorOccurs_PopulatesModelWithCounts()
         {
             Random r = new Random();
             long activeCount = r.Next(11, 1000);
@@ -63,7 +63,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             long completedCount = r.Next(1001, 10000);
 
             ConnectionModel connectionModel = new ConnectionModel();
-            WorkflowStoreModel model = new WorkflowStoreModel(connectionModel);
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetIncompleteCount().Returns(activeCount);
@@ -71,10 +70,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             workflowStore.GetCompletedCount().Returns(completedCount);
             _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
 
-            _workflowInfoService.PopulateWorkflowStoreInfo(model);
+            ConnectionInfoViewModel model = _workflowInfoService.GetWorkflowStoreInfo(connectionModel);
 
             Assert.AreEqual(activeCount, model.ActiveCount);
-            Assert.AreEqual(completedCount, model.CompletedCount);
+            Assert.AreEqual(completedCount, model.CompleteCount);
             Assert.AreEqual(suspendedCount, model.SuspendedCount);
         }
 

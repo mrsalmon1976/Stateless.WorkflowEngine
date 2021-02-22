@@ -26,7 +26,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
-        private IWorkflowInfoService _workflowStoreService;
+        private IWorkflowInfoService _workflowInfoService;
         private IWorkflowStoreFactory _workflowStoreFactory;
 
         public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
@@ -35,7 +35,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = userStore;
             _connectionValidator = connectionValidator;
             _encryptionProvider = encryptionProvider;
-            _workflowStoreService = workflowStoreService;
+            _workflowInfoService = workflowStoreService;
             _workflowStoreFactory = workflowStoreFactory;
 
             // lists all connections for the current user
@@ -49,6 +49,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             {
                 this.RequiresClaims(Claims.ConnectionDelete);
                 return DeleteConnection();
+            };
+            Post[Actions.Connection.Info] = (x) =>
+            {
+                return Info();
             };
             // saves a connection for the current user
             Post[Actions.Connection.Save] = (x) =>
@@ -81,20 +85,30 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             return this.Response.AsJson(new { Result = "Ok" }, HttpStatusCode.OK);
         }
 
+        public dynamic Info()
+        {
+            var id = Request.Form["id"];
+
+            // load the connections for the current user
+            var conn = _userStore.GetConnection(id);
+            if (conn == null)
+            {
+                var notFoundResult = new { Error = "Connection not found" };
+                return this.Response.AsJson(notFoundResult, HttpStatusCode.NotFound);
+            }
+
+            ConnectionInfoViewModel infoModel = _workflowInfoService.GetWorkflowStoreInfo(conn);
+            return this.Response.AsJson<ConnectionInfoViewModel>(infoModel);
+        }
+
         public dynamic List()
         {
             // load the connections 
-            List<WorkflowStoreModel> workflowStoreModels = new List<WorkflowStoreModel>();
-            foreach (ConnectionModel cm in _userStore.Connections) 
-            {
-                workflowStoreModels.Add(new WorkflowStoreModel(cm));
-            }
-
-            // process getting all the store info in parallel
-            Parallel.ForEach(workflowStoreModels, _workflowStoreService.PopulateWorkflowStoreInfo);
-
+            var connections = _userStore.Connections;
             ConnectionListViewModel model = new ConnectionListViewModel();
-            model.WorkflowStores.AddRange(workflowStoreModels.OrderBy(x => x.ConnectionModel.Host).ThenBy(x => x.ConnectionModel.Database));
+            List<ConnectionViewModel> connectionViewModels = Mapper.Map<List<ConnectionModel>, List<ConnectionViewModel>>(connections);
+            model.Connections.AddRange(connectionViewModels.OrderBy(x => x.Host.ToUpper()).ThenBy(x => x.Database.ToUpper()));
+            
             model.CurrentUserCanDeleteConnection = this.Context.CurrentUser.HasClaim(Claims.ConnectionDelete);
             return this.View[Views.Connection.List, model]; ;
 

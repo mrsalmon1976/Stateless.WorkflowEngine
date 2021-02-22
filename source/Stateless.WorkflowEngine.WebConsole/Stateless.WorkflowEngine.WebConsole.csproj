@@ -133,7 +133,6 @@
     </Compile>
     <Compile Include="BLL\Data\Models\ConnectionModel.cs" />
     <Compile Include="BLL\Data\Models\UserModel.cs" />
-    <Compile Include="BLL\Data\Models\WorkflowStoreModel.cs" />
     <Compile Include="BLL\Data\Models\WorkflowStoreType.cs" />
     <Compile Include="BLL\Data\Stores\UserStore.cs" />
     <Compile Include="BLL\Factories\WorkflowStoreFactory.cs" />
@@ -163,6 +162,7 @@
     <Compile Include="Navigation\Views.cs" />
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\BasicResult.cs" />
+    <Compile Include="ViewModels\Connection\ConnectionInfoViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
@@ -264,6 +264,9 @@
     <Content Include="Content\Images\node.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Content\Images\pulse_20.gif">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Content\Images\sprite-8460f675.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -292,6 +295,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\modernizr.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\Js\numeral.min.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\Views\StoreView.js">

@@ -16,6 +16,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         public class Connection
         {
             public const string Delete = "/connection/delete";
+            public const string Info = "/connection/info";
             public const string List = "/connection/list";
             public const string Save = "/connection/save";
             public const string Test = "/connection/test";

@@ -7,6 +7,7 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
     public interface IWorkflowInfoService
     {
-        void PopulateWorkflowStoreInfo(WorkflowStoreModel workflowStoreModel);
+        ConnectionInfoViewModel GetWorkflowStoreInfo(ConnectionModel connectionModel);
 
         //IEnumerable<UIWorkflow> ConvertWorkflowDocuments(IEnumerable<string> documents, WorkflowStoreType workflowStoreType);
 
@@ -42,25 +43,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
         {
             _workflowStoreFactory = workflowStoreFactory;
         }
-
-        //public IEnumerable<UIWorkflow> ConvertWorkflowDocuments(IEnumerable<string> documents, WorkflowStoreType workflowStoreType)
-        //{
-        //    List<UIWorkflow> workflows = new List<UIWorkflow>();
-        //    foreach (string doc in documents)
-        //    {
-        //        if (workflowStoreType == WorkflowStoreType.MongoDb)
-        //        {
-        //            UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(doc);
-        //            wc.Workflow.WorkflowType = wc.WorkflowType;
-        //            workflows.Add(wc.Workflow);
-        //        }
-        //        else
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-        //    }
-        //    return workflows;
-        //}
 
         public IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count)
         {
@@ -104,21 +86,24 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
 
 
-        public void PopulateWorkflowStoreInfo(WorkflowStoreModel workflowStoreModel)
+        public ConnectionInfoViewModel GetWorkflowStoreInfo(ConnectionModel connectionModel)
         {
-            if (workflowStoreModel == null) throw new ArgumentNullException("workflowStoreModel");
+            if (connectionModel == null) throw new ArgumentNullException("Null connection model supplied");
 
+            ConnectionInfoViewModel model = new ConnectionInfoViewModel();
             try
             {
-                IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(workflowStoreModel.ConnectionModel);
-                workflowStoreModel.ActiveCount = workflowStore.GetIncompleteCount();
-                workflowStoreModel.SuspendedCount = workflowStore.GetSuspendedCount();
-                workflowStoreModel.CompletedCount = workflowStore.GetCompletedCount();
+                IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
+                model.ActiveCount = workflowStore.GetIncompleteCount();
+                model.SuspendedCount = workflowStore.GetSuspendedCount();
+                model.CompleteCount = workflowStore.GetCompletedCount();
             }
             catch (Exception ex)
             {
-                workflowStoreModel.ConnectionError = ex.Message;
+                model.ConnectionError = ex.Message;
             }
+
+            return model;
         }
     }
 }
