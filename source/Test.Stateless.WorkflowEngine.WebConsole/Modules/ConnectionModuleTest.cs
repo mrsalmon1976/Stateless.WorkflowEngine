@@ -32,6 +32,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class ConnectionModuleTest
     {
+        private IMapper _mapper;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
@@ -47,18 +48,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _workflowStoreService = Substitute.For<IWorkflowInfoService>();
             _workflowStoreFactory = Substitute.For<IWorkflowStoreFactory>();
 
-            Mapper.Initialize((cfg) =>
-            {
+            var config = new MapperConfiguration(cfg => {
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
                 cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
             });
+            _mapper = config.CreateMapper();
 
-        }
-
-        [TearDown]
-        public void ConnectionModuleTest_TearDown()
-        {
-            Mapper.Reset();
         }
 
         #region Delete Tests
@@ -248,7 +243,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore.Connections.Returns(connections);
 
             // execute
-            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             var result = module.List();
 
@@ -276,7 +271,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             List<ConnectionModel> connections = new List<ConnectionModel>();
             _userStore.Connections.Returns(connections);
 
-            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             module.Context.CurrentUser = new UserIdentity()
             {
@@ -298,7 +293,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             List<ConnectionModel> connections = new List<ConnectionModel>();
             _userStore.Connections.Returns(connections);
 
-            ConnectionModule module = new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             module.Context.CurrentUser = new UserIdentity()
             {
@@ -550,7 +545,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         private Browser CreateBrowser(UserIdentity currentUser)
         {
             var browser = new Browser((bootstrapper) =>
-                            bootstrapper.Module(new ConnectionModule(_userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory))
+                            bootstrapper.Module(new ConnectionModule(_mapper, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory))
                                 .RootPathProvider(new TestRootPathProvider())
                                 .RequestStartup((container, pipelines, context) => {
                                     context.CurrentUser = currentUser;

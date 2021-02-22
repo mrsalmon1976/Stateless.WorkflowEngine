@@ -56,11 +56,13 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IPasswordProvider, PasswordProvider>();
 
             // set up mappings
-            Mapper.Initialize((cfg) => {
+            var config = new MapperConfiguration(cfg => {
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
                 cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
                 cfg.CreateMap<UserViewModel, UserModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
             });
+            var mapper = config.CreateMapper();
+            container.Register<IMapper>(mapper);
 
             // set up the stores
             var dataPath = Path.Combine(this.RootPathProvider.GetRootPath(), "Data");

@@ -23,15 +23,17 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class ConnectionModule : WebConsoleSecureModule
     {
+        private IMapper _mapper;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
         private IWorkflowInfoService _workflowInfoService;
         private IWorkflowStoreFactory _workflowStoreFactory;
 
-        public ConnectionModule(IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
+        public ConnectionModule(IMapper mapper, IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
             : base()
         {
+            _mapper = mapper;
             _userStore = userStore;
             _connectionValidator = connectionValidator;
             _encryptionProvider = encryptionProvider;
@@ -106,7 +108,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // load the connections 
             var connections = _userStore.Connections;
             ConnectionListViewModel model = new ConnectionListViewModel();
-            List<ConnectionViewModel> connectionViewModels = Mapper.Map<List<ConnectionModel>, List<ConnectionViewModel>>(connections);
+            List<ConnectionViewModel> connectionViewModels = _mapper.Map<List<ConnectionModel>, List<ConnectionViewModel>>(connections);
             model.Connections.AddRange(connectionViewModels.OrderBy(x => x.Host.ToUpper()).ThenBy(x => x.Database.ToUpper()));
             
             model.CurrentUserCanDeleteConnection = this.Context.CurrentUser.HasClaim(Claims.ConnectionDelete);
@@ -125,7 +127,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
                 return Response.AsJson<ValidationResult>(validationResult);
             }
 
-            ConnectionModel model = Mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+            ConnectionModel model = _mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
 
             // encrypt the password if it's set
             if (!String.IsNullOrEmpty(model.Password))
@@ -156,7 +158,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // try and connect
             try
             {
-                ConnectionModel model = Mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+                ConnectionModel model = _mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
                 // encrypt the password if it's set
                 if (!String.IsNullOrEmpty(model.Password))
                 {
