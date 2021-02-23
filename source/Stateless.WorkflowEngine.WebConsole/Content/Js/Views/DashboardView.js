@@ -92,6 +92,14 @@ var DashboardView = function () {
             var connId = $(this).attr('data-model-id');
             var pnl = $(this);
 
+            var pnlHeading = pnl.find('.panel-heading');
+
+            // get the connection item panels and clear out any styles at the same time
+            var pnlActive = pnl.find('.conn-row-active').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+            var pnlSuspended = pnl.find('.conn-row-suspended').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+            var pnlComplete = pnl.find('.conn-row-complete').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+            var pnlTitle = pnl.find('.conn-title-link');
+
             var request = $.ajax({
                 url: "/connection/info",
                 method: "POST",
@@ -100,14 +108,6 @@ var DashboardView = function () {
             });
 
             request.done(function (response) {
-
-                var pnlHeading = pnl.find('.panel-heading');
-
-                // get the connection item panels and clear out any styles at the same time
-                var pnlActive = pnl.find('.conn-row-active').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-                var pnlSuspended = pnl.find('.conn-row-suspended').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-                var pnlComplete = pnl.find('.conn-row-complete').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-                var pnlTitle = pnl.find('.conn-title-link');
 
                 // if an error has come back, add the error class and also add the error to the title
                 if (response.connectionError != null && response.connectionError.length > 0) {
@@ -127,6 +127,7 @@ var DashboardView = function () {
                     pnlSuspended.find('.conn-row-span-suspended').text(numeral(response.suspendedCount).format('0,0'));
                     pnlComplete.find('.conn-row-span-complete').text(numeral(response.completeCount).format('0,0'));
                     pnlTitle.attr('title', pnlTitle.attr('data-title'));
+                    pnl.find('.conn-row-span-data').show();
                 }
             });
 
@@ -139,7 +140,7 @@ var DashboardView = function () {
             });
             request.always(function (xhr, textStatus) {
                 // always hide the loading image
-                pnl.find('.conn-row-img-loading').hide();
+                pnl.find('.conn-row-span-loading').hide();
             });
          });
     };

@@ -90,7 +90,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         public dynamic Info()
         {
             var id = Request.Form["id"];
-
+            //System.Threading.Thread.Sleep(2000);  // useful for testing
             // load the connections for the current user
             var conn = _userStore.GetConnection(id);
             if (conn == null)

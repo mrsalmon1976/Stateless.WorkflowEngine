@@ -12,6 +12,9 @@
 .conn-row {
     margin:0 !important;
 }
+.conn-row-span-data {
+    display: none;
+}
 .conn-title {
     display: inline-block;
     margin-left: 10px;
