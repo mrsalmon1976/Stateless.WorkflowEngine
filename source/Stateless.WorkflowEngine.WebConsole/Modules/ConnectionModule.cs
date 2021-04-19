@@ -128,6 +128,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             }
 
             ConnectionModel model = _mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+            model.Id = Guid.NewGuid();
 
             // encrypt the password if it's set
             if (!String.IsNullOrEmpty(model.Password))

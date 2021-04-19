@@ -23,9 +23,11 @@ using Stateless.WorkflowEngine.WebConsole.ViewModels.Login;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SystemWrapper.IO;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -451,6 +453,38 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore.Received(1).Save();
         }
 
+        [Test]
+        public void Save_ValidModel_ConnectionIdIsNotEmpty()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionAdd };
+            var browser = CreateBrowser(currentUser);
+
+            _connectionValidator.Validate(Arg.Any<ConnectionViewModel>()).Returns(new ValidationResult());
+
+            List<ConnectionModel> connections = new List<ConnectionModel>();
+            _userStore.Connections.Returns(connections);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Save, (with) =>
+            {
+                with.HttpRequest();
+                with.FormValue("Password", "test");
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(0, result.Messages.Count);
+
+            Assert.AreEqual(1, _userStore.Connections.Count);
+            Assert.AreNotEqual(Guid.Empty, _userStore.Connections[0].Id);
+            _userStore.Received(1).Save();
+        }
 
         #endregion
 
