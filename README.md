@@ -66,11 +66,11 @@ can be overridden at the workflow level.
 2. WorkflowCompleted - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() 
 method is called.  The workflow.OnComplete() method can also be overridden and actioned at the workflow level instead of using this event.
 
-### Indexing on data stores
+## Indexing on data stores
 
 Over time, workflow collections grow, and the CompletedWorkflows data store can get very large.  The following indexes are recommended.
 
-#### MongoDb
+### MongoDb
 
 On the CompletedWorkflows collection:
 
@@ -79,3 +79,15 @@ On the CompletedWorkflows collection:
 On the Workflows collection (only create this if you generate a lot of workflows - usually your active workflow count should stay low so an index is not necessary):
 
 ```db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : 'WorkflowActive' })```
+
+## Serialisation
+
+### MongoDb
+
+By default, when a class is deserialised, an exception will be thrown if a property exists on the document that is not declared on a workflow.  This can cause dependency issues in a distributed system - if one service registers a workflow and another service executes that workflow, if the definition changes you will need to deploy both services.  This gets particularly problematic when a workflow uses a class as a property that is used in multiple places.
+
+To remove this dependency, you can add the following attribute to your workflow class definition:
+
+```[MongoDB.Bson.Serialization.Attributes.BsonIgnoreExtraElements]```
+
+Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
