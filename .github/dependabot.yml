@@ -6,6 +6,6 @@
 version: 2
 updates:
   - package-ecosystem: "nuget" 
-    directory: "/" # Location of package manifests
+    directory: "/source/" # Location of package manifests
     schedule:
       interval: "daily"
