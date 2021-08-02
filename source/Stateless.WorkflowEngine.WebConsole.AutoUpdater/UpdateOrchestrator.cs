@@ -21,9 +21,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 
         public async Task<bool> Run()
         {
-            // TODO: Get working folder
-            // string currentFolder = "C:\\Matt\\code\\Stateless.WorkflowEngine\\source\\Stateless.WorkflowEngine.WebConsole\\bin\\Debug";
-
             Console.WriteLine("Checking for new version....");
             VersionComparisonResult versionComparisonResult = await  _versionComparisonService.CheckIfNewVersionAvailable();
             if (versionComparisonResult.IsNewVersionAvailable)

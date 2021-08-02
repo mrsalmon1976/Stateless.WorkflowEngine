@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using SimpleInjector;
 using SimpleInjector.Lifestyles;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
 
 namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 {
@@ -19,7 +20,10 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 
             container.Register<HttpClient>(() => new HttpClient(), Lifestyle.Scoped);
 
+            // singletons
             container.Register<IAppSettings, AppSettings>(Lifestyle.Singleton);
+            container.Register<IHttpClientFactory, HttpClientFactory>(Lifestyle.Singleton);
+
             container.Register<IAssemblyVersionChecker, AssemblyVersionChecker>(Lifestyle.Transient);
             container.Register<IVersionComparisonService, VersionComparisonService>(Lifestyle.Transient);
             container.Register<IWebVersionChecker, WebVersionChecker>(Lifestyle.Transient);

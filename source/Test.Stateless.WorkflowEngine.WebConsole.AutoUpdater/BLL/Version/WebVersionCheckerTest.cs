@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,25 +23,21 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
         private const string GitHubLatestReleaseUrl = "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest";
 
         [Test]
-        public void Constructor_OnConstruct_SetsDefaultHeaders()
-        {
-            WebVersionChecker webVersionChecker = new WebVersionChecker(new AppSettings(), new System.Net.Http.HttpClient());
-            Assert.AreEqual(1, webVersionChecker.HttpClient.DefaultRequestHeaders.Count());
-        }
-
-        [Test]
         public void GetVersionInfo_OnRequest_BindResponseValuesCorrectly()
         {
             // setup
             IAppSettings appSettings = Substitute.For<IAppSettings>();
             appSettings.LatestVersionUrl.Returns(GitHubLatestReleaseUrl);
+            IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
 
             string response = GetSampleGitHubReleaseJson();
             MockHttpMessageHandler httpMessageHandler = new MockHttpMessageHandler(HttpStatusCode.OK, response);
             HttpClient client = new HttpClient(httpMessageHandler);
-            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, client);
+            httpClientFactory.GetHttpClient().Returns(client);
+
 
             // execute
+            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, httpClientFactory);
             var result = webVersionChecker.GetVersionInfo().GetAwaiter().GetResult();
 
             // assert
@@ -53,7 +50,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
             IAppSettings appSettings = Substitute.For<IAppSettings>();
             appSettings.LatestVersionUrl.Returns(GitHubLatestReleaseUrl);
 
-            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, new System.Net.Http.HttpClient());
+            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, new HttpClientFactory());
             var result = webVersionChecker.GetVersionInfo().GetAwaiter().GetResult();
             string versionNumber = result.VersionNumber;
             System.Version version = System.Version.Parse(versionNumber);

@@ -58,12 +58,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppSettings.cs" />
+    <Compile Include="BLL\Models\GitHubReleaseResponse.cs" />
     <Compile Include="BLL\Models\VersionComparisonResult.cs" />
     <Compile Include="BLL\Models\WebConsoleVersionInfo.cs" />
+    <Compile Include="BLL\Update\UpdateDownloadService.cs" />
+    <Compile Include="BLL\Update\UpdateLocationService.cs" />
     <Compile Include="BLL\Version\AssemblyVersionChecker.cs" />
     <Compile Include="AutoUpdaterConstants.cs" />
     <Compile Include="BLL\Version\VersionComparisonService.cs" />
     <Compile Include="BLL\Version\WebVersionChecker.cs" />
+    <Compile Include="BLL\Web\HttpClientFactory.cs" />
     <Compile Include="BootStrapper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

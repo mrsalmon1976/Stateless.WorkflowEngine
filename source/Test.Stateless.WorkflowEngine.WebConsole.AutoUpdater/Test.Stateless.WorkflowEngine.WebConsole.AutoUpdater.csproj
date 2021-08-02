@@ -64,9 +64,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BLL\Update\UpdateDownloadServiceTest.cs" />
     <Compile Include="BLL\Version\VersionComparisonServiceTest.cs" />
     <Compile Include="BLL\Version\WebVersionCheckerTest.cs" />
     <Compile Include="BLL\Version\AssemblyVersionCheckerTest.cs" />
+    <Compile Include="BLL\Web\HttpClientFactoryTest.cs" />
     <Compile Include="MockUtils\Web\MockHttpMessageHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

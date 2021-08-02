@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,27 +19,27 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
     {
 
         private readonly IAppSettings _appSettings;
-        private readonly HttpClient _client;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public WebVersionChecker(IAppSettings appSettings, HttpClient client)
+        public WebVersionChecker(IAppSettings appSettings, IHttpClientFactory httpClientFactory)
         {
             _appSettings = appSettings;
-            _client = client;
-            _client.DefaultRequestHeaders.Add("User-Agent", "Stateless.WorkflowEngine.WebConsole.AutoUpdater");
+            _httpClientFactory = httpClientFactory;
         }
-
-        public HttpClient HttpClient {  get { return _client; } }
 
         public async Task<WebConsoleVersionInfo> GetVersionInfo()
         {
             string url = _appSettings.LatestVersionUrl;
-            var result = await _client.GetAsync(url);
-            result.EnsureSuccessStatusCode();
-            var body = await result.Content.ReadAsStringAsync(); 
-            dynamic releaseData = JsonConvert.DeserializeObject(body);
-            WebConsoleVersionInfo versionInfo = new WebConsoleVersionInfo();
-            versionInfo.VersionNumber = releaseData.tag_name;
-            return versionInfo;
+            using (HttpClient client = _httpClientFactory.GetHttpClient())
+            {
+                var result = await client.GetAsync(url);
+                result.EnsureSuccessStatusCode();
+                var body = await result.Content.ReadAsStringAsync();
+                GitHubReleaseResponse releaseData = JsonConvert.DeserializeObject<GitHubReleaseResponse>(body);
+                WebConsoleVersionInfo versionInfo = new WebConsoleVersionInfo();
+                versionInfo.VersionNumber = releaseData.TagName;
+                return versionInfo;
+            }
         }
     }
 }
