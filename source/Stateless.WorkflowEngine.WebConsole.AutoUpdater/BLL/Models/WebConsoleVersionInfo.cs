@@ -10,5 +10,11 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models
     {
         public string VersionNumber { get; set; }
 
+        public string FileName { get; set; }
+
+        public string DownloadUrl { get; set; }
+
+        public long Length { get; set; }
+
     }
 }

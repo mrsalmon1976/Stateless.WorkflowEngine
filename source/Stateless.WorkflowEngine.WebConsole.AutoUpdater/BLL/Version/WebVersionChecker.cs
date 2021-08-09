@@ -30,16 +30,20 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
         public async Task<WebConsoleVersionInfo> GetVersionInfo()
         {
             string url = _appSettings.LatestVersionUrl;
-            using (HttpClient client = _httpClientFactory.GetHttpClient())
-            {
-                var result = await client.GetAsync(url);
-                result.EnsureSuccessStatusCode();
-                var body = await result.Content.ReadAsStringAsync();
-                GitHubReleaseResponse releaseData = JsonConvert.DeserializeObject<GitHubReleaseResponse>(body);
-                WebConsoleVersionInfo versionInfo = new WebConsoleVersionInfo();
-                versionInfo.VersionNumber = releaseData.TagName;
-                return versionInfo;
-            }
+            HttpClient client = _httpClientFactory.GetHttpClient();
+            var result = await client.GetAsync(url);
+            result.EnsureSuccessStatusCode();
+            var body = await result.Content.ReadAsStringAsync();
+            GitHubReleaseResponse releaseData = JsonConvert.DeserializeObject<GitHubReleaseResponse>(body);
+            WebConsoleVersionInfo versionInfo = new WebConsoleVersionInfo();
+            versionInfo.VersionNumber = releaseData.TagName;
+
+            GitHubAsset asset = releaseData.GetWebConsoleAsset();
+            versionInfo.FileName = asset.Name;
+            versionInfo.DownloadUrl = asset.DownloadUrl;
+            versionInfo.Length = asset.Size;
+
+            return versionInfo;
         }
     }
 }

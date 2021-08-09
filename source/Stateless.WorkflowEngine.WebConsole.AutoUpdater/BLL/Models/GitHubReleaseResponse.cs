@@ -13,19 +13,15 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models
         public string TagName { get; set; }
 
         [JsonProperty("assets")]
-        public Asset[] Assets { get; set; }
+        public GitHubAsset[] Assets { get; set; }
 
-        public class Asset
+        public GitHubAsset GetWebConsoleAsset()
         {
-            [JsonProperty("name")]
-            public string Name { get; set; }
-
-            [JsonProperty("browser_download_url")]
-            public string DownloadUrl { get; set; }
-
-            [JsonProperty("size")]
-            public int Size { get; set; }
-
+            if (this.Assets == null || this.Assets.Length == 0)
+            {
+                return null;
+            }
+            return this.Assets.FirstOrDefault(x => x.Name.StartsWith("Stateless.WorkflowEngine.WebConsole"));
         }
 
     }

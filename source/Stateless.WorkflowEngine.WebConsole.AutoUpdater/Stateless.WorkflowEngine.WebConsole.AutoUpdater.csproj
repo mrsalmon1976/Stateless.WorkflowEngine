@@ -46,6 +46,7 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
@@ -58,10 +59,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppSettings.cs" />
+    <Compile Include="BLL\Models\GitHubAsset.cs" />
     <Compile Include="BLL\Models\GitHubReleaseResponse.cs" />
     <Compile Include="BLL\Models\VersionComparisonResult.cs" />
     <Compile Include="BLL\Models\WebConsoleVersionInfo.cs" />
     <Compile Include="BLL\Update\UpdateDownloadService.cs" />
+    <Compile Include="BLL\Update\UpdateFileService.cs" />
     <Compile Include="BLL\Update\UpdateLocationService.cs" />
     <Compile Include="BLL\Version\AssemblyVersionChecker.cs" />
     <Compile Include="AutoUpdaterConstants.cs" />
@@ -71,7 +74,9 @@
     <Compile Include="BootStrapper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Windows\InstallationService.cs" />
     <Compile Include="UpdateOrchestrator.cs" />
+    <Compile Include="Utility\FileUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
