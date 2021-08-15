@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update
+namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
     [TestFixture]
     public class UpdateDownloadServiceTest

@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web
 {
     public interface IHttpClientFactory
     {

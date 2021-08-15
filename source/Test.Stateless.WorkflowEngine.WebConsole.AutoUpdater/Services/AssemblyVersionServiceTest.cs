@@ -1,7 +1,6 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,10 +10,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
+namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
     [TestFixture]
-    public class AssemblyVersionCheckerTest
+    public class AssemblyVersionServiceTest
     {
         [Test]
         public void GetWebConsoleVersion_GivenExe_ReturnsAssemblyVersion()
@@ -26,15 +25,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
                 );
 
             IUpdateLocationService updateLocationService = Substitute.For<IUpdateLocationService>();
-            updateLocationService.BaseFolder.Returns(webConsoleDebugFolder);
+            updateLocationService.ApplicationFolder.Returns(webConsoleDebugFolder);
 
 
             // execute
-            IAssemblyVersionChecker versionChecker = new AssemblyVersionChecker(updateLocationService);
-            string webConsoleVersion = versionChecker.GetWebConsoleVersion();
+            IAssemblyVersionService assemblyVersionService = new AssemblyVersionService(updateLocationService);
+            string webConsoleVersion = assemblyVersionService.GetWebConsoleVersion();
 
             // work out the version manually
-            string pathToExe = Path.Combine(webConsoleDebugFolder, versionChecker.WebConsoleExeFileName);
+            string pathToExe = Path.Combine(webConsoleDebugFolder, assemblyVersionService.WebConsoleExeFileName);
             var versionInfo = FileVersionInfo.GetVersionInfo(pathToExe);
             string currentVersion = System.Version.Parse(versionInfo.FileVersion).ToString(3);
 

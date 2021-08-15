@@ -1,8 +1,8 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +17,7 @@ using Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.MockUtils.Web;
 namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
 {
     [TestFixture]
-    public class WebVersionCheckerTest
+    public class WebVersionServiceTest
     {
 
         private const string GitHubLatestReleaseUrl = "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest";
@@ -37,8 +37,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
 
 
             // execute
-            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, httpClientFactory);
-            var result = webVersionChecker.GetVersionInfo().GetAwaiter().GetResult();
+            IWebVersionService webVersionService = new WebVersionService(appSettings, httpClientFactory);
+            var result = webVersionService.GetVersionInfo().GetAwaiter().GetResult();
 
             // assert
             Assert.AreEqual("2.2.1", result.VersionNumber);
@@ -50,8 +50,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
             IAppSettings appSettings = Substitute.For<IAppSettings>();
             appSettings.LatestVersionUrl.Returns(GitHubLatestReleaseUrl);
 
-            WebVersionChecker webVersionChecker = new WebVersionChecker(appSettings, new HttpClientFactory());
-            var result = webVersionChecker.GetVersionInfo().GetAwaiter().GetResult();
+            IWebVersionService webVersionService = new WebVersionService(appSettings, new HttpClientFactory());
+            var result = webVersionService.GetVersionInfo().GetAwaiter().GetResult();
             string versionNumber = result.VersionNumber;
             System.Version version = System.Version.Parse(versionNumber);
             Assert.GreaterOrEqual(version.Major, 2);
@@ -62,7 +62,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
             // Determine path
             var assembly = Assembly.GetExecutingAssembly();
 
-            using (Stream stream = assembly.GetManifestResourceStream("Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version.GitHubLatestVersionSample.json"))
+            using (Stream stream = assembly.GetManifestResourceStream("Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services.GitHubLatestVersionSample.json"))
             {
                 using (StreamReader reader = new StreamReader(stream))
                 {

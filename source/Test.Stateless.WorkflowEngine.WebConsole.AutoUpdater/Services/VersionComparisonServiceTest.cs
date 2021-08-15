@@ -1,14 +1,14 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
+namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
     [TestFixture]
     public class VersionComparisonServiceTest
@@ -17,16 +17,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
         public void CheckIfNewVersionAvailable_VersionsMatch_SetsValuesCorrectly()
         {
             const string version = "2.1.2";
-            IAssemblyVersionChecker assemblyVersionChecker = Substitute.For<IAssemblyVersionChecker>();
-            IWebVersionChecker webVersionChecker = Substitute.For<IWebVersionChecker>();
+            IAssemblyVersionService assemblyVersionService = Substitute.For<IAssemblyVersionService>();
+            IWebVersionService webVersionChecker = Substitute.For<IWebVersionService>();
 
             WebConsoleVersionInfo webConsoleVersionInfo = new WebConsoleVersionInfo();
             webConsoleVersionInfo.VersionNumber = version;
             
-            assemblyVersionChecker.GetWebConsoleVersion().Returns(version);
+            assemblyVersionService.GetWebConsoleVersion().Returns(version);
             webVersionChecker.GetVersionInfo().Returns(Task.FromResult(webConsoleVersionInfo));
 
-            VersionComparisonService versionComparisonService = new VersionComparisonService(assemblyVersionChecker, webVersionChecker);
+            VersionComparisonService versionComparisonService = new VersionComparisonService(assemblyVersionService, webVersionChecker);
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
             Assert.IsFalse(result.IsNewVersionAvailable);
@@ -38,16 +38,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
         {
             const string versionInstalled = "2.1.1";
             const string versionLatest = "2.1.3";
-            IAssemblyVersionChecker assemblyVersionChecker = Substitute.For<IAssemblyVersionChecker>();
-            IWebVersionChecker webVersionChecker = Substitute.For<IWebVersionChecker>();
+            IAssemblyVersionService assemblyVersionService = Substitute.For<IAssemblyVersionService>();
+            IWebVersionService webVersionChecker = Substitute.For<IWebVersionService>();
 
             WebConsoleVersionInfo webConsoleVersionInfo = new WebConsoleVersionInfo();
             webConsoleVersionInfo.VersionNumber = versionLatest;
 
-            assemblyVersionChecker.GetWebConsoleVersion().Returns(versionInstalled);
+            assemblyVersionService.GetWebConsoleVersion().Returns(versionInstalled);
             webVersionChecker.GetVersionInfo().Returns(Task.FromResult(webConsoleVersionInfo));
 
-            VersionComparisonService versionComparisonService = new VersionComparisonService(assemblyVersionChecker, webVersionChecker);
+            VersionComparisonService versionComparisonService = new VersionComparisonService(assemblyVersionService, webVersionChecker);
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
             Assert.IsTrue(result.IsNewVersionAvailable);

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models
 {
     public class GitHubAsset
     {

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,20 +8,20 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
-    public interface IWebVersionChecker
+    public interface IWebVersionService
     {
         Task<WebConsoleVersionInfo> GetVersionInfo();
     }
 
-    public class WebVersionChecker : IWebVersionChecker
+    public class WebVersionService : IWebVersionService
     {
 
         private readonly IAppSettings _appSettings;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public WebVersionChecker(IAppSettings appSettings, IHttpClientFactory httpClientFactory)
+        public WebVersionService(IAppSettings appSettings, IHttpClientFactory httpClientFactory)
         {
             _appSettings = appSettings;
             _httpClientFactory = httpClientFactory;

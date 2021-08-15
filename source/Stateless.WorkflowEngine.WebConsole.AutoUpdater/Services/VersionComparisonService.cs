@@ -1,11 +1,11 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models;
+﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
     public interface IVersionComparisonService
     {
@@ -14,19 +14,19 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
 
     public class VersionComparisonService : IVersionComparisonService
     {
-        private readonly IAssemblyVersionChecker _assemblyVersionChecker;
-        private readonly IWebVersionChecker _webVersionChecker;
+        private readonly IAssemblyVersionService _assemblyVersionService;
+        private readonly IWebVersionService _webVersionService;
 
-        public VersionComparisonService(IAssemblyVersionChecker assemblyVersionChecker, IWebVersionChecker webVersionChecker)
+        public VersionComparisonService(IAssemblyVersionService assemblyVersionService, IWebVersionService webVersionService)
         {
-            this._assemblyVersionChecker = assemblyVersionChecker;
-            this._webVersionChecker = webVersionChecker;
+            this._assemblyVersionService = assemblyVersionService;
+            this._webVersionService = webVersionService;
         }
 
         public async Task<VersionComparisonResult> CheckIfNewVersionAvailable()
         {
-            string installedVersion = _assemblyVersionChecker.GetWebConsoleVersion();
-            WebConsoleVersionInfo versionInfo = await _webVersionChecker.GetVersionInfo();
+            string installedVersion = _assemblyVersionService.GetWebConsoleVersion();
+            WebConsoleVersionInfo versionInfo = await _webVersionService.GetVersionInfo();
             string latestReleaseVersion = versionInfo.VersionNumber;
 
             VersionComparisonResult result = new VersionComparisonResult();

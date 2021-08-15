@@ -6,10 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using SimpleInjector;
 using SimpleInjector.Lifestyles;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services.Windows;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility;
 
 namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
@@ -27,14 +26,15 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
             container.Register<IAppSettings, AppSettings>(Lifestyle.Singleton);
             container.Register<IHttpClientFactory, HttpClientFactory>(Lifestyle.Singleton);
 
-            container.Register<IAssemblyVersionChecker, AssemblyVersionChecker>(Lifestyle.Transient);
+            container.Register<IAssemblyVersionService, AssemblyVersionService>(Lifestyle.Transient);
             container.Register<IFileUtility, FileUtility>(Lifestyle.Transient);
             container.Register<IInstallationService, InstallationService>(Lifestyle.Transient);
             container.Register<IUpdateDownloadService, UpdateDownloadService>(Lifestyle.Transient);
+            container.Register<IUpdateEventLogger, UpdateEventLogger>(Lifestyle.Transient);
             container.Register<IUpdateFileService, UpdateFileService>(Lifestyle.Transient);
             container.Register<IUpdateLocationService, UpdateLocationService>(Lifestyle.Transient);
             container.Register<IVersionComparisonService, VersionComparisonService>(Lifestyle.Transient);
-            container.Register<IWebVersionChecker, WebVersionChecker>(Lifestyle.Transient);
+            container.Register<IWebVersionService, WebVersionService>(Lifestyle.Transient);
 
             container.Register<UpdateOrchestrator>();
 

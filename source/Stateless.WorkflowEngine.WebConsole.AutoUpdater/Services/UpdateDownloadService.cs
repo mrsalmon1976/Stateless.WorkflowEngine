@@ -1,4 +1,4 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Web;
+﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
 
     public interface IUpdateDownloadService

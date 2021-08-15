@@ -1,4 +1,4 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update;
+﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,22 +8,22 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
+namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 {
-    public interface IAssemblyVersionChecker
+    public interface IAssemblyVersionService
     {
         string WebConsoleExeFileName { get; set; }
 
         string GetWebConsoleVersion();
     }
 
-    public class AssemblyVersionChecker : IAssemblyVersionChecker
+    public class AssemblyVersionService : IAssemblyVersionService
     {
         private readonly IUpdateLocationService _updateFileService;
 
-        public AssemblyVersionChecker(IUpdateLocationService updateFileService)
+        public AssemblyVersionService(IUpdateLocationService updateFileService)
         {
-            this.WebConsoleExeFileName = "Stateless.WorkflowEngine.WebConsole.exe";
+            this.WebConsoleExeFileName = AutoUpdaterConstants.WebConsoleExeFileName;
             this._updateFileService = updateFileService;
         }
 
@@ -31,7 +31,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version
 
         public string GetWebConsoleVersion()
         {
-            string pathToExe = Path.Combine(_updateFileService.BaseFolder, this.WebConsoleExeFileName);
+            string pathToExe = Path.Combine(_updateFileService.ApplicationFolder, this.WebConsoleExeFileName);
             if (!File.Exists(pathToExe))
             {
                 throw new FileNotFoundException(String.Format("Unable to find web console executable {0}", pathToExe));

@@ -1,7 +1,6 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Models;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Update;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.BLL.Version;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services.Windows;
+﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,12 +18,14 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
         private readonly IUpdateDownloadService _updateDownloadService;
         private readonly IUpdateFileService _updateFileService;
         private readonly IInstallationService _installationService;
+        private readonly IUpdateEventLogger _updateEventLogger;
 
         public UpdateOrchestrator(IVersionComparisonService versionComparisonService
             , IUpdateLocationService updateLocationService
             , IUpdateDownloadService updateDownloadService
             , IUpdateFileService updateFileService
             , IInstallationService installationService
+            , IUpdateEventLogger updateEventLogger
             )
         {
             this._versionComparisonService = versionComparisonService;
@@ -32,54 +33,82 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
             this._updateDownloadService = updateDownloadService;
             this._updateFileService = updateFileService;
             this._installationService = installationService;
+            this._updateEventLogger = updateEventLogger;
         }
 
 
         public async Task<bool> Run()
         {
-            Console.WriteLine("Checking for new version....");
+            _updateEventLogger.ClearLogFile();
+
+            _updateEventLogger.LogLine($"Updater start time {DateTime.Now}.");
+            _updateEventLogger.Log($"Checking for new version (location: {_updateLocationService.ApplicationFolder})...");
             VersionComparisonResult versionComparisonResult = await  _versionComparisonService.CheckIfNewVersionAvailable();
+            _updateEventLogger.LogLine("done.");
+
             WebConsoleVersionInfo latestVersionInfo = versionComparisonResult.LatestReleaseVersionInfo;
-            if (1 == 1 || versionComparisonResult.IsNewVersionAvailable)
+            bool updated = false;
+
+            if (versionComparisonResult.IsNewVersionAvailable)
             {
-                /*
-                Console.WriteLine("New version available: {0}", latestVersionInfo.VersionNumber);
+                _updateEventLogger.LogLine($"New version available: {latestVersionInfo.VersionNumber}");
 
-                Console.WriteLine("Creating temporary update folder {0}", _updateLocationService.UpdateTempFolder);
-                await _updateLocationService.EnsureEmptyUpdateTempFolderExists();
+                _updateEventLogger.Log($"Creating temporary update folder {_updateLocationService.UpdateTempFolder}...");
+                _updateLocationService.EnsureEmptyUpdateTempFolderExists();
+                _updateEventLogger.LogLine("done.");
 
-                Console.WriteLine("Downloading file from {0}", latestVersionInfo.DownloadUrl);
+                _updateEventLogger.Log($"Downloading file from {latestVersionInfo.DownloadUrl}...");
                 string downloadPath = Path.Combine(_updateLocationService.UpdateTempFolder, latestVersionInfo.FileName);
                 await _updateDownloadService.DownloadFile(latestVersionInfo.DownloadUrl, downloadPath);
+                _updateEventLogger.LogLine("done.");
 
-                Console.WriteLine("Extracting release contents to {0}", _updateLocationService.UpdateTempFolder);
+                _updateEventLogger.Log($"Extracting release contents to {_updateLocationService.UpdateTempFolder}...");
                 await _updateFileService.ExtractReleasePackage(downloadPath, _updateLocationService.UpdateTempFolder);
-                */
+                _updateEventLogger.LogLine("done.");
 
+                _updateEventLogger.Log("Stopping installed service...");
                 _installationService.StopService();
+                _updateEventLogger.LogLine("done.");
+                _updateEventLogger.Log("Uninstalling service...");
                 _installationService.UninstallService();
+                _updateEventLogger.LogLine("done.");
 
-                await _updateFileService.Backup(_updateLocationService.BaseFolder, _updateLocationService.BackupFolder, new string[] { _updateLocationService.BackupFolder, _updateLocationService.UpdateTempFolder });
+                _updateEventLogger.Log("Backing up current service files...");
+                await _updateFileService.Backup();
+                _updateEventLogger.LogLine("done.");
 
-                // TODO: Delete all files other than data files
-                // TODO: Copy new version files into the folder
-                // TODO: Install new service
-                // TODO: Start new service
+                _updateEventLogger.Log("Deleting current service files...");
+                await _updateFileService.DeleteCurrentVersionFiles();
+                _updateEventLogger.LogLine("done.");
+
+                _updateEventLogger.Log("Copying new service files...");
+                await _updateFileService.CopyNewVersionFiles();
+                _updateEventLogger.LogLine("done.");
+
+                _updateEventLogger.Log("Installing service...");
+                _installationService.InstallService();
+                _updateEventLogger.LogLine("done.");
+
+                _updateEventLogger.Log("Starting service...");
+                _installationService.StartService();
+                _updateEventLogger.LogLine("done.");
 
                 // cleanup!
-                Console.WriteLine("Cleaning up temp update folder {0}", _updateLocationService.UpdateTempFolder);
-                await _updateLocationService.DeleteUpdateTempFolder();
+                _updateEventLogger.Log($"Cleaning up temp update folder {_updateLocationService.UpdateTempFolder}...");
+                _updateLocationService.DeleteUpdateTempFolder();
+                _updateEventLogger.LogLine("done.");
 
-                Console.ReadLine();
-                return true;
+                System.Threading.Thread.Sleep(5000);
+                _updateEventLogger.LogLine("Installation complete.");
+                updated = true;
             }
             else
             {
-                Console.WriteLine("Latest version already installed ({0})", latestVersionInfo.VersionNumber);
-                return false;
+                _updateEventLogger.LogLine($"Latest version already installed ({latestVersionInfo.VersionNumber})");
+                updated = false;
             }
-
-
+            _updateEventLogger.LogLine($"Updater finish time {DateTime.Now}.");
+            return updated;
 
         }
     }

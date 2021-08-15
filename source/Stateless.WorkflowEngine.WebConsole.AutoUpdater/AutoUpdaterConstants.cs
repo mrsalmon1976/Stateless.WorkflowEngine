@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 {
-    class AutoUpdaterConstants
+    public class AutoUpdaterConstants
     {
-        const string WebConsoleExeFileName = "Stateless.WorkflowEngine.WebConsole.exe";
+        public const string WebConsoleExeFileName = "Stateless.WorkflowEngine.WebConsole.exe";
     }
 }
