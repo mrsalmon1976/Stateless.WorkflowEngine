@@ -1,12 +1,11 @@
 ﻿using Newtonsoft.Json;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models
+namespace Stateless.WorkflowEngine.WebConsole.Common.Models
 {
     public class GitHubReleaseResponse
     {

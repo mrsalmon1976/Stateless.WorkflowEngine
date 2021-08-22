@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.Common.Web;
 using System;
 using System.Collections.Generic;
 using System.IO;

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.MockUtils.Web
+namespace Test.Stateless.WorkflowEngine.WebConsole.Common.MockUtils.Web
 {
     public class MockHttpMessageHandler : HttpMessageHandler
     {

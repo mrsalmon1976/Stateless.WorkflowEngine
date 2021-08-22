@@ -1,5 +1,5 @@
 ﻿using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
+using Stateless.WorkflowEngine.WebConsole.Common.Web;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web
+namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Web
 {
     [TestFixture]
     public class HttpClientFactoryTest

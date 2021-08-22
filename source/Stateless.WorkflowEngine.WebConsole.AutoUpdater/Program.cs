@@ -27,6 +27,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 _logger.Error(ex, ex.Message);
             }
             _logger.Info("Auto Update end");

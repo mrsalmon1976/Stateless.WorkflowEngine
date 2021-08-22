@@ -37,6 +37,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.We
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater", "Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater\Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.csproj", "{5CCA0B48-566F-4CB0-AE6C-1A7F6F9083B7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.WebConsole.Common", "Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj", "{751DAF22-51FA-4ED9-9BF4-633121D8F101}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.WebConsole.Common", "Test.Stateless.WorkflowEngine.WebConsole.Common\Test.Stateless.WorkflowEngine.WebConsole.Common.csproj", "{59C02308-C163-42FD-9A0F-471117C6A0AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +91,14 @@ Global
 		{5CCA0B48-566F-4CB0-AE6C-1A7F6F9083B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5CCA0B48-566F-4CB0-AE6C-1A7F6F9083B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5CCA0B48-566F-4CB0-AE6C-1A7F6F9083B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{751DAF22-51FA-4ED9-9BF4-633121D8F101}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{751DAF22-51FA-4ED9-9BF4-633121D8F101}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{751DAF22-51FA-4ED9-9BF4-633121D8F101}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{751DAF22-51FA-4ED9-9BF4-633121D8F101}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

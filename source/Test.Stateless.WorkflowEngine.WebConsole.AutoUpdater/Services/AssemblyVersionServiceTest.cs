@@ -1,6 +1,8 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,6 +20,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         [Test]
         public void GetWebConsoleVersion_GivenExe_ReturnsAssemblyVersion()
         {
+            string webConsoleExeFileName = AutoUpdaterConstants.WebConsoleExeFileName;
+
             // setup - get the location of the webconsole debug folder
             string webConsoleDebugFolder = Path.Combine(
                 Directory.GetParent(Assembly.GetExecutingAssembly().Location).Parent.Parent.Parent.FullName,
@@ -29,11 +33,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
 
             // execute
-            IAssemblyVersionService assemblyVersionService = new AssemblyVersionService(updateLocationService);
+            IWebConsoleVersionService assemblyVersionService = new AssemblyVersionService(webConsoleExeFileName, updateLocationService);
             string webConsoleVersion = assemblyVersionService.GetWebConsoleVersion();
 
             // work out the version manually
-            string pathToExe = Path.Combine(webConsoleDebugFolder, assemblyVersionService.WebConsoleExeFileName);
+            string pathToExe = Path.Combine(webConsoleDebugFolder, webConsoleExeFileName);
             var versionInfo = FileVersionInfo.GetVersionInfo(pathToExe);
             string currentVersion = System.Version.Parse(versionInfo.FileVersion).ToString(3);
 

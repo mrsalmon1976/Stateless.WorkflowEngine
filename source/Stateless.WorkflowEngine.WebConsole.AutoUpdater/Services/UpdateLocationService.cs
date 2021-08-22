@@ -32,8 +32,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         public UpdateLocationService()
         {
             this.ApplicationFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-            // TODO : remove!
             this.ApplicationFolder = "C:\\Temp\\Stateless";
         }
 

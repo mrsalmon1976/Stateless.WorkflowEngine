@@ -1,11 +1,12 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
+﻿using Stateless.WorkflowEngine.WebConsole.Common.Models;
+using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
+namespace Stateless.WorkflowEngine.WebConsole.Common.Services
 {
     public interface IVersionComparisonService
     {
@@ -14,19 +15,21 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
     public class VersionComparisonService : IVersionComparisonService
     {
-        private readonly IAssemblyVersionService _assemblyVersionService;
+        private readonly string _latestVersionUrl;
+        private readonly IWebConsoleVersionService _webConsoleVersionService;
         private readonly IWebVersionService _webVersionService;
 
-        public VersionComparisonService(IAssemblyVersionService assemblyVersionService, IWebVersionService webVersionService)
+        public VersionComparisonService(string latestVersionUrl, IWebConsoleVersionService webConsoleVersionService, IWebVersionService webVersionService)
         {
-            this._assemblyVersionService = assemblyVersionService;
+            _latestVersionUrl = latestVersionUrl;
+            this._webConsoleVersionService = webConsoleVersionService;
             this._webVersionService = webVersionService;
         }
 
         public async Task<VersionComparisonResult> CheckIfNewVersionAvailable()
         {
-            string installedVersion = _assemblyVersionService.GetWebConsoleVersion();
-            WebConsoleVersionInfo versionInfo = await _webVersionService.GetVersionInfo();
+            string installedVersion = _webConsoleVersionService.GetWebConsoleVersion();
+            WebConsoleVersionInfo versionInfo = await _webVersionService.GetVersionInfo(_latestVersionUrl);
             string latestReleaseVersion = versionInfo.VersionNumber;
 
             VersionComparisonResult result = new VersionComparisonResult();

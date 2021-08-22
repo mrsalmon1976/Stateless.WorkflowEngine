@@ -59,18 +59,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppSettings.cs" />
-    <Compile Include="Models\GitHubAsset.cs" />
-    <Compile Include="Models\GitHubReleaseResponse.cs" />
-    <Compile Include="Models\VersionComparisonResult.cs" />
-    <Compile Include="Models\WebConsoleVersionInfo.cs" />
+    <Compile Include="Services\AssemblyVersionService.cs" />
     <Compile Include="Services\UpdateDownloadService.cs" />
     <Compile Include="Services\UpdateFileService.cs" />
     <Compile Include="Services\UpdateLocationService.cs" />
-    <Compile Include="Services\AssemblyVersionService.cs" />
     <Compile Include="AutoUpdaterConstants.cs" />
-    <Compile Include="Services\VersionComparisonService.cs" />
-    <Compile Include="Services\WebVersionService.cs" />
-    <Compile Include="Web\HttpClientFactory.cs" />
     <Compile Include="BootStrapper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -86,9 +79,15 @@
     </None>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj">
+      <Project>{751daf22-51fa-4ed9-9bf4-633121d8f101}</Project>
+      <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy $(SolutionDir)\Stateless.WorkflowEngine.WebConsole\bin\Debug\Stateless.WorkflowEngine.WebConsole.exe $(TargetDir)\Stateless.WorkflowEngine.WebConsole.exe</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

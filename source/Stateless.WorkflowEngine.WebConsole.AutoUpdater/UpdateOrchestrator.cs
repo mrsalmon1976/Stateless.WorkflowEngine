@@ -1,5 +1,4 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging;
+﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
 using System;
 using System.Collections.Generic;
@@ -7,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Stateless.WorkflowEngine.WebConsole.Common.Models;
+using Stateless.WorkflowEngine.WebConsole.Common.Services;
 
 namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 {
@@ -98,7 +99,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
                 _updateLocationService.DeleteUpdateTempFolder();
                 _updateEventLogger.LogLine("done.");
 
-                System.Threading.Thread.Sleep(5000);
                 _updateEventLogger.LogLine("Installation complete.");
                 updated = true;
             }

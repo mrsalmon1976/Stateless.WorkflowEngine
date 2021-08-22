@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Models;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Web;
+using Stateless.WorkflowEngine.WebConsole.Common.Models;
+using Stateless.WorkflowEngine.WebConsole.Common.Web;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,30 +8,27 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
+namespace Stateless.WorkflowEngine.WebConsole.Common.Services
 {
     public interface IWebVersionService
     {
-        Task<WebConsoleVersionInfo> GetVersionInfo();
+        Task<WebConsoleVersionInfo> GetVersionInfo(string latestVersionUrl);
     }
 
     public class WebVersionService : IWebVersionService
     {
 
-        private readonly IAppSettings _appSettings;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public WebVersionService(IAppSettings appSettings, IHttpClientFactory httpClientFactory)
+        public WebVersionService(IHttpClientFactory httpClientFactory)
         {
-            _appSettings = appSettings;
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<WebConsoleVersionInfo> GetVersionInfo()
+        public async Task<WebConsoleVersionInfo> GetVersionInfo(string latestVersionUrl)
         {
-            string url = _appSettings.LatestVersionUrl;
             HttpClient client = _httpClientFactory.GetHttpClient();
-            var result = await client.GetAsync(url);
+            var result = await client.GetAsync(latestVersionUrl);
             result.EnsureSuccessStatusCode();
             var body = await result.Content.ReadAsStringAsync();
             GitHubReleaseResponse releaseData = JsonConvert.DeserializeObject<GitHubReleaseResponse>(body);
