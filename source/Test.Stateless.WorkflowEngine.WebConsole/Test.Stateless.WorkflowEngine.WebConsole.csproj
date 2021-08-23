@@ -56,6 +56,12 @@
     <Reference Include="DnsClient, Version=1.4.0.0, Culture=neutral, PublicKeyToken=4574bb5573c51424, processorArchitecture=MSIL">
       <HintPath>..\packages\DnsClient.1.4.0\lib\net45\DnsClient.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Extensions.Caching.Abstractions, Version=5.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Caching.Abstractions.5.0.0\lib\net461\Microsoft.Extensions.Caching.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Primitives, Version=5.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Primitives.5.0.0\lib\net461\Microsoft.Extensions.Primitives.dll</HintPath>
+    </Reference>
     <Reference Include="MongoDB.Bson, Version=2.11.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MongoDB.Bson.2.11.6\lib\net452\MongoDB.Bson.dll</HintPath>
     </Reference>
@@ -184,10 +190,12 @@
   <ItemGroup>
     <Compile Include="BLL\Data\Stores\UserStoreTest.cs" />
     <Compile Include="BLL\Security\UserMapperTest.cs" />
+    <Compile Include="BLL\Services\VersionCheckServiceTest.cs" />
     <Compile Include="BLL\Services\WorkflowInfoServiceTest.cs" />
     <Compile Include="BLL\Validators\ConnectionValidatorTest.cs" />
     <Compile Include="BLL\Validators\UserValidatorTest.cs" />
     <Compile Include="DataHelper.cs" />
+    <Compile Include="Modules\DashboardModuleTest.cs" />
     <Compile Include="Modules\ConnectionModuleTest.cs" />
     <Compile Include="Modules\StoreModuleTest.cs" />
     <Compile Include="Modules\UserModuleTest.cs" />
@@ -209,6 +217,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj">
+      <Project>{751DAF22-51FA-4ED9-9BF4-633121D8F101}</Project>
+      <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj">
       <Project>{38d0b82f-c0ff-46e5-9e5e-ec6c4d37371c}</Project>
       <Name>Stateless.WorkflowEngine.WebConsole</Name>

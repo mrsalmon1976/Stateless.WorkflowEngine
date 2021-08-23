@@ -68,6 +68,12 @@
     <Reference Include="DnsClient, Version=1.4.0.0, Culture=neutral, PublicKeyToken=4574bb5573c51424, processorArchitecture=MSIL">
       <HintPath>..\packages\DnsClient.1.4.0\lib\net45\DnsClient.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Extensions.Caching.Abstractions, Version=5.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Caching.Abstractions.5.0.0\lib\net461\Microsoft.Extensions.Caching.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Primitives, Version=5.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Primitives.5.0.0\lib\net461\Microsoft.Extensions.Primitives.dll</HintPath>
+    </Reference>
     <Reference Include="MongoDB.Bson, Version=2.11.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\MongoDB.Bson.2.11.6\lib\net452\MongoDB.Bson.dll</HintPath>
     </Reference>
@@ -201,6 +207,8 @@
     <Compile Include="BLL\Security\PasswordProvider.cs" />
     <Compile Include="BLL\Security\Roles.cs" />
     <Compile Include="BLL\Security\UserIdentity.cs" />
+    <Compile Include="BLL\Services\VersionCheckService.cs" />
+    <Compile Include="BLL\Services\WebConsoleVersionService.cs" />
     <Compile Include="BLL\Services\WorkflowInfoService.cs" />
     <Compile Include="BLL\Utils\ParsedAssemblyQualifiedName.cs" />
     <Compile Include="BLL\Validators\ConnectionValidator.cs" />
@@ -224,6 +232,7 @@
     <Compile Include="ViewModels\Connection\ConnectionViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
+    <Compile Include="ViewModels\Dashboard\VersionCheckResult.cs" />
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />
     <Compile Include="ViewModels\MultiSelectItem.cs" />
     <Compile Include="ViewModels\Store\StoreViewModel.cs" />
@@ -389,6 +398,10 @@
     <ProjectReference Include="..\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj">
       <Project>{61162277-aae8-4189-aa1a-dc8545f87ae7}</Project>
       <Name>Stateless.WorkflowEngine.RavenDb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj">
+      <Project>{751DAF22-51FA-4ED9-9BF4-633121D8F101}</Project>
+      <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
     </ProjectReference>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj">
       <Project>{eb4615d8-4123-4316-8d92-285680d6100c}</Project>

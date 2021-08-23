@@ -67,7 +67,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\IWebConsoleVersionService.cs" />
     <Compile Include="Services\VersionComparisonService.cs" />
-    <Compile Include="Services\WebVersionService.cs" />
+    <Compile Include="Services\GitHubVersionService.cs" />
     <Compile Include="Web\HttpClientFactory.cs" />
   </ItemGroup>
   <ItemGroup>

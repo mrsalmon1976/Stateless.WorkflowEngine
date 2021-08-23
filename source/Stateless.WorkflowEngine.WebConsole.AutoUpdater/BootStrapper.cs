@@ -34,10 +34,10 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
             container.Register<IUpdateEventLogger, UpdateEventLogger>(Lifestyle.Transient);
             container.Register<IUpdateFileService, UpdateFileService>(Lifestyle.Transient);
             container.Register<IUpdateLocationService, UpdateLocationService>(Lifestyle.Transient);
-            container.Register<IWebVersionService, WebVersionService>(Lifestyle.Transient);
+            container.Register<IGitHubVersionService, GitHubVersionService>(Lifestyle.Transient);
 
             container.Register<IWebConsoleVersionService>(() => { return new AssemblyVersionService(AutoUpdaterConstants.WebConsoleExeFileName, container.GetInstance<IUpdateLocationService>()); }, Lifestyle.Transient);
-            container.Register<IVersionComparisonService>(() => { return new VersionComparisonService(appSettings.LatestVersionUrl, container.GetInstance<IWebConsoleVersionService>(), container.GetInstance<IWebVersionService>()); }, Lifestyle.Transient);
+            container.Register<IVersionComparisonService>(() => { return new VersionComparisonService(appSettings.LatestVersionUrl, container.GetInstance<IWebConsoleVersionService>(), container.GetInstance<IGitHubVersionService>()); }, Lifestyle.Transient);
 
             container.Register<UpdateOrchestrator>();
 

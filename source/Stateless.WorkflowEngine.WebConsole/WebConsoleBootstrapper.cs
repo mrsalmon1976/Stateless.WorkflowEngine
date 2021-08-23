@@ -22,6 +22,8 @@ using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using System.Diagnostics;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using Nancy.Cryptography;
+using Stateless.WorkflowEngine.WebConsole.Common.Services;
+using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -54,6 +56,11 @@ namespace Stateless.WorkflowEngine.WebConsole
             // security
             container.Register<Encryption.IEncryptionProvider, Encryption.AESGCM>();
             container.Register<IPasswordProvider, PasswordProvider>();
+
+            // services
+            container.Register<IGitHubVersionService, GitHubVersionService>();
+            container.Register<IWebConsoleVersionService, WebConsoleVersionService>();
+            container.Register<IVersionComparisonService>((c, o) => { return new VersionComparisonService(settings.LatestVersionUrl, container.Resolve<IWebConsoleVersionService>(), container.Resolve<IGitHubVersionService>()); });
 
             // set up mappings
             var config = new MapperConfiguration(cfg => {
@@ -98,7 +105,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             FormsAuthentication.Enable(pipelines, formsAuthConfiguration);
 
             // set shared ViewBag details here
-            context.ViewBag.AppVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
+            context.ViewBag.AppVersion = container.Resolve<IWebConsoleVersionService>().GetWebConsoleVersion();
             if (Debugger.IsAttached)
             {
                 //context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmssttt");

@@ -10,17 +10,17 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.WebConsole.Common.Services
 {
-    public interface IWebVersionService
+    public interface IGitHubVersionService
     {
         Task<WebConsoleVersionInfo> GetVersionInfo(string latestVersionUrl);
     }
 
-    public class WebVersionService : IWebVersionService
+    public class GitHubVersionService : IGitHubVersionService
     {
 
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public WebVersionService(IHttpClientFactory httpClientFactory)
+        public GitHubVersionService(IHttpClientFactory httpClientFactory)
         {
             _httpClientFactory = httpClientFactory;
         }

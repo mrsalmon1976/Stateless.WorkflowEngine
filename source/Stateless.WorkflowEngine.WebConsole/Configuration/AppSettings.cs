@@ -18,6 +18,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
         /// Gets/sets the application security key
         /// </summary>
         string SecureKey { get; }
+
+        string LatestVersionUrl { get; }
     }
 
     public class AppSettings : IAppSettings
@@ -43,6 +45,15 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
                 return (ConfigurationManager.AppSettings["SecureKey"] ?? "this a Def@ult security key if it is not specified in app.config");
             }
         }
+
+        public string LatestVersionUrl
+        {
+            get
+            {
+                return ConfigurationManager.AppSettings["LatestVersionUrl"];
+            }
+        }
+
 
     }
 }

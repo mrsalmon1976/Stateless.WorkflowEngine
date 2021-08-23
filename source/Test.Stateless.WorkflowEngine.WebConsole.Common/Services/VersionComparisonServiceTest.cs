@@ -14,13 +14,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
     public class VersionComparisonServiceTest
     {
         private IWebConsoleVersionService _webConsoleVersionService;
-        private IWebVersionService _webVersionChecker;
+        private IGitHubVersionService _gitHubVersionService;
 
         [SetUp]
         public void SetUp_VersionComparisonServiceTest()
         {
             _webConsoleVersionService = Substitute.For<IWebConsoleVersionService>();
-            _webVersionChecker = Substitute.For<IWebVersionService>();
+            _gitHubVersionService = Substitute.For<IGitHubVersionService>();
     }
 
     [Test]
@@ -33,12 +33,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             webConsoleVersionInfo.VersionNumber = version;
 
             _webConsoleVersionService.GetWebConsoleVersion().Returns(version);
-            _webVersionChecker.GetVersionInfo(latestVersionUrl).Returns(Task.FromResult(webConsoleVersionInfo));
+            _gitHubVersionService.GetVersionInfo(latestVersionUrl).Returns(Task.FromResult(webConsoleVersionInfo));
 
-            VersionComparisonService versionComparisonService = new VersionComparisonService(latestVersionUrl, _webConsoleVersionService, _webVersionChecker);
+            VersionComparisonService versionComparisonService = new VersionComparisonService(latestVersionUrl, _webConsoleVersionService, _gitHubVersionService);
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
-            _webVersionChecker.Received(1).GetVersionInfo(latestVersionUrl);
+            _gitHubVersionService.Received(1).GetVersionInfo(latestVersionUrl);
             Assert.IsFalse(result.IsNewVersionAvailable);
             Assert.AreEqual(version, result.LatestReleaseVersionInfo.VersionNumber);
         }
@@ -54,12 +54,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             webConsoleVersionInfo.VersionNumber = versionLatest;
 
             _webConsoleVersionService.GetWebConsoleVersion().Returns(versionInstalled);
-            _webVersionChecker.GetVersionInfo(latestVersionUrl).Returns(Task.FromResult(webConsoleVersionInfo));
+            _gitHubVersionService.GetVersionInfo(latestVersionUrl).Returns(Task.FromResult(webConsoleVersionInfo));
 
-            VersionComparisonService versionComparisonService = new VersionComparisonService(latestVersionUrl, _webConsoleVersionService, _webVersionChecker);
+            VersionComparisonService versionComparisonService = new VersionComparisonService(latestVersionUrl, _webConsoleVersionService, _gitHubVersionService);
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
-            _webVersionChecker.Received(1).GetVersionInfo(latestVersionUrl);
+            _gitHubVersionService.Received(1).GetVersionInfo(latestVersionUrl);
             Assert.IsTrue(result.IsNewVersionAvailable);
             Assert.AreEqual(versionLatest, result.LatestReleaseVersionInfo.VersionNumber);
         }

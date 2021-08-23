@@ -11,6 +11,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         public class Dashboard
         {
             public const string Default = "/dashboard";
+            public const string CheckVersion = "/dashboard/checkversion";
         }
 
         public class Connection

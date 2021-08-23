@@ -34,8 +34,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
 
 
             // execute
-            IWebVersionService webVersionService = new WebVersionService(httpClientFactory);
-            var result = webVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
+            IGitHubVersionService gitHubVersionService = new GitHubVersionService(httpClientFactory);
+            var result = gitHubVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
 
             // assert
             Assert.AreEqual("2.2.1", result.VersionNumber);
@@ -44,8 +44,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
         [Test]
         public void GetVersionInfo_Integration_GetsLatestReleaseDataFromGitHub()
         {
-            IWebVersionService webVersionService = new WebVersionService(new HttpClientFactory());
-            var result = webVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
+            IGitHubVersionService gitHubVersionService = new GitHubVersionService(new HttpClientFactory());
+            var result = gitHubVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
             string versionNumber = result.VersionNumber;
             System.Version version = System.Version.Parse(versionNumber);
             Assert.GreaterOrEqual(version.Major, 2);
