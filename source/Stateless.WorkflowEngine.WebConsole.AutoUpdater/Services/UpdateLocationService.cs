@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Stateless.WorkflowEngine.WebConsole.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,11 +13,13 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
     {
         string BackupFolder { get; }
 
-        string ApplicationFolder { get; }
+        string ApplicationFolder { get; set; }
 
         string DataFolder { get; }
 
         string UpdateTempFolder { get; }
+
+        string AutoUpdaterFolder { get; }
 
         string UpdateEventLogFilePath { get; }
 
@@ -31,8 +34,8 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
         public UpdateLocationService()
         {
-            this.ApplicationFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            this.ApplicationFolder = "C:\\Temp\\Stateless";
+            DirectoryInfo di = Directory.GetParent(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            this.ApplicationFolder = di.FullName;
         }
 
         public string BackupFolder { get; private set; }
@@ -47,17 +50,21 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             {
                 this._applicationFolder = value;
 
-                this.BackupFolder = Path.Combine(this._applicationFolder, "Backup");
-                this.DataFolder = Path.Combine(this._applicationFolder, "Data");
-                this.UpdateTempFolder = Path.Combine(this._applicationFolder, "__UpdateTemp");
-                this.UpdateEventLogFilePath = Path.Combine(this.ApplicationFolder, "UpdateLog.log");
+                this.BackupFolder = Path.Combine(this._applicationFolder, UpdateConstants.BackupFolderName);
+                this.DataFolder = Path.Combine(this._applicationFolder, UpdateConstants.DataFolderName);
+                this.UpdateTempFolder = Path.Combine(this._applicationFolder, UpdateConstants.UpdateTempFolderName);
+                this.AutoUpdaterFolder = Path.Combine(this._applicationFolder, UpdateConstants.AutoUpdaterFolderName);
+                this.UpdateEventLogFilePath = Path.Combine(this.ApplicationFolder, UpdateConstants.UpdateEventLogFileName);
             }
         }
 
         public string DataFolder { get; private set; }
 
         public string UpdateTempFolder { get; private set; }
+
         public string UpdateEventLogFilePath { get; private set; }
+
+        public string AutoUpdaterFolder { get; private set; }
 
         public void DeleteUpdateTempFolder()
         {

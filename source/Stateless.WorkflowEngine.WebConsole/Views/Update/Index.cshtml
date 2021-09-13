@@ -1,0 +1,18 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<dynamic>
+@using Nancy.Security
+@using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@using Stateless.WorkflowEngine.WebConsole.BLL.Utils
+@using Stateless.WorkflowEngine.WebConsole.BLL.Security
+@using System.Collections.Generic
+@model Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard.DashboardViewModel
+@{
+    Layout = "Views/Layouts/MainLayout.cshtml";
+    ViewBag.Title = "Stateless.WorkflowEngine Console :: Update";
+}
+<!-- Content -->
+<div id="content">
+    <div id="pnl-update" class="alert alert-info" role="alert"> <strong id="span-version">Please wait</strong> while the update applies... </div>
+</div>
+
+

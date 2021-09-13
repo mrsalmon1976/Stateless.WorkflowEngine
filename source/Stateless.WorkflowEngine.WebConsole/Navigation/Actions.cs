@@ -11,7 +11,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         public class Dashboard
         {
             public const string Default = "/dashboard";
-            public const string CheckVersion = "/dashboard/checkversion";
         }
 
         public class Connection
@@ -43,6 +42,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
             
             public const string Workflow = "/store/workflow";
 
+        }
+
+        public class Update
+        {
+            public const string CheckForUpdate = "/dashboard/checkforupdate";
+            public const string Index = "/update";
+            public const string Install = "/update/install";
         }
 
         public class User

@@ -190,6 +190,7 @@
   <ItemGroup>
     <Compile Include="BLL\Data\Stores\UserStoreTest.cs" />
     <Compile Include="BLL\Security\UserMapperTest.cs" />
+    <Compile Include="BLL\Services\VersionUpdateServiceTest.cs" />
     <Compile Include="BLL\Services\VersionCheckServiceTest.cs" />
     <Compile Include="BLL\Services\WorkflowInfoServiceTest.cs" />
     <Compile Include="BLL\Validators\ConnectionValidatorTest.cs" />
@@ -197,6 +198,7 @@
     <Compile Include="DataHelper.cs" />
     <Compile Include="Modules\DashboardModuleTest.cs" />
     <Compile Include="Modules\ConnectionModuleTest.cs" />
+    <Compile Include="Modules\UpdateModuleTest.cs" />
     <Compile Include="Modules\StoreModuleTest.cs" />
     <Compile Include="Modules\UserModuleTest.cs" />
     <Compile Include="Modules\LoginModuleTest.cs" />

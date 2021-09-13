@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility
+namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
 {
     public interface IFileUtility
     {

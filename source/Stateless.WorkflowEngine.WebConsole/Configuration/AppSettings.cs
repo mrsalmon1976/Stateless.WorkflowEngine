@@ -9,6 +9,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
 {
     public interface IAppSettings
     {
+
         /// <summary>
         /// Gets the port used for the application.
         /// </summary>
@@ -20,10 +21,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
         string SecureKey { get; }
 
         string LatestVersionUrl { get; }
+
+        int UpdateCheckIntervalInMinutes { get; }
     }
 
     public class AppSettings : IAppSettings
     {
+
         /// <summary>
         /// Gets the port used for the application.
         /// </summary>
@@ -51,6 +55,14 @@ namespace Stateless.WorkflowEngine.WebConsole.Configuration
             get
             {
                 return ConfigurationManager.AppSettings["LatestVersionUrl"];
+            }
+        }
+
+        public int UpdateCheckIntervalInMinutes
+        {
+            get
+            {
+                return Int32.Parse(ConfigurationManager.AppSettings["UpdateCheckIntervalInMinutes"]);
             }
         }
 

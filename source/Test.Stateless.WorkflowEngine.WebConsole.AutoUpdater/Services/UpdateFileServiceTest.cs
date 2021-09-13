@@ -1,7 +1,7 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility;
+using Stateless.WorkflowEngine.WebConsole.Common.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -95,11 +95,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             string updateTempFolder = GetFakePath("UpdateTemp");
             string dataFolder = GetFakePath("DataVault");
             string updateEventLogFilePath = GetFakePath("Update.log");
+            string autoUpdaterFolder = GetFakePath("AutoUpdater");
             _updateLocationService.BackupFolder.Returns(backupFolder);
             _updateLocationService.ApplicationFolder.Returns(applicationFolder);
             _updateLocationService.UpdateTempFolder.Returns(updateTempFolder);
             _updateLocationService.DataFolder.Returns(dataFolder);
             _updateLocationService.UpdateEventLogFilePath.Returns(updateEventLogFilePath);
+            _updateLocationService.AutoUpdaterFolder.Returns(autoUpdaterFolder);
 
 
             IEnumerable<string> receivedExclusions = null;
@@ -114,6 +116,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             Assert.IsTrue(receivedExclusions.Contains(updateTempFolder));
             Assert.IsTrue(receivedExclusions.Contains(dataFolder));
             Assert.IsTrue(receivedExclusions.Contains(updateEventLogFilePath));
+            Assert.IsTrue(receivedExclusions.Contains(autoUpdaterFolder));
+            Assert.AreEqual(5, receivedExclusions.Count());
 
         }
 

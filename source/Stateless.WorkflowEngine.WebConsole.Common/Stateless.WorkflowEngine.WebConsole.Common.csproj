@@ -49,6 +49,7 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Threading.Tasks.Extensions, Version=4.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
@@ -60,6 +61,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Diagnostics\ProcessWrapperFactory.cs" />
+    <Compile Include="Diagnostics\ProcessWrapper.cs" />
     <Compile Include="Models\GitHubAsset.cs" />
     <Compile Include="Models\GitHubReleaseResponse.cs" />
     <Compile Include="Models\VersionComparisonResult.cs" />
@@ -68,6 +71,8 @@
     <Compile Include="Services\IWebConsoleVersionService.cs" />
     <Compile Include="Services\VersionComparisonService.cs" />
     <Compile Include="Services\GitHubVersionService.cs" />
+    <Compile Include="UpdateConstants.cs" />
+    <Compile Include="Utility\FileUtility.cs" />
     <Compile Include="Web\HttpClientFactory.cs" />
   </ItemGroup>
   <ItemGroup>

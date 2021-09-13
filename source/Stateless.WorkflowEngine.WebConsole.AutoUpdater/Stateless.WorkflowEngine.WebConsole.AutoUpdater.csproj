@@ -36,9 +36,6 @@
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>..\packages\NLog.4.7.10\lib\net45\NLog.dll</HintPath>
-    </Reference>
     <Reference Include="SimpleInjector, Version=5.0.0.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
       <HintPath>..\packages\SimpleInjector.5.3.2\lib\net461\SimpleInjector.dll</HintPath>
     </Reference>
@@ -63,14 +60,12 @@
     <Compile Include="Services\UpdateDownloadService.cs" />
     <Compile Include="Services\UpdateFileService.cs" />
     <Compile Include="Services\UpdateLocationService.cs" />
-    <Compile Include="AutoUpdaterConstants.cs" />
     <Compile Include="BootStrapper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Logging\UpdateEventLogger.cs" />
     <Compile Include="Services\InstallationService.cs" />
     <Compile Include="UpdateOrchestrator.cs" />
-    <Compile Include="Utility\FileUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -9,6 +9,25 @@ var DashboardView = function () {
         $('#btn-submit-connection').on('click', that.submitForm);
         $('#btn-test-connection').on('click', that.testConnection);
         this.loadConnections();
+        this.checkForUpdates();
+    };
+
+    this.checkForUpdates = function () {
+
+        var request = $.ajax({
+            url: "/dashboard/checkforupdate",
+            method: "GET",
+            dataType: 'json'
+        });
+
+        request.done(function (response) {
+
+            //if (response.isNewVersionAvailable) {
+                $('#span-version').html(response.latestReleaseVersionNumber);
+                $("#pnl-version").show();
+            //}
+
+        });
     };
 
     this.confirmDeleteConnection = function (evt) {

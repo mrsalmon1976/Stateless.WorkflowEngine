@@ -26,6 +26,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
             public const string Default = "Views/Store/StoreView.cshtml";
         }
 
+        public class Update
+        {
+            public const string Index = "Views/Update/Index.cshtml";
+        }
         public class User
         {
             public const string ListPartial = "Views/User/_UserList.cshtml";

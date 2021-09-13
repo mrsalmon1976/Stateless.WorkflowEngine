@@ -3,27 +3,22 @@ using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
 using Nancy.TinyIoc;
 using Nancy.Extensions;
-using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using System.Reflection;
-using System.Linq;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
 using System.IO;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using SystemWrapper.IO;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
-using Encryption;
 using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using System.Diagnostics;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using Nancy.Cryptography;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Microsoft.Extensions.Caching.Memory;
+using Stateless.WorkflowEngine.WebConsole.BLL.Caching;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -53,6 +48,11 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IFileWrap, FileWrap>();
             //container.Register<IPathHelper, PathHelper>();
 
+            // caching
+            var memoryCache = new WebConsoleMemoryCache(new MemoryCacheOptions());
+            container.Register<IMemoryCache>(memoryCache);
+
+
             // security
             container.Register<Encryption.IEncryptionProvider, Encryption.AESGCM>();
             container.Register<IPasswordProvider, PasswordProvider>();
@@ -60,7 +60,10 @@ namespace Stateless.WorkflowEngine.WebConsole
             // services
             container.Register<IGitHubVersionService, GitHubVersionService>();
             container.Register<IWebConsoleVersionService, WebConsoleVersionService>();
+            container.Register<IVersionCheckService, VersionCheckService>();
             container.Register<IVersionComparisonService>((c, o) => { return new VersionComparisonService(settings.LatestVersionUrl, container.Resolve<IWebConsoleVersionService>(), container.Resolve<IGitHubVersionService>()); });
+
+            container.Register<IBackgroundVersionWorker, BackgroundVersionWorker>();
 
             // set up mappings
             var config = new MapperConfiguration(cfg => {
@@ -78,6 +81,10 @@ namespace Stateless.WorkflowEngine.WebConsole
             IUserStore userStore = new UserStore(userStorePath, container.Resolve<IFileWrap>(), container.Resolve<IDirectoryWrap>(), container.Resolve<IPasswordProvider>());
             userStore.Load();
             container.Register<IUserStore>(userStore);
+
+            // start up the background thread
+            //IBackgroundVersionWorker versionWorker = container.Resolve<IBackgroundVersionWorker>();
+            //versionWorker.Start();
 
         }
 

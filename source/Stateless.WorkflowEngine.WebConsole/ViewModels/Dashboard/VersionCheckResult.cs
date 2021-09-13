@@ -10,7 +10,7 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard
     {
         public bool IsNewVersionAvailable { get; set; }
 
-        public string LatestReleseVersionNumber { get; set; }
+        public string LatestReleaseVersionNumber { get; set; }
 
     }
 }

@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.Common;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         [Test]
         public void GetWebConsoleVersion_GivenExe_ReturnsAssemblyVersion()
         {
-            string webConsoleExeFileName = AutoUpdaterConstants.WebConsoleExeFileName;
+            string webConsoleExeFileName = UpdateConstants.WebConsoleExeFileName;
 
             // setup - get the location of the webconsole debug folder
             string webConsoleDebugFolder = Path.Combine(

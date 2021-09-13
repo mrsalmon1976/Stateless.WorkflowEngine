@@ -37,63 +37,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class DashboardModuleTest
     {
-        private IVersionCheckService _versionCheckService;
-
         [SetUp]
         public void SetUp_DashboardModuleTest()
         {
-            _versionCheckService = Substitute.For<IVersionCheckService>();
 
         }
 
-        #region CheckForUpdate Tests
-
-        [Test]
-        public void CheckForUpdate_NotLoggedIn_GetsUnauthorizedResponse()
-        {
-            // setup
-            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
-            var browser = CreateBrowser(null);
-
-            // execute
-            var response = browser.Get(Actions.Dashboard.CheckVersion, (with) =>
-            {
-                with.HttpRequest();
-                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
-            });
-
-            Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        }
-
-        [Test]
-        public void CheckForUpdate_IsLoggedIn_ReturnsComparisonResult()
-        {
-            // setup
-            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
-            var browser = CreateBrowser(currentUser);
-
-            VersionCheckResult checkResult = new VersionCheckResult();
-            checkResult.LatestReleseVersionNumber = "1.2.3" ;
-            _versionCheckService.CheckIfNewVersionAvailable().Returns(checkResult);
-
-            // execute
-            var response = browser.Get(Actions.Dashboard.CheckVersion, (with) =>
-            {
-                with.HttpRequest();
-                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
-            });
-
-            // assert
-            VersionCheckResult actionResult = JsonConvert.DeserializeObject<VersionCheckResult>(response.Body.AsString());
-
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(checkResult.IsNewVersionAvailable, actionResult.IsNewVersionAvailable);
-            Assert.AreEqual(checkResult.LatestReleseVersionNumber, actionResult.LatestReleseVersionNumber);
-            _versionCheckService.Received(1).CheckIfNewVersionAvailable();
-        }
-
-        #endregion
+        
 
 
         #region Private Methods
@@ -101,7 +51,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         private Browser CreateBrowser(UserIdentity currentUser)
         {
             var browser = new Browser((bootstrapper) =>
-                            bootstrapper.Module(new DashboardModule(_versionCheckService))
+                            bootstrapper.Module(new DashboardModule())
                                 .RootPathProvider(new TestRootPathProvider())
                                 .RequestStartup((container, pipelines, context) => {
                                     context.CurrentUser = currentUser;

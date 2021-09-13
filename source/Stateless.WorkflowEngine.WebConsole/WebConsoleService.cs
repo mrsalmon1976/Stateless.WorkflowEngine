@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Nancy;
 using Nancy.Hosting.Self;
-using System.Net.Sockets;
 using NLog;
-using Stateless.WorkflowEngine.WebConsole.Configuration; 
+using Stateless.WorkflowEngine.WebConsole.Configuration;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -15,11 +9,18 @@ namespace Stateless.WorkflowEngine.WebConsole
     {
         private NancyHost _host;
         private static Logger _logger = LogManager.GetCurrentClassLogger();
+        //private static BackgroundVersionWorker _backgroundVersionWorker;
 
         public void Start()
         {
             _logger.Info("Stateless.WorkflowEngine Windows Service starting");
+
             IAppSettings appSettings = new AppSettings();
+
+            // fire up the background version checking thread
+            //_backgroundVersionWorker = new BackgroundVersionWorker();
+            //_backgroundVersionWorker.Start();
+
             var hostConfiguration = new HostConfiguration
             {
                 UrlReservations = new UrlReservations() { CreateAutomatically = true }
@@ -32,9 +33,18 @@ namespace Stateless.WorkflowEngine.WebConsole
 
         public void Stop()
         {
-            _logger.Info("Stateless.WorkflowEngine Windows Service shutting down");
-            _host.Stop();
-            _host.Dispose();
+            try
+            {
+                _logger.Info("Stateless.WorkflowEngine Windows Service shutting down");
+                //_backgroundVersionWorker.Stop();
+                _host.Stop();
+                _host.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, ex.Message);
+
+            }
         }
     }
 }

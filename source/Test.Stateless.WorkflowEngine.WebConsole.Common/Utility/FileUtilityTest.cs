@@ -1,5 +1,5 @@
 ﻿using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility;
+using Stateless.WorkflowEngine.WebConsole.Common.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility
+namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Utility
 {
     [TestFixture]
     public class FileUtilityTest

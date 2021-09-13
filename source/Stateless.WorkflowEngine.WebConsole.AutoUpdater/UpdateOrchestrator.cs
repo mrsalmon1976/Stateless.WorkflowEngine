@@ -40,8 +40,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 
         public async Task<bool> Run()
         {
-            _updateEventLogger.ClearLogFile();
-
             _updateEventLogger.LogLine($"Updater start time {DateTime.Now}.");
             _updateEventLogger.Log($"Checking for new version (location: {_updateLocationService.ApplicationFolder})...");
             VersionComparisonResult versionComparisonResult = await  _versionComparisonService.CheckIfNewVersionAvailable();

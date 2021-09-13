@@ -1,4 +1,5 @@
 ﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.Common;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
         public AssemblyVersionService(string webConsoleExeFileName, IUpdateLocationService updateFileService)
         {
-            _webConsoleExeFileName = AutoUpdaterConstants.WebConsoleExeFileName;
+            _webConsoleExeFileName = UpdateConstants.WebConsoleExeFileName;
             this._updateFileService = updateFileService;
         }
 

@@ -1,6 +1,6 @@
-﻿using NLog;
-using SimpleInjector;
+﻿using SimpleInjector;
 using SimpleInjector.Lifestyles;
+using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,14 +11,14 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
 {
     class Program
     {
-        private static ILogger _logger = NLog.LogManager.GetCurrentClassLogger();
-
         static void Main(string[] args)
         {
-            _logger.Info("Auto Update start");
+            var container = BootStrapper.Boot();
+            IUpdateEventLogger logger = container.GetInstance<IUpdateEventLogger>();
+            logger.ClearLogFile();
+            logger.LogLine($"Auto Update start: {DateTime.Now}");
             try
             {
-                var container = BootStrapper.Boot();
                 using (Scope scope = AsyncScopedLifestyle.BeginScope(container))
                 {
                     UpdateOrchestrator orchestrator = container.GetInstance<UpdateOrchestrator>();
@@ -27,10 +27,11 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
             }
             catch (Exception ex)
             {
+                logger.LogLine($"ERROR: {ex.Message}");
+                logger.LogLine(ex.StackTrace);
                 Console.WriteLine(ex.Message);
-                _logger.Error(ex, ex.Message);
             }
-            _logger.Info("Auto Update end");
+            logger.LogLine($"Auto Update end: {DateTime.Now}");
         }
     }
 }

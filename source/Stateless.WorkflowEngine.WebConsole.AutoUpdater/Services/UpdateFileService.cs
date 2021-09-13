@@ -1,4 +1,4 @@
-﻿using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Utility;
+﻿using Stateless.WorkflowEngine.WebConsole.Common.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -56,6 +56,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
                     , _updateLocationService.UpdateTempFolder
                     , _updateLocationService.DataFolder 
                     , _updateLocationService.UpdateEventLogFilePath
+                    , _updateLocationService.AutoUpdaterFolder
                 };
                 _fileUtility.DeleteContents(_updateLocationService.ApplicationFolder, exclusions);
             });

@@ -18,20 +18,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class DashboardModule : WebConsoleSecureModule
     {
-        private readonly IVersionCheckService _versionCheckService;
-
-        public DashboardModule(IVersionCheckService versionCheckService) : base()
+        public DashboardModule() : base()
         {
-            _versionCheckService = versionCheckService;
-
             Get[Actions.Dashboard.Default] = (x) =>
             {
                 AddScript(Scripts.DashboardView);
                 return this.View[Views.Dashboard.Default, this.Default()];
-            };
-            Get[Actions.Dashboard.CheckVersion] = (x) =>
-            {
-                return this.CheckForUpdate();
             };
         }
 
@@ -42,11 +34,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 
         }
 
-        public dynamic CheckForUpdate()
-        {
-            VersionCheckResult result = _versionCheckService.CheckIfNewVersionAvailable();
-            return this.Response.AsJson<VersionCheckResult>(result);
-        }
 
     }
 }

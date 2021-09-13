@@ -10,8 +10,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
 {
     public interface IUpdateEventLogger
     {
-        string UpdateEventLogFilePath { get; set; }
-
         void ClearLogFile();
 
         void Log(string message);
@@ -28,8 +26,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
         {
             _updateLocationService = updateLocationService;
         }
-
-        public string UpdateEventLogFilePath { get; set; }
 
         public void ClearLogFile()
         {

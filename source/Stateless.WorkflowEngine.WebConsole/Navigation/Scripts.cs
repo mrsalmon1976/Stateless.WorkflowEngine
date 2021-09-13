@@ -14,6 +14,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
 
         public const string StoreView = "/Content/Js/Views/StoreView.js";
         
+        public const string UpdateView = "/Content/Js/Views/UpdateView.js";
+
         public const string UserView = "/Content/Js/Views/UserView.js";
     }
 }

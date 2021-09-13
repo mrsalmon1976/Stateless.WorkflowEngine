@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Stateless.WorkflowEngine.WebConsole.Common;
+using Stateless.WorkflowEngine.WebConsole.Common.Diagnostics;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,10 +24,12 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
     public class InstallationService : IInstallationService
     {
         private readonly IUpdateLocationService _updateLocationService;
+        private readonly IProcessWrapperFactory _processWrapperFactory;
 
-        public InstallationService(IUpdateLocationService updateLocationService)
+        public InstallationService(IUpdateLocationService updateLocationService, IProcessWrapperFactory processWrapperFactory)
         {
             _updateLocationService = updateLocationService;
+            _processWrapperFactory = processWrapperFactory;
         }
 
         public void InstallService()
@@ -50,10 +54,10 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
         private void RunProcess(string commandArgument)
         {
-            using (Process cmd = new Process())
+            using (IProcessWrapper cmd = _processWrapperFactory.GetProcess())
             {
                 cmd.StartInfo.WorkingDirectory = _updateLocationService.ApplicationFolder;
-                cmd.StartInfo.FileName = AutoUpdaterConstants.WebConsoleExeFileName;
+                cmd.StartInfo.FileName = UpdateConstants.WebConsoleExeFileName;
                 cmd.StartInfo.Arguments = commandArgument;
                 cmd.StartInfo.Verb = "runas";
                 cmd.Start();
