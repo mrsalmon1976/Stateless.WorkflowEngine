@@ -9,17 +9,12 @@ namespace Stateless.WorkflowEngine.WebConsole
     {
         private NancyHost _host;
         private static Logger _logger = LogManager.GetCurrentClassLogger();
-        //private static BackgroundVersionWorker _backgroundVersionWorker;
 
         public void Start()
         {
             _logger.Info("Stateless.WorkflowEngine Windows Service starting");
 
             IAppSettings appSettings = new AppSettings();
-
-            // fire up the background version checking thread
-            //_backgroundVersionWorker = new BackgroundVersionWorker();
-            //_backgroundVersionWorker.Start();
 
             var hostConfiguration = new HostConfiguration
             {
@@ -36,14 +31,12 @@ namespace Stateless.WorkflowEngine.WebConsole
             try
             {
                 _logger.Info("Stateless.WorkflowEngine Windows Service shutting down");
-                //_backgroundVersionWorker.Stop();
                 _host.Stop();
                 _host.Dispose();
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, ex.Message);
-
             }
         }
     }

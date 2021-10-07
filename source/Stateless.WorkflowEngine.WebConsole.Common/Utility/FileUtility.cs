@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -27,6 +28,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
 
     public class FileUtility : IFileUtility
     {
+        private static Logger _logger = LogManager.GetCurrentClassLogger();
+
         public void CopyRecursive(string sourceDirectory, string targetDirectory, IEnumerable<string> exclusions = null)
         {
             DirectoryInfo diSource = new DirectoryInfo(sourceDirectory);
@@ -80,7 +83,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
                 // Console.WriteLine(@"Copying {0}\{1}", target.FullName, fi.Name);
                 if (fi.Exists)
                 {
-                    fi.Delete();
+                    Action deleteAction = () => fi.Delete();
+                    TryDelete(deleteAction, fi.FullName);
                 }
             }
 
@@ -91,7 +95,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
 
                 if (diSourceSubDir.Exists)
                 {
-                    diSourceSubDir.Delete(true);
+                    Action deleteAction = () => diSourceSubDir.Delete(true);
+                    TryDelete(deleteAction, diSourceSubDir.FullName);
                 }
             }
         }
@@ -105,13 +110,44 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
         {
             if (directory.Exists)
             {
-                directory.Delete(true);
+                Action deleteAction = () => directory.Delete(true);
+                TryDelete(deleteAction, directory.FullName);
             }
         }
 
         public void ExtractZipFile(string sourceArchiveFileName, string destinationDirectoryName)
         {
             ZipFile.ExtractToDirectory(sourceArchiveFileName, destinationDirectoryName);
+        }
+
+        private void TryDelete(Action deleteAction, string fullPath)
+        {
+            int retryCount = 0;
+            const int MaxRetryCount = 10;
+            const int SleepTime = 1000;
+            bool isTryingToDelete = true;
+            while (isTryingToDelete)
+            {
+                try
+                {
+                    deleteAction();
+                    isTryingToDelete = false;
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    if (retryCount >= MaxRetryCount)
+                    {
+                        _logger.Error(ex, $"Failed to delete object {fullPath} - ${ex.Message}");
+                        throw;
+                    }
+                    else
+                    {
+                        _logger.Warn($"Failed to delete object {fullPath} - ${ex.Message}");
+                        System.Threading.Thread.Sleep(SleepTime);
+                    }
+                }
+            }
         }
 
 

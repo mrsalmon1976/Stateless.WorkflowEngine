@@ -14,6 +14,7 @@ using System.Windows.Threading;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
+    /*
     public interface IBackgroundVersionWorker : IDisposable
     {
         void Start();
@@ -36,8 +37,6 @@ namespace Stateless.WorkflowEngine.WebConsole
             _worker = new BackgroundWorker();
             _worker.DoWork += _worker_DoWork;
             _worker.RunWorkerAsync();
-            //_versionCheckService = new VersionCheckService(new AppSettings(), new WebConsoleMemoryCache())
-
         }
 
         private void _worker_DoWork(object sender, DoWorkEventArgs e)
@@ -58,4 +57,5 @@ namespace Stateless.WorkflowEngine.WebConsole
             _worker.Dispose();
         }
     }
+    */
 }

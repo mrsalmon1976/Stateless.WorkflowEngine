@@ -105,7 +105,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual(HttpStatusCode.SeeOther, response.StatusCode);
+            Assert.AreEqual(Actions.Update.Index, response.Headers["Location"]);
+
             _versionUpdateService.Received(1).InstallUpdate();
         }
 

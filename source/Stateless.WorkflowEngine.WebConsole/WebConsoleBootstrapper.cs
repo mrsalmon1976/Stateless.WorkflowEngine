@@ -19,6 +19,7 @@ using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Stateless.WorkflowEngine.WebConsole.BLL.Caching;
+using NLog;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -27,6 +28,7 @@ namespace Stateless.WorkflowEngine.WebConsole
     {
 
         private static CryptographyConfiguration _cryptographyConfiguration;
+        private static Logger _logger = LogManager.GetCurrentClassLogger();
 
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
@@ -61,15 +63,16 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IGitHubVersionService, GitHubVersionService>();
             container.Register<IWebConsoleVersionService, WebConsoleVersionService>();
             container.Register<IVersionCheckService, VersionCheckService>();
+            container.Register<IVersionUpdateService, VersionUpdateService>();
             container.Register<IVersionComparisonService>((c, o) => { return new VersionComparisonService(settings.LatestVersionUrl, container.Resolve<IWebConsoleVersionService>(), container.Resolve<IGitHubVersionService>()); });
 
-            container.Register<IBackgroundVersionWorker, BackgroundVersionWorker>();
+            //container.Register<IBackgroundVersionWorker, BackgroundVersionWorker>();
 
             // set up mappings
             var config = new MapperConfiguration(cfg => {
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
                 cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
-                cfg.CreateMap<UserViewModel, UserModel>();//.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.DocumentId));
+                cfg.CreateMap<UserViewModel, UserModel>();
             });
             var mapper = config.CreateMapper();
             container.Register<IMapper>(mapper);
@@ -82,9 +85,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             userStore.Load();
             container.Register<IUserStore>(userStore);
 
-            // start up the background thread
-            //IBackgroundVersionWorker versionWorker = container.Resolve<IBackgroundVersionWorker>();
-            //versionWorker.Start();
+            container.Resolve<IVersionUpdateService>().DeleteInstallationTempFolders();
 
         }
 
@@ -133,6 +134,16 @@ namespace Stateless.WorkflowEngine.WebConsole
                 }
                 return null;
             };
+            pipelines.OnError.AddItemToEndOfPipeline((ctx, exc) =>
+            {
+                if (exc != null)
+                {
+                    _logger.Error(exc, exc.Message);
+                    throw exc;
+                }
+
+                return HttpStatusCode.InternalServerError;
+            });
 
             //// clean up anything that needs to be
             //pipelines.AfterRequest.AddItemToEndOfPipeline((ctx) =>

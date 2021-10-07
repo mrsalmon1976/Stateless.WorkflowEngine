@@ -5,21 +5,25 @@ var UpdateView = function () {
 
 
     this.init = function () {
-        this.installUpdate();
+        window.setInterval(() => {
+            that.checkForUpdates()
+        }, 10000);
     };
 
-    this.installUpdate = function () {
+    this.checkForUpdates = function () {
 
         var request = $.ajax({
-            url: "/update/install",
+            url: "/dashboard/checkforupdate",
             method: "GET",
+            dataType: 'json'
         });
 
         request.done(function (response) {
+            window.location.href = '/';
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
-            $('#pnl-update').removeClass('alert-info').addClass('alert-danger').html('Update failed - please try again or apply manually.');
+            // do nothing...we just keep trying
         });
     };
 

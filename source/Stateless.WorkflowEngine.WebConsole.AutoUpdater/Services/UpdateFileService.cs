@@ -56,7 +56,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
                     , _updateLocationService.UpdateTempFolder
                     , _updateLocationService.DataFolder 
                     , _updateLocationService.UpdateEventLogFilePath
-                    , _updateLocationService.AutoUpdaterFolder
+                    , _updateLocationService.AutoUpdaterShadowCopyFolder
                 };
                 _fileUtility.DeleteContents(_updateLocationService.ApplicationFolder, exclusions);
             });
