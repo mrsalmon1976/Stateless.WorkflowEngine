@@ -459,8 +459,8 @@
   <Import Project="..\packages\MongoDB.Driver.Core.2.11.6\build\MongoDB.Driver.Core.targets" Condition="Exists('..\packages\MongoDB.Driver.Core.2.11.6\build\MongoDB.Driver.Core.targets')" />
   <Import Project="..\packages\MongoDB.LibMongocrypt.1.2.0\build\MongoDB.Libmongocrypt.targets" Condition="Exists('..\packages\MongoDB.LibMongocrypt.1.2.0\build\MongoDB.Libmongocrypt.targets')" />
   <PropertyGroup>
-    <PostBuildEvent>md "$(TargetDir)AutoUpdater"
-copy /Y "$(SolutionDir)Stateless.WorkflowEngine.WebConsole.AutoUpdater\bin\$(ConfigurationName)\*.*" "$(TargetDir)AutoUpdater"</PostBuildEvent>
+    <PostBuildEvent>REM md $(TargetDir)\AutoUpdater
+REM copy /Y $(SolutionDir)Stateless.WorkflowEngine.WebConsole.AutoUpdater\bin\$(ConfigurationName)\*.* $(TargetDir)\AutoUpdater</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
