@@ -74,6 +74,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Logging\UpdateEventLoggerTest.cs" />
     <Compile Include="Services\UpdateLocationServiceTest.cs" />
+    <Compile Include="UpdateOrchestratorTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
