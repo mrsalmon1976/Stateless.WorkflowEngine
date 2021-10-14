@@ -8,6 +8,6 @@ namespace Stateless.WorkflowEngine
 {
     public interface IWorkflowEngineDependencyResolver
     {
-        T GetInstance<T>();
+        T GetInstance<T>() where T : class;
     }
 }

@@ -139,7 +139,7 @@ namespace Stateless.WorkflowEngine
         /// 
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        protected virtual void ExecuteWorkflowAction<T>() where T : IWorkflowAction
+        protected virtual void ExecuteWorkflowAction<T>() where T : class, IWorkflowAction
         {
             IWorkflowAction workflowAction;
 

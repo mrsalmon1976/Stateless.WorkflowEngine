@@ -425,7 +425,7 @@ namespace Test.Stateless.WorkflowEngine
         private class MyDependencyResolver : IWorkflowEngineDependencyResolver
         {
             public int RunCount { get; set; }
-            public T GetInstance<T>()
+            public T GetInstance<T>() where T : class
             {
                 RunCount++;
 
