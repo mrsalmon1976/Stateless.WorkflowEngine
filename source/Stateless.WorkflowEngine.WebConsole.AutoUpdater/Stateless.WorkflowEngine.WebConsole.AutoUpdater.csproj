@@ -55,6 +55,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="AppSettings.cs" />
     <Compile Include="Services\AssemblyVersionService.cs" />
     <Compile Include="Services\UpdateDownloadService.cs" />
@@ -82,7 +85,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>md $(SolutionDir)Stateless.WorkflowEngine.WebConsole\bin\$(ConfigurationName)\AutoUpdater
+copy /Y $(TargetDir)*.* $(SolutionDir)Stateless.WorkflowEngine.WebConsole\bin\$(ConfigurationName)\AutoUpdater
+</PostBuildEvent>
   </PropertyGroup>
 </Project>

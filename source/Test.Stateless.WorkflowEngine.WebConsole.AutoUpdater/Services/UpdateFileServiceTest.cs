@@ -1,6 +1,7 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
 using Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services;
+using Stateless.WorkflowEngine.WebConsole.Common;
 using Stateless.WorkflowEngine.WebConsole.Common.Utility;
 using System;
 using System.Collections.Generic;
@@ -73,6 +74,22 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         }
 
         [Test]
+        public void CopyNewVersionFiles_OnExecute_CopiesFilesFromTempFolderToInstallationFolder()
+        {
+            string newVersionFileName = Path.GetRandomFileName() + ".zip";
+            string applicationFolder = GetFakePath("AppFolder");
+            string updateTempFolder = GetFakePath("UpdateTemp");
+            _updateLocationService.ApplicationFolder.Returns(applicationFolder);
+            _updateLocationService.UpdateTempFolder.Returns(updateTempFolder);
+
+            // execute
+            _updateFileService.CopyNewVersionFiles(newVersionFileName).Wait();
+
+            // assert
+            _fileUtility.Received(1).CopyRecursive(updateTempFolder, applicationFolder, Arg.Any<string[]>());
+        }
+
+        [Test]
         public void DeleteCurrentVersionFiles_OnExecute_DeletesContentsOfApplicationFolder()
         {
             // setup
@@ -95,13 +112,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             string updateTempFolder = GetFakePath("UpdateTemp");
             string dataFolder = GetFakePath("DataVault");
             string updateEventLogFilePath = GetFakePath("Update.log");
-            string autoUpdaterShadowCopyFolder = GetFakePath("AutoUpdaterShadowCopy");
+            string autoUpdaterFolder = GetFakePath("AutoUpdater");
             _updateLocationService.BackupFolder.Returns(backupFolder);
             _updateLocationService.ApplicationFolder.Returns(applicationFolder);
             _updateLocationService.UpdateTempFolder.Returns(updateTempFolder);
             _updateLocationService.DataFolder.Returns(dataFolder);
             _updateLocationService.UpdateEventLogFilePath.Returns(updateEventLogFilePath);
-            _updateLocationService.AutoUpdaterShadowCopyFolder.Returns(autoUpdaterShadowCopyFolder);
+            _updateLocationService.AutoUpdaterFolder.Returns(autoUpdaterFolder);
 
 
             IEnumerable<string> receivedExclusions = null;
@@ -116,7 +133,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             Assert.IsTrue(receivedExclusions.Contains(updateTempFolder));
             Assert.IsTrue(receivedExclusions.Contains(dataFolder));
             Assert.IsTrue(receivedExclusions.Contains(updateEventLogFilePath));
-            Assert.IsTrue(receivedExclusions.Contains(autoUpdaterShadowCopyFolder));
+            Assert.IsTrue(receivedExclusions.Contains(autoUpdaterFolder));
             Assert.AreEqual(5, receivedExclusions.Count());
 
         }
@@ -135,6 +152,43 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             _fileUtility.Received(1).ExtractZipFile(zipFilePath, extractFolder);
         }
 
+        [Test]
+        public void ExtractReleasePackage_OnExecute_RenamesAutoUpdaterFilesWithTempExtension()
+        {
+            // setup
+            string zipFilePath = GetFakePath("Release.zip");
+            string extractFolder = GetFakePath("ExtractFolder");
+            string autoUpdateFolder = Path.Combine(extractFolder, UpdateConstants.AutoUpdaterFolderName);
+
+            string file1 = Path.Combine(autoUpdateFolder, "file1.txt");
+            string file2 = Path.Combine(autoUpdateFolder, "file2.txt");
+            string[] autoUpdaterFiles = { file1, file2 };
+            _fileUtility.DirectoryExists(autoUpdateFolder).Returns(true);
+            _fileUtility.GetFiles(autoUpdateFolder, SearchOption.AllDirectories).Returns(autoUpdaterFiles);
+
+            // execute
+            _updateFileService.ExtractReleasePackage(zipFilePath, extractFolder).Wait();
+
+            // assert
+            _fileUtility.Received(1).DirectoryExists(autoUpdateFolder);
+            _fileUtility.Received(1).GetFiles(autoUpdateFolder, SearchOption.AllDirectories);
+            _fileUtility.Received(1).MoveFile(file1, $"{file1}{UpdateConstants.AutoUpdaterNewFileExtension}", true);
+            _fileUtility.Received(1).MoveFile(file2, $"{file2}{UpdateConstants.AutoUpdaterNewFileExtension}", true);
+        }
+
+        [Test]
+        public void ExtractReleasePackage_OnExecute_DeletesZipFile()
+        {
+            // setup
+            string zipFilePath = GetFakePath("Release.zip");
+            string extractFolder = GetFakePath("ExtractFolder");
+
+            // execute
+            _updateFileService.ExtractReleasePackage(zipFilePath, extractFolder).Wait();
+
+            // assert
+            _fileUtility.Received(1).DeleteFile(zipFilePath);
+        }
 
         private string GetFakePath(string fileOrFolderName)
         {

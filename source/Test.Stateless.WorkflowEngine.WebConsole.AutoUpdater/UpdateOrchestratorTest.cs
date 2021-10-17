@@ -80,7 +80,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater
                 _installationService.UninstallService();
                 await _updateFileService.Backup();
                 await _updateFileService.DeleteCurrentVersionFiles();
-                await _updateFileService.CopyNewVersionFiles();
+                await _updateFileService.CopyNewVersionFiles(latestVersionInfo.FileName);
                 _installationService.InstallService();
                 _installationService.StartService();
                 _updateLocationService.DeleteUpdateTempFolder();

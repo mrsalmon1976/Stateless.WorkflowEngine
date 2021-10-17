@@ -22,10 +22,10 @@ var DashboardView = function () {
 
         request.done(function (response) {
 
-            //if (response.isNewVersionAvailable) {
+            if (response.isNewVersionAvailable) {
                 $('#span-version').html(response.latestReleaseVersionNumber);
                 $("#pnl-version").show();
-            //}
+            }
 
         });
     };

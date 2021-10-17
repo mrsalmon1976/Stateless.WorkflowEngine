@@ -7,7 +7,7 @@ var UpdateView = function () {
     this.init = function () {
         window.setInterval(() => {
             that.checkForUpdates()
-        }, 10000);
+        }, 30000);
     };
 
     this.checkForUpdates = function () {

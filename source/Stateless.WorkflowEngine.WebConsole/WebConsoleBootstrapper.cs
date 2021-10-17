@@ -85,9 +85,6 @@ namespace Stateless.WorkflowEngine.WebConsole
             userStore.Load();
             container.Register<IUserStore>(userStore);
 
-            // remove any temp folders that may have been left over from a previous update
-            container.Resolve<IVersionUpdateService>().DeleteInstallationTempFolders();
-
         }
 
         protected override void ConfigureRequestContainer(TinyIoCContainer container, NancyContext context)

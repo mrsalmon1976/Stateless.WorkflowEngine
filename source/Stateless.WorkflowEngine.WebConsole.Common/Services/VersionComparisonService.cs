@@ -32,8 +32,11 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Services
             WebConsoleVersionInfo versionInfo = await _gitHubVersionService.GetVersionInfo(_latestVersionUrl);
             string latestReleaseVersion = versionInfo.VersionNumber;
 
+            var vInstalled = Version.Parse(installedVersion);
+            var vLatest = Version.Parse(latestReleaseVersion);
+
             VersionComparisonResult result = new VersionComparisonResult();
-            result.IsNewVersionAvailable = (installedVersion != latestReleaseVersion);
+            result.IsNewVersionAvailable = (vInstalled < vLatest);
             result.LatestReleaseVersionInfo = versionInfo;
             return result;
         }

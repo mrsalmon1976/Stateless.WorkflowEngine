@@ -81,7 +81,7 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater
                 _updateEventLogger.LogLine("done.");
 
                 _updateEventLogger.Log("Copying new service files...");
-                await _updateFileService.CopyNewVersionFiles();
+                await _updateFileService.CopyNewVersionFiles(latestVersionInfo.FileName);
                 _updateEventLogger.LogLine("done.");
 
                 _updateEventLogger.Log("Installing service...");

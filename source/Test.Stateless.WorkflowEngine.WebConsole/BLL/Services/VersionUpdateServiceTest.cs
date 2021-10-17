@@ -41,33 +41,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             _versionUpdateService = new VersionUpdateService(_processWrapperFactory, _fileUtility);
         }
 
-        #region DeleteInstallationTempFolders Tests
-
-        [Test]
-        public void DeleteInstallationTempFolders_OnExecute_DeletesShaowCopyFolder()
-        {
-            _versionUpdateService.ApplicationRootDirectory = AppContext.BaseDirectory;
-            string expectedPath = Path.Combine(_versionUpdateService.ApplicationRootDirectory, UpdateConstants.AutoUpdaterShadowCopyFolderName);
-
-            _versionUpdateService.DeleteInstallationTempFolders();
-
-            _fileUtility.Received(1).DeleteDirectoryRecursive(expectedPath);
-        }
-
-        [Test]
-        public void DeleteInstallationTempFolders_ExceptionThrownWhenDeleting_ContinuesSilently()
-        {
-            _versionUpdateService.ApplicationRootDirectory = AppContext.BaseDirectory;
-            string expectedPath = Path.Combine(_versionUpdateService.ApplicationRootDirectory, UpdateConstants.AutoUpdaterShadowCopyFolderName);
-            _fileUtility.When(x => x.DeleteDirectoryRecursive(Arg.Any<string>())).Throw(new Exception());
-
-            _versionUpdateService.DeleteInstallationTempFolders();
-
-            _fileUtility.Received(1).DeleteDirectoryRecursive(expectedPath);
-        }
-
-        #endregion
-
         #region InstallUpdate Tests
 
         [Test]
@@ -76,7 +49,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             // setup
             string applicationRootFolder = AppContext.BaseDirectory;
             string autoUpdaterFolder = Path.Combine(applicationRootFolder, UpdateConstants.AutoUpdaterFolderName);
-            string autoUpdaterShadowCopyFolder = Path.Combine(applicationRootFolder, UpdateConstants.AutoUpdaterShadowCopyFolderName);
 
             IProcessWrapper processWrapper = Substitute.For<IProcessWrapper>();
             _processWrapperFactory.GetProcess().Returns(processWrapper);
@@ -89,9 +61,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             _versionUpdateService.InstallUpdate();
 
             // assert
-            _fileUtility.Received(1).CopyRecursive(autoUpdaterFolder, autoUpdaterShadowCopyFolder);
-
-            Assert.AreEqual(autoUpdaterShadowCopyFolder, processWrapper.StartInfo.WorkingDirectory);
+            Assert.AreEqual(autoUpdaterFolder, processWrapper.StartInfo.WorkingDirectory);
             Assert.AreEqual(UpdateConstants.AutoUpdaterExeFileName, processWrapper.StartInfo.FileName);
             Assert.AreEqual(UpdateConstants.StartInfoVerb, processWrapper.StartInfo.Verb);
             processWrapper.Received(1).Start();

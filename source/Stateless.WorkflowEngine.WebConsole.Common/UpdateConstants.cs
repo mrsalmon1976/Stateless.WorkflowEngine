@@ -16,7 +16,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Common
 
         public const string AutoUpdaterFolderName = "AutoUpdater";
 
-        public const string AutoUpdaterShadowCopyFolderName = "AutoUpdaterShadowCopy";
+        public const string AutoUpdaterNewFileExtension = ".new";
 
         public const string UpdateEventLogFileName = "UpdateLog.log";
 
@@ -25,6 +25,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Common
         public const string WebConsoleExeFileName = "Stateless.WorkflowEngine.WebConsole.exe";
 
         public const string StartInfoVerb = "runas";
+
 
     }
 

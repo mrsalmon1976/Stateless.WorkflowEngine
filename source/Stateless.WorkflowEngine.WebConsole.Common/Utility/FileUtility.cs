@@ -23,7 +23,17 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
 
         void DeleteDirectoryRecursive(DirectoryInfo directory);
 
+        void DeleteFile(string path);
+
+        bool DirectoryExists(string path);
+
         void ExtractZipFile(string sourceArchiveFileName, string destinationDirectoryName);
+
+        string[] GetFiles(string sourceDirectory, SearchOption searchOption);
+
+        string[] GetFiles(string sourceDirectory, SearchOption searchOption, string searchPattern);
+
+        void MoveFile(string source, string target, bool overwrite);
     }
 
     public class FileUtility : IFileUtility
@@ -115,10 +125,40 @@ namespace Stateless.WorkflowEngine.WebConsole.Common.Utility
             }
         }
 
+        public void DeleteFile(string path)
+        {
+            File.Delete(path);
+        }
+
+        public bool DirectoryExists(string path)
+        {
+            return Directory.Exists(path);
+        }
+
         public void ExtractZipFile(string sourceArchiveFileName, string destinationDirectoryName)
         {
             ZipFile.ExtractToDirectory(sourceArchiveFileName, destinationDirectoryName);
         }
+
+        public string[] GetFiles(string sourceDirectory, SearchOption searchOption)
+        {
+            return GetFiles(sourceDirectory, searchOption, "*.*");
+        }
+
+        public string[] GetFiles(string sourceDirectory, SearchOption searchOption, string searchPattern)
+        {
+            return Directory.GetFiles(sourceDirectory, searchPattern, searchOption);
+        }
+
+        public void MoveFile(string source, string target, bool overwrite)
+        {
+            if (overwrite && File.Exists(target))
+            {
+                File.Delete(target);
+            }
+            File.Move(source, target);
+        }
+
 
         private void TryDelete(Action deleteAction, string fullPath)
         {

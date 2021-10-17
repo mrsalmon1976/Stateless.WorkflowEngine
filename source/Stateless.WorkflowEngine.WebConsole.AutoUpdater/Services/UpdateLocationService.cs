@@ -21,8 +21,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
         string AutoUpdaterFolder { get; }
 
-        string AutoUpdaterShadowCopyFolder { get; }
-
         string UpdateEventLogFilePath { get; }
 
         void DeleteUpdateTempFolder();
@@ -56,7 +54,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
                 this.DataFolder = Path.Combine(this._applicationFolder, UpdateConstants.DataFolderName);
                 this.UpdateTempFolder = Path.Combine(this._applicationFolder, UpdateConstants.UpdateTempFolderName);
                 this.AutoUpdaterFolder = Path.Combine(this._applicationFolder, UpdateConstants.AutoUpdaterFolderName);
-                this.AutoUpdaterShadowCopyFolder = Path.Combine(this.ApplicationFolder, UpdateConstants.AutoUpdaterShadowCopyFolderName);
                 this.UpdateEventLogFilePath = Path.Combine(this.ApplicationFolder, UpdateConstants.UpdateEventLogFileName);
             }
         }
@@ -68,8 +65,6 @@ namespace Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         public string UpdateEventLogFilePath { get; private set; }
 
         public string AutoUpdaterFolder { get; private set; }
-
-        public string AutoUpdaterShadowCopyFolder { get; private set; }
 
         public void DeleteUpdateTempFolder()
         {
