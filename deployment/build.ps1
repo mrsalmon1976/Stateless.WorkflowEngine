@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+Clear-Host
 
 function GetMSBuildPath()
 {

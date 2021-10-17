@@ -6,7 +6,7 @@ cd source
 # read the api key from a file that is not published with the repository
 $apiKey = [System.IO.File]::ReadAllText("$root\_apikey.txt").Trim()
 
-$version = Read-Host -Prompt "What version are we publishing? [e.g. 1.5.0]"
+$version = Read-Host -Prompt "What version are we publishing? [e.g. 2.3.0]"
 
 # Stateless.WorkflowEngine
 cd Stateless.WorkflowEngine
