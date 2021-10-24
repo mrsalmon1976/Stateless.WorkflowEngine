@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
+using Stateless.WorkflowEngine.WebConsole.Caching;
 using Stateless.WorkflowEngine.WebConsole.Common.Models;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
@@ -22,8 +23,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
         private readonly IMemoryCache _memoryCache;
         private readonly IVersionComparisonService _versionComparisonService;
 
-        public const string KeyCheckIfNewVersionAvailable = "KeyCheckIfNewVersionAvailable";
-
         public VersionCheckService(IAppSettings appSettings, IMemoryCache memoryCache, IVersionComparisonService versionComparisonService)
         {
             _appSettings = appSettings;
@@ -34,7 +33,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
         public VersionCheckResult CheckIfNewVersionAvailable()
         {
             VersionCheckResult result;
-            if (_memoryCache.TryGetValue<VersionCheckResult>(KeyCheckIfNewVersionAvailable, out result))
+            if (_memoryCache.TryGetValue<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, out result))
             {
                 return result;
             }
@@ -43,7 +42,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             result = new VersionCheckResult();
             result.IsNewVersionAvailable = comparisonResult.IsNewVersionAvailable;
             result.LatestReleaseVersionNumber = comparisonResult.LatestReleaseVersionInfo.VersionNumber;
-            _memoryCache.Set<VersionCheckResult>(KeyCheckIfNewVersionAvailable, result, TimeSpan.FromMinutes(_appSettings.UpdateCheckIntervalInMinutes));
+            _memoryCache.Set<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, result, TimeSpan.FromMinutes(_appSettings.UpdateCheckIntervalInMinutes));
             return result;
         }
     }

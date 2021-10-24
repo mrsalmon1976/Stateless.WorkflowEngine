@@ -1,5 +1,8 @@
+.btn-group-connections-layout {
+    margin-right: 10px;
+}
 .conn-icons {
-    margin:2px -10px 0px 30px;
+    margin: 2px -10px 0px 30px;
 }
 .conn-image {
     display: inline-block;
@@ -40,11 +43,11 @@
     border-left: 1px solid #dddddd;
 }
 .conn-workflow-info-warning {
-    background-color: #f0ad4e;
+    background-color: #f0ad4e !important;
     color: white;
 }
 .conn-workflow-info-error {
-    background-color: #d9534f;
+    background-color: #d9534f !important;
     color: white;
 }
 .dashboard-panel {
@@ -71,6 +74,14 @@
     border-radius: 40px;
     background: #2c3e50;
     color: #1abc9c;
+}
+.table tbody tr:hover td.conn-workflow-info-error {
+    background-color: #d9534f !important;
+    filter: brightness(85%);
+}
+.table tbody tr:hover td.conn-workflow-info-warning {
+    background-color: #f0ad4e !important;
+    filter: brightness(85%);
 }
 #version-header {
     font-size: 70%;

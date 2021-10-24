@@ -6,8 +6,11 @@ var DashboardView = function () {
     this.init = function () {
         $('#btn-refresh').on('click', function () { that.loadConnections(); });
         $('#btn-add-connection').on('click', function () { that.showForm(''); });
+        $('#btn-layout-list').on('click', function () { that.toggleLayout('list'); });
+        $('#btn-layout-panels').on('click', function () { that.toggleLayout('panels'); });
         $('#btn-submit-connection').on('click', that.submitForm);
         $('#btn-test-connection').on('click', that.testConnection);
+
         this.loadConnections();
         this.checkForUpdates();
     };
@@ -92,6 +95,7 @@ var DashboardView = function () {
             //debugger;
             $('#pnl-connections').html(response);
             $('a.btn-delete').on('click', that.confirmDeleteConnection);
+            that.toggleLayout(localStorage.dashboardLayout);
             that.loadConnectionInfo();
 
         });
@@ -106,18 +110,19 @@ var DashboardView = function () {
     };
 
     this.loadConnectionInfo = function () {
-        $(".panel-connection").each(function (index) {
+
+        $(".connection-wrapper").each(function (index) {
 
             var connId = $(this).attr('data-model-id');
-            var pnl = $(this);
 
-            var pnlHeading = pnl.find('.panel-heading');
+            var connectionWrapper = $(this);
+            connectionWrapper.removeClass('conn-workflow-info-error');
+            //var panelHeading = connectionWrapper.find('.panel-heading');
 
-            // get the connection item panels and clear out any styles at the same time
-            var pnlActive = pnl.find('.conn-row-active').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-            var pnlSuspended = pnl.find('.conn-row-suspended').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-            var pnlComplete = pnl.find('.conn-row-complete').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
-            var pnlTitle = pnl.find('.conn-title-link');
+            //// get the connection item panels and clear out any styles at the same time
+            //var pnlActive = connectionWrapper.find('.conn-row-active').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+            //var pnlSuspended = connectionWrapper.find('.conn-row-suspended').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
+            //var pnlComplete = connectionWrapper.find('.conn-row-complete').removeClass('conn-workflow-info-error').removeClass('conn-workflow-info-warning');
 
             var request = $.ajax({
                 url: "/connection/info",
@@ -127,41 +132,63 @@ var DashboardView = function () {
             });
 
             request.done(function (response) {
-
-                // if an error has come back, add the error class and also add the error to the title
-                if (response.connectionError != null && response.connectionError.length > 0) {
-                    pnlHeading.addClass('error');
-                    pnlActive.addClass('conn-workflow-info-error');
-                    pnlSuspended.addClass('conn-workflow-info-error');
-                    pnlComplete.addClass('conn-workflow-info-error');
-                    pnlTitle.attr('title', response.connectionError);
-                }
-                else {
-                    // the response is good - we can set the number and set any error/warning styles
-                    pnlHeading.removeClass('error');
-                    pnlActive.addClass(that.getInfoPanelClass(response.activeCount, 100, 10000));
-                    pnlSuspended.addClass(that.getInfoPanelClass(response.suspendedCount, 0, 0));
-                    pnlComplete.addClass(that.getInfoPanelClass(response.completeCount, Number.MAX_VALUE, Number.MAX_VALUE));
-                    pnlActive.find('.conn-row-span-active').text(numeral(response.activeCount).format('0,0'));
-                    pnlSuspended.find('.conn-row-span-suspended').text(numeral(response.suspendedCount).format('0,0'));
-                    pnlComplete.find('.conn-row-span-complete').text(numeral(response.completeCount).format('0,0'));
-                    pnlTitle.attr('title', pnlTitle.attr('data-title'));
-                    pnl.find('.conn-row-span-data').show();
-                }
+                that.renderConnection(connectionWrapper, response.connectionError, response);
             });
 
             request.fail(function (xhr, textStatus, errorThrown) {
-                pnlHeading.addClass('error');
-                pnlActive.addClass('conn-workflow-info-error');
-                pnlSuspended.addClass('conn-workflow-info-error');
-                pnlComplete.addClass('conn-workflow-info-error');
-                pnlTitle.attr('title', xhr.responseText);
+                that.renderConnection(connectionWrapper, xhr.responseText);
             });
             request.always(function (xhr, textStatus) {
                 // always hide the loading image
-                pnl.find('.conn-row-span-loading').hide();
+                connectionWrapper.find('.conn-row-span-loading').hide();
             });
          });
+    };
+
+    this.renderConnection = function (connectionWrapper, connectionError, response) {
+
+        var activeCountText = 'Error';
+        var suspendedCountText = 'Error';
+        var completeCountText = 'Error';
+        var connectionWrapperTitle = '';
+
+        var dataElement = connectionWrapper.find('.conn-row-span-data');
+        var activeElement = connectionWrapper.find('.conn-row-active').removeClass('conn-workflow-info-error');
+        var suspendedElement = connectionWrapper.find('.conn-row-suspended').removeClass('conn-workflow-info-error');
+        var completeElement = connectionWrapper.find('.conn-row-complete').removeClass('conn-workflow-info-error');
+        var panelHeadingElement = connectionWrapper.find('.panel-heading').removeClass('error');
+        var tableCells = connectionWrapper.find('td').removeClass('conn-workflow-info-error');
+        var divs = connectionWrapper.find('div').removeClass('conn-workflow-info-error');
+
+        // if an error has come back, add the error class and also add the error to the title
+        if (connectionError !== null && connectionError.length > 0) {
+            connectionWrapper.addClass('conn-workflow-info-error');
+            panelHeadingElement.addClass('error');
+            activeElement.addClass('conn-workflow-info-error');
+            suspendedElement.addClass('conn-workflow-info-error');
+            completeElement.addClass('conn-workflow-info-error');
+            tableCells.addClass('conn-workflow-info-error');
+            divs.addClass('conn-workflow-info-error');
+            //    pnlSuspended.addClass('conn-workflow-info-error');
+            //    pnlComplete.addClass('conn-workflow-info-error');
+            connectionWrapperTitle = connectionError;
+        }
+        else {
+            connectionWrapper.removeClass('conn-workflow-info-error');
+            activeElement.addClass(that.getInfoPanelClass(response.activeCount, 100, 10000));
+            suspendedElement.addClass(that.getInfoPanelClass(response.suspendedCount, 0, 0));
+            activeCountText = numeral(response.activeCount).format('0,0');
+            suspendedCountText = numeral(response.suspendedCount).format('0,0');
+            completeCountText = numeral(response.completeCount).format('0,0');
+            //    pnlSuspended.find('.conn-row-span-suspended').text(numeral(response.suspendedCount).format('0,0'));
+            //    pnlComplete.find('.conn-row-span-complete').text(numeral(response.completeCount).format('0,0'));
+        }
+
+        activeElement.find('.conn-row-span-active').text(activeCountText);
+        suspendedElement.find('.conn-row-span-suspended').text(suspendedCountText);
+        completeElement.find('.conn-row-span-complete').text(completeCountText);
+        connectionWrapper.attr('title', connectionWrapperTitle);
+        dataElement.show();
     };
 
     this.showError = function (error) {
@@ -243,6 +270,23 @@ var DashboardView = function () {
             }
         });
     };
+
+    this.toggleLayout = function (dashboardLayout) {
+        if (dashboardLayout === 'list') {
+            $('#pnl-connections-panels').hide();
+            $('#tbl-connections').show();
+            $('#btn-layout-list').addClass('active');
+            $('#btn-layout-panels').removeClass('active');
+
+        }
+        else {
+            $('#tbl-connections').hide();
+            $('#pnl-connections-panels').show();
+            $('#btn-layout-list').removeClass('active');
+            $('#btn-layout-panels').addClass('active');
+        }
+        localStorage.dashboardLayout = dashboardLayout;
+    }
 
 }
 

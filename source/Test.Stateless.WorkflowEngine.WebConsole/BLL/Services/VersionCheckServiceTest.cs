@@ -6,6 +6,7 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Stateless.WorkflowEngine.WebConsole.Caching;
 using Stateless.WorkflowEngine.WebConsole.Common.Models;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
@@ -67,7 +68,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             VersionComparisonResult comparisonResult = new VersionComparisonResult();
             comparisonResult.LatestReleaseVersionInfo = new WebConsoleVersionInfo() { VersionNumber = "1.2.3" };
             _versionComparisonService.CheckIfNewVersionAvailable().Returns(Task.FromResult<VersionComparisonResult>(comparisonResult));
-            _memoryCache.TryGetValue<VersionCheckResult>(VersionCheckService.KeyCheckIfNewVersionAvailable, out cachedResult).Returns(false);
+            _memoryCache.TryGetValue<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, out cachedResult).Returns(false);
             int cacheMinutes = new Random().Next(1, 100);
             _appSettings.UpdateCheckIntervalInMinutes.Returns(cacheMinutes);
 
@@ -75,7 +76,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             VersionCheckResult result = _versionCheckService.CheckIfNewVersionAvailable();
 
             // assert
-            _memoryCache.Received(1).Set<VersionCheckResult>(VersionCheckService.KeyCheckIfNewVersionAvailable, Arg.Any<VersionCheckResult>(), TimeSpan.FromMinutes(cacheMinutes));
+            _memoryCache.Received(1).Set<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, Arg.Any<VersionCheckResult>(), TimeSpan.FromMinutes(cacheMinutes));
         }
 
 
@@ -87,7 +88,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             VersionComparisonResult comparisonResult = new VersionComparisonResult();
             comparisonResult.LatestReleaseVersionInfo = new WebConsoleVersionInfo() { VersionNumber = "1.2.3" };
             _versionComparisonService.CheckIfNewVersionAvailable().Returns(Task.FromResult<VersionComparisonResult>(comparisonResult));
-            _memoryCache.TryGetValue<VersionCheckResult>(VersionCheckService.KeyCheckIfNewVersionAvailable, out cachedResult).Returns(true);
+            _memoryCache.TryGetValue<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, out cachedResult).Returns(true);
 
             // execute
             VersionCheckResult result = _versionCheckService.CheckIfNewVersionAvailable();

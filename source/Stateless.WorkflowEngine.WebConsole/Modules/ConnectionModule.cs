@@ -18,22 +18,26 @@ using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
+using Microsoft.Extensions.Caching.Memory;
+using Stateless.WorkflowEngine.WebConsole.Caching;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class ConnectionModule : WebConsoleSecureModule
     {
         private IMapper _mapper;
+        private readonly ICacheProvider _cacheProvider;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
         private IWorkflowInfoService _workflowInfoService;
         private IWorkflowStoreFactory _workflowStoreFactory;
 
-        public ConnectionModule(IMapper mapper, IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
+        public ConnectionModule(IMapper mapper, ICacheProvider cacheProvider, IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
             : base()
         {
             _mapper = mapper;
+            _cacheProvider = cacheProvider;
             _userStore = userStore;
             _connectionValidator = connectionValidator;
             _encryptionProvider = encryptionProvider;
@@ -90,7 +94,15 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         public dynamic Info()
         {
             var id = Request.Form["id"];
+            string cacheKey = CacheKeys.ConnectionInfo(id);
             //System.Threading.Thread.Sleep(2000);  // useful for testing
+
+            ConnectionInfoViewModel cachedInfoViewModel = _cacheProvider.Get<ConnectionInfoViewModel>(cacheKey);
+            if (cachedInfoViewModel != null)
+            {
+                return this.Response.AsJson<ConnectionInfoViewModel>(cachedInfoViewModel);
+            }
+
             // load the connections for the current user
             var conn = _userStore.GetConnection(id);
             if (conn == null)
@@ -100,6 +112,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             }
 
             ConnectionInfoViewModel infoModel = _workflowInfoService.GetWorkflowStoreInfo(conn);
+            _cacheProvider.Set<ConnectionInfoViewModel>(cacheKey, infoModel, TimeSpan.FromSeconds(5));
             return this.Response.AsJson<ConnectionInfoViewModel>(infoModel);
         }
 

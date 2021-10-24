@@ -18,8 +18,9 @@ using Nancy.Cryptography;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Microsoft.Extensions.Caching.Memory;
-using Stateless.WorkflowEngine.WebConsole.BLL.Caching;
 using NLog;
+using System;
+using Stateless.WorkflowEngine.WebConsole.Caching;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -53,6 +54,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             // caching
             var memoryCache = new WebConsoleMemoryCache(new MemoryCacheOptions());
             container.Register<IMemoryCache>(memoryCache);
+            container.Register<ICacheProvider, CacheProvider>();
 
 
             // security
@@ -114,7 +116,7 @@ namespace Stateless.WorkflowEngine.WebConsole
             context.ViewBag.AppVersion = container.Resolve<IWebConsoleVersionService>().GetWebConsoleVersion();
             if (Debugger.IsAttached)
             {
-                //context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmssttt");
+                //context.ViewBag.AppVersion = DateTime.Now.ToString("yyyyMMddHHmmss");
             }
             context.ViewBag.Scripts = new List<string>();
             context.ViewBag.Claims = new List<string>();

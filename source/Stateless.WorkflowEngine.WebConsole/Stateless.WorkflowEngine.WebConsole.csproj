@@ -209,7 +209,9 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="BLL\Caching\WebConsoleMemoryCache.cs" />
+    <Compile Include="Caching\CacheKeys.cs" />
+    <Compile Include="Caching\CacheProvider.cs" />
+    <Compile Include="Caching\WebConsoleMemoryCache.cs" />
     <Compile Include="BLL\Data\Models\ConnectionModel.cs" />
     <Compile Include="BLL\Data\Models\UserModel.cs" />
     <Compile Include="BLL\Data\Models\WorkflowStoreType.cs" />

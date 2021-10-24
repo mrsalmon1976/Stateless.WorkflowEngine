@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Encryption;
+using Microsoft.Extensions.Caching.Memory;
 using Nancy;
 using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
@@ -15,6 +16,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
+using Stateless.WorkflowEngine.WebConsole.Caching;
 using Stateless.WorkflowEngine.WebConsole.Modules;
 using Stateless.WorkflowEngine.WebConsole.Navigation;
 using Stateless.WorkflowEngine.WebConsole.ViewModels;
@@ -35,6 +37,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     public class ConnectionModuleTest
     {
         private IMapper _mapper;
+        private ICacheProvider _cacheProvider;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
         private IEncryptionProvider _encryptionProvider;
@@ -45,6 +48,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         public void ConnectionModuleTest_SetUp()
         {
             _userStore = Substitute.For<IUserStore>();
+            _cacheProvider = Substitute.For<ICacheProvider>();
             _encryptionProvider = Substitute.For<IEncryptionProvider>();
             _connectionValidator = Substitute.For<IConnectionValidator>();
             _workflowStoreService = Substitute.For<IWorkflowInfoService>();
@@ -165,6 +169,37 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Info Tests
 
         [Test]
+        public void Info_ResponseCached_ReturnsFromCache()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
+            var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid().ToString();
+            string cacheKey = CacheKeys.ConnectionInfo(connectionId);
+            ConnectionInfoViewModel cachedResult = new ConnectionInfoViewModel();
+            cachedResult.ActiveCount = new Random().Next(100, 1000);
+            _cacheProvider.Get<ConnectionInfoViewModel>(cacheKey).Returns(cachedResult);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Info, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _workflowStoreService.DidNotReceive().GetWorkflowStoreInfo(Arg.Any<ConnectionModel>());
+            _cacheProvider.Received(1).Get<ConnectionInfoViewModel>(cacheKey);
+
+            ConnectionInfoViewModel result = JsonConvert.DeserializeObject<ConnectionInfoViewModel>(response.Body.AsString());
+            Assert.AreEqual(cachedResult.ActiveCount, result.ActiveCount);
+        }
+
+        [Test]
         public void Info_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
@@ -228,6 +263,39 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             Assert.AreEqual(infoViewModel.CompleteCount, result.CompleteCount);
         }
 
+        [Test]
+        public void Info_ConnectionFound_IsCached()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new string[] { Claims.ConnectionDelete };
+            var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid();
+            string cacheKey = CacheKeys.ConnectionInfo(connectionId.ToString());
+
+            ConnectionModel conn = new ConnectionModel();
+            conn.Id = connectionId;
+            _userStore.GetConnection(connectionId).Returns(conn);
+
+            ConnectionInfoViewModel infoViewModel = new ConnectionInfoViewModel();
+            _workflowStoreService.GetWorkflowStoreInfo(conn).Returns(infoViewModel);
+
+            // execute
+            var response = browser.Post(Actions.Connection.Info, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("id", connectionId.ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _cacheProvider.Received(1).Set<ConnectionInfoViewModel>(cacheKey, Arg.Any<ConnectionInfoViewModel>(), TimeSpan.FromSeconds(5));
+
+        }
+
+
         #endregion
 
         #region List Tests
@@ -245,7 +313,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore.Connections.Returns(connections);
 
             // execute
-            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _cacheProvider, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             var result = module.List();
 
@@ -273,7 +341,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             List<ConnectionModel> connections = new List<ConnectionModel>();
             _userStore.Connections.Returns(connections);
 
-            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _cacheProvider, _userStore, _connectionValidator, null, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             module.Context.CurrentUser = new UserIdentity()
             {
@@ -295,7 +363,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             List<ConnectionModel> connections = new List<ConnectionModel>();
             _userStore.Connections.Returns(connections);
 
-            ConnectionModule module = new ConnectionModule(_mapper, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
+            ConnectionModule module = new ConnectionModule(_mapper, _cacheProvider, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory);
             module.Context = new NancyContext();
             module.Context.CurrentUser = new UserIdentity()
             {
@@ -579,7 +647,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         private Browser CreateBrowser(UserIdentity currentUser)
         {
             var browser = new Browser((bootstrapper) =>
-                            bootstrapper.Module(new ConnectionModule(_mapper, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory))
+                            bootstrapper.Module(new ConnectionModule(_mapper, _cacheProvider, _userStore, _connectionValidator, _encryptionProvider, _workflowStoreService, _workflowStoreFactory))
                                 .RootPathProvider(new TestRootPathProvider())
                                 .RequestStartup((container, pipelines, context) => {
                                     context.CurrentUser = currentUser;
