@@ -311,7 +311,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
 
             // execute
-            int result = workflowServer.ExecuteWorkflows(10);
+            int result = workflowServer.ExecuteWorkflows(executeCount);
             Assert.AreEqual(expectedResult, result);
 
         }
