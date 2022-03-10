@@ -137,6 +137,17 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        {
+            // does nothing - tables are in-memory and there are no indexes
+        }
+
+
+        /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
         /// on the store, but some applications require specific type registration (e.g. MongoDb).
         /// </summary>

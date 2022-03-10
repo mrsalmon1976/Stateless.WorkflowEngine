@@ -22,6 +22,12 @@ namespace Stateless.WorkflowEngine
         IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
 
         /// <summary>
+        /// Gets/sets the options applicable to the workflow server.
+        /// </summary>
+        WorkflowServerOptions Options { get; set; }
+
+
+        /// <summary>
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
@@ -70,19 +76,19 @@ namespace Stateless.WorkflowEngine
     public class WorkflowServer : IWorkflowServer
     {
         private readonly IWorkflowStore _workflowStore;
-        private readonly IWorkflowRegistrationService _workflowRegistrationService;
-        private readonly IWorkflowExceptionHandler _exceptionHandler;
 
-        public WorkflowServer(IWorkflowStore workflowStore): this(workflowStore, new WorkflowRegistrationService(), new WorkflowExceptionHandler())
+        public WorkflowServer(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowServerOptions())
         {
-
         }
 
-        public WorkflowServer(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService, IWorkflowExceptionHandler exceptionHandler)
+        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options)
         {
             _workflowStore = workflowStore;
-            _workflowRegistrationService = workflowRegistrationService;
-            _exceptionHandler = exceptionHandler;
+            this.Options = options ?? new WorkflowServerOptions();
+            this.WorkflowRegistrationService = new WorkflowRegistrationService();
+            this.WorkflowExceptionHandler = new WorkflowExceptionHandler();
+
+            workflowStore.Initialise(this.Options.AutoCreateTables, this.Options.AutoCreateIndexes);
         }
 
         /// <summary>
@@ -96,11 +102,26 @@ namespace Stateless.WorkflowEngine
         public event EventHandler<WorkflowEventArgs> WorkflowCompleted;
 
         /// <summary>
+        /// Gets/sets the workflow registration service
+        /// </summary>
+        internal IWorkflowRegistrationService WorkflowRegistrationService { get; set; }
+
+        /// <summary>
+        /// Gets/sets the workflow registration service
+        /// </summary>
+        internal IWorkflowExceptionHandler WorkflowExceptionHandler { get; set; }
+
+        /// <summary>
         /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
         /// This defaults to null, in which case classes are created with reflection.  Setting this property 
         /// to your own resolver will allow you to control how workflow actions are created.
         /// </summary>
         public IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+
+        /// <summary>
+        /// Gets/sets the options applicable to the workflow server.
+        /// </summary>
+        public WorkflowServerOptions Options { get; set; }
 
         /// <summary>
         /// Executes a workflow.
@@ -128,7 +149,7 @@ namespace Stateless.WorkflowEngine
             catch (Exception ex)
             {
                 workflow.CurrentState = initialState;
-                _exceptionHandler.HandleWorkflowException(workflow, ex);
+                this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
 
                 // raise the exception handler
                 workflow.OnError(ex);
@@ -191,7 +212,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            return _workflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+            return this.WorkflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
         }
 
         /// <summary>
@@ -202,7 +223,7 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
+            this.WorkflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
         }
 
         /// <summary>

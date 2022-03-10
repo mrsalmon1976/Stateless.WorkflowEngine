@@ -16,6 +16,7 @@ using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.MongoDb;
 using NSubstitute;
 using MongoDB.Bson.Serialization;
+using MongoDB.Bson;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb
 {
@@ -48,29 +49,112 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         public void MongoDbWorkflowStoreTest_SetUp()
         {
             // make sure there is no data in the database for the next test
-            ClearTestData();
+            DeleteTestCollections();
         }
 
         [TearDown]
         public void MongoDbWorkflowStoreTest_TearDown()
         {
-            // make sure there is no data in the database for the next test
-            ClearTestData();
+            DeleteTestCollections();
         }
+
+        #endregion
+
+        #region MongoDb-specific Tests
+
+        [Test]
+        public void Initialise_AutoCreateTablesFalseAndAutoCreateIndexesFalse_CollectionsAreNotCreated()
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(false, false);
+
+            schemaService.DidNotReceive().EnsureCollectionExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+        }
+
+        [Test]
+        public void Initialise_AutoCreateTablesFalseButAutoCreateIndexesTrue_CollectionsAreCreated()
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(false, true);
+
+            schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Initialise_AutoCreateTablesTrue_CollectionsAreCreated(bool autoCreateIndexes)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(true, autoCreateIndexes);
+
+            schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Initialise_AutoCreateIndexFalse_IndexesAreNotCreated(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(autoCreateTables, false);
+
+            schemaService.DidNotReceive().EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+            schemaService.DidNotReceive().EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Initialise_AutoCreateIndexTrue_WorkflowIndexesAreCreated(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(autoCreateTables, true);
+
+            schemaService.Received(1).EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Initialise_AutoCreateIndexTrue_CompletedWorkflowIndexesAreCreated(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(autoCreateTables, true);
+
+            schemaService.Received(1).EnsureCompletedIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
+        }
+
 
         #endregion
 
         #region Private Methods
 
-        private void ClearTestData()
+        private void DeleteTestCollections()
         {
-            FilterDefinition<WorkflowContainer> filter = "{ }";
-            var collection = _database.GetCollection<WorkflowContainer>(MongoDbWorkflowStore.DefaultCollectionActive);
-            collection.DeleteMany(filter);
-
-            collection = _database.GetCollection<WorkflowContainer>(MongoDbWorkflowStore.DefaultCollectionCompleted);
-            collection.DeleteMany(filter);
+            var collections = _database.ListCollectionNames().ToList();
+            foreach (string c in collections)
+            {
+                _database.DropCollection(c);
+            }
         }
+
 
         #endregion
 

@@ -121,6 +121,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         long GetSuspendedCount();
 
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        void Initialise(bool autoCreateTables, bool autoCreateIndexes);
+
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 
@@ -316,6 +323,14 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <returns></returns>
         public abstract long GetSuspendedCount();
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public abstract void Initialise(bool autoCreateTables, bool autoCreateIndexes);
+
 
         /// <summary>
         /// Gives the opportunity for the workflow store to register a workflow type.  This may not always be necessary 

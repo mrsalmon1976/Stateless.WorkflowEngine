@@ -23,6 +23,76 @@ namespace Test.Stateless.WorkflowEngine
     [TestFixture]
     public class WorkflowServerTest
     {
+        #region Constructor Tests
+
+        [Test]
+        public void Constructor_NoOptions_DefaultOptionsCreated()
+        {
+            WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
+            Assert.IsTrue(workflowServer.Options.AutoCreateIndexes);
+            Assert.IsTrue(workflowServer.Options.AutoCreateTables);
+        }
+
+        [Test]
+        public void Constructor_NullOptions_DefaultOptionsCreated()
+        {
+            WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), null);
+            Assert.IsTrue(workflowServer.Options.AutoCreateIndexes);
+            Assert.IsTrue(workflowServer.Options.AutoCreateTables);
+        }
+
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void Constructor_WithOptions_OptionsCorrectlySet(bool autoCreateTables, bool autoCreateIndexes)
+        {
+            WorkflowServerOptions options = new WorkflowServerOptions();
+            options.AutoCreateTables = autoCreateTables;
+            options.AutoCreateIndexes = autoCreateIndexes;
+
+            WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), options);
+
+            Assert.AreEqual(autoCreateTables, workflowServer.Options.AutoCreateTables);
+            Assert.AreEqual(autoCreateIndexes, workflowServer.Options.AutoCreateIndexes);
+        }
+
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void Constructor_InitialisesWorkflowStore(bool autoCreateTables, bool autoCreateIndexes)
+        {
+            WorkflowServerOptions options = new WorkflowServerOptions();
+            options.AutoCreateTables = autoCreateTables;
+            options.AutoCreateIndexes = autoCreateIndexes;
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            WorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
+
+            workflowStore.Received(1).Initialise(autoCreateTables, autoCreateIndexes);
+        }
+
+
+        [Test]
+        public void Constructor_OnCreate_WorkflowRegistrationServiceCreated()
+        {
+            WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
+            Assert.IsNotNull(workflowServer.WorkflowRegistrationService);
+            Assert.IsInstanceOf(typeof(WorkflowRegistrationService), workflowServer.WorkflowRegistrationService);
+        }
+
+        [Test]
+        public void Constructor_OnCreate_WorkflowExceptionHandlerCreated()
+        {
+            WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
+            Assert.IsNotNull(workflowServer.WorkflowExceptionHandler);
+            Assert.IsInstanceOf(typeof(WorkflowExceptionHandler), workflowServer.WorkflowExceptionHandler);
+        }
+
+        #endregion
+
 
         #region ExecuteWorkflow Tests
 
@@ -147,7 +217,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowExceptionHandler exceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
 
             // execute
-            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
+            IWorkflowServer workflowServer = CreateWorkflowServer(Substitute.For<IWorkflowStore>(), null, Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
             workflowServer.ExecuteWorkflow(workflow);
 
             exceptionHandler.Received(1).HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
@@ -164,7 +234,7 @@ namespace Test.Stateless.WorkflowEngine
             workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
 
             // execute
-            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
+            IWorkflowServer workflowServer = CreateWorkflowServer(Substitute.For<IWorkflowStore>(), null, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.ExecuteWorkflow(workflow);
 
             // make sure the property was set
@@ -182,7 +252,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowExceptionHandler exceptionHandler = Substitute.For<IWorkflowExceptionHandler>();
 
             // execute
-            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
+            IWorkflowServer workflowServer = CreateWorkflowServer(Substitute.For<IWorkflowStore>(), null, Substitute.For<IWorkflowRegistrationService>(), exceptionHandler);
             workflowServer.ExecuteWorkflow(workflow);
 
             exceptionHandler.Received(1).HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>());
@@ -225,7 +295,7 @@ namespace Test.Stateless.WorkflowEngine
             workflowExceptionHandler.WhenForAnyArgs(x => x.HandleWorkflowException(Arg.Any<Workflow>(), Arg.Any<Exception>())).Do(x => { workflow.IsSuspended = true; });
 
             // execute
-            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), workflowExceptionHandler);
+            IWorkflowServer workflowServer = CreateWorkflowServer(Substitute.For<IWorkflowStore>(), null, Substitute.For<IWorkflowRegistrationService>(), workflowExceptionHandler);
             workflowServer.WorkflowSuspended += delegate(object sender, WorkflowEventArgs e) {
                 eventRaised = true;
             };
@@ -246,7 +316,7 @@ namespace Test.Stateless.WorkflowEngine
             workflow.WhenForAnyArgs(x => x.Fire(Arg.Any<string>())).Do(x => { throw new Exception(); });
 
             // execute
-            IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
+            IWorkflowServer workflowServer = CreateWorkflowServer(Substitute.For<IWorkflowStore>(), null, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.ExecuteWorkflow(workflow);
 
             workflow.Received(1).OnError(Arg.Any<Exception>());
@@ -374,7 +444,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
 
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, regService, Substitute.For<IWorkflowExceptionHandler>());
+            IWorkflowServer workflowServer = CreateWorkflowServer(workflowStore, null, regService, Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
             regService.Received(1).IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
         }
@@ -413,7 +483,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
 
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, regService, Substitute.For<IWorkflowExceptionHandler>());
+            IWorkflowServer workflowServer = CreateWorkflowServer(workflowStore, null, regService, Substitute.For<IWorkflowExceptionHandler>());
             workflowServer.RegisterWorkflow(workflow);
 
             regService.Received(1).RegisterWorkflow(workflowStore, workflow);
@@ -421,6 +491,15 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         #endregion
+
+
+        private IWorkflowServer CreateWorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions workflowServerOptions, IWorkflowRegistrationService workflowRegistrationService, IWorkflowExceptionHandler workflowExceptionHandler)
+        {
+            WorkflowServer workflowServer = new WorkflowServer(workflowStore, workflowServerOptions);
+            workflowServer.WorkflowRegistrationService = workflowRegistrationService;
+            workflowServer.WorkflowExceptionHandler = workflowExceptionHandler;
+            return workflowServer;
+        }
 
         private class MyDependencyResolver : IWorkflowEngineDependencyResolver
         {

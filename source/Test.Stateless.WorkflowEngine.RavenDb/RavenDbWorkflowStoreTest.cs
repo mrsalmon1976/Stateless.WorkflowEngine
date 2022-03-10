@@ -17,6 +17,7 @@ using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb;
+using Raven.Abstractions.Indexing;
 
 namespace Test.Stateless.WorkflowEngine.RavenDb
 {
@@ -64,6 +65,62 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
         {
             // make sure there is no data in the database for the next test
             ClearTestData();
+
+            // remove any indexes
+            var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100);
+            foreach (IndexDefinition index in indexes)
+            {
+                _documentStore.DatabaseCommands.DeleteIndex(index.Name);
+            }
+        }
+
+        #endregion
+
+        #region RavenDb-specific Tests
+
+        [Test]
+        public void Initialise_AutoCreateIndexFalse_IndexesAreNotCreated()
+        {
+            using (var session = _documentStore.OpenSession())
+            {
+                RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+                workflowStore.Initialise(false, false);
+
+                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
+                Assert.AreEqual(0, indexes.Count());
+            }
+        }
+
+        [Test]
+        public void Initialise_AutoCreateIndexTrue_WorkflowIndexesAreCreated()
+        {
+            using (var session = _documentStore.OpenSession())
+            {
+                RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+                workflowStore.Initialise(false, true);
+
+                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
+                Assert.Greater(indexes.Count(), 0);
+
+                var expectedIndex = indexes.FirstOrDefault(x => x.Name == "WorkflowIndex/Priority/RetryCount/CreatedOn");
+                Assert.IsNotNull(expectedIndex);
+            }
+        }
+
+        [Test]
+        public void Initialise_AutoCreateIndexTrue_CompletedWorkflowIndexesAreCreated()
+        {
+            using (var session = _documentStore.OpenSession())
+            {
+                RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+                workflowStore.Initialise(false, true);
+
+                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
+                Assert.Greater(indexes.Count(), 0);
+
+                var expectedIndex = indexes.FirstOrDefault(x => x.Name == "CompletedWorkflowIndex/CreatedOn");
+                Assert.IsNotNull(expectedIndex);
+            }
         }
 
         #endregion

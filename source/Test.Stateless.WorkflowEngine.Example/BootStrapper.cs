@@ -20,7 +20,7 @@ namespace Test.Stateless.WorkflowEngine.Example
         public static MongoDbWorkflowStore MongoDbStore()
         {
             var client = new MongoClient("mongodb://localhost");
-            var database = client.GetDatabase("StatelessWorkflowTest");
+            var database = client.GetDatabase("StatelessWorkflowExample");
             return new MongoDbWorkflowStore(database);
         }
 

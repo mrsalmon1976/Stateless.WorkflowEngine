@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
-//using MongoDB.Driver.Builders;
 using Stateless.WorkflowEngine.Stores;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
@@ -29,7 +27,11 @@ namespace Stateless.WorkflowEngine.MongoDb
             this.MongoDatabase = mongoDatabase;
             this.CollectionActive = activeCollectionName;
             this.CollectionCompleted = completedCollectionName;
+
+            this.SchemaService = new MongoDbSchemaService();
         }
+
+        internal IMongoDbSchemaService SchemaService { get; set; }
 
         /// <summary>
         /// Gets/sets the name of the MongoDb collection holding active workflows.  Defaults to "Workflows".
@@ -237,6 +239,26 @@ namespace Stateless.WorkflowEngine.MongoDb
             return collection
                 .Find(x => x.Workflow.IsSuspended == true)
                 .CountDocuments();
+        }
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        {
+            if (autoCreateTables || autoCreateIndexes)
+            {
+                this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionActive);
+                this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionCompleted);
+            }
+
+            if (autoCreateIndexes)
+            {
+                this.SchemaService.EnsureActiveIndexExists(this.MongoDatabase, this.CollectionActive);
+                this.SchemaService.EnsureCompletedIndexExists(this.MongoDatabase, this.CollectionCompleted);
+            }
         }
 
 

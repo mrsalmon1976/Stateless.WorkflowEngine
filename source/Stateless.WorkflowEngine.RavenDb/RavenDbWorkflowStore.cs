@@ -5,6 +5,7 @@ using Stateless.WorkflowEngine.Exceptions;
 using Raven.Client;
 using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Stores;
+using Stateless.WorkflowEngine.RavenDb.Index;
 
 namespace Stateless.WorkflowEngine.RavenDb
 {
@@ -37,6 +38,7 @@ namespace Stateless.WorkflowEngine.RavenDb
                 session.Advanced.WaitForIndexesAfterSaveChanges();
                 return session;
             }
+            
             return this._documentStore.OpenSession(this._database);
         }
 
@@ -194,6 +196,23 @@ namespace Stateless.WorkflowEngine.RavenDb
             using (IDocumentSession session = this.OpenSession())
             {
                 return session.Query<WorkflowContainer>().Where(x => x.Workflow.IsSuspended == true).Count();
+            }
+        }
+
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        {
+            if (autoCreateIndexes)
+            {
+                // ravdendb indexes are safe by default, so we can just fire this off every time
+                // https://ravendb.net/docs/article-page/4.2/csharp/indexes/creating-and-deploying
+                new WorkflowIndex_Priority_RetryCount_CreatedOn().Execute(_documentStore);
+                new CompletedWorkflowIndex_CreatedOn().Execute(_documentStore);
             }
         }
 
