@@ -25,6 +25,16 @@ There is a full example application in the source code, in the Test.Stateless.Wo
 
 ## Code
 
+## Creating a WorkflowServer
+
+You will need a WorkflowServer, usually running in the context of a windows service, in order to process workflows in your application.
+
+Note that this should be implemented in your application as a singleton, to prevent continuous schema checks which will slow down your application.
+
+## Creating a WorkflowClient
+
+A WorkflowClient is used to register workflows for processing by the WorkflowServer.  
+
 ### Workflow Priority
 
 The workflow engine will process workflows in the order that they come in.  If a workflow fails, it will go to the back of the line, but will still get processed in date order.  In some cases, you may want particular workflows within a single workflow collection to be processed as a higher priority.  
@@ -68,17 +78,24 @@ method is called.  The workflow.OnComplete() method can also be overridden and a
 
 ## Indexing on data stores
 
-Over time, workflow collections grow, and the CompletedWorkflows data store can get very large.  The following indexes are recommended.
+Over time, workflow collections grow, and the CompletedWorkflows data store can get very large.  By default, instantiation of the WorkflowServer class will call the Initialise() method on the WorkflowStore being used, which will create the necessary tables/collections and indexes.  This behavior can be removed by setting the relevant values on the WorkflowServerOptions parameter on the constructor
 
-### MongoDb
+## Default Indexes
+
+The following indexes are created by default:
+
+* Workflows: Priority descending, RetryCount descending, CreatedOn ascending
+* CompletedWorkflows: CreatedOn descending
+
+### Manually creating indexes: MongoDb
 
 On the CompletedWorkflows collection:
 
-```db.CompletedWorkflows.createIndex({'Workflow.CreatedOn':-1})```
+```db.CompletedWorkflows.createIndex({ "Workflow.CreatedOn" : -1 }, { name : "CompletedWorkflow_CreatedOn" })```
 
 On the Workflows collection (only create this if you generate a lot of workflows - usually your active workflow count should stay low so an index is not necessary):
 
-```db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : 'WorkflowActive' })```
+```db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : "Workflow_Priority_RetryCount_CreatedOn" })```
 
 ## Serialisation
 
