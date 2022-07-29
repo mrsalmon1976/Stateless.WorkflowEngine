@@ -49,7 +49,7 @@ Most of the classes in the code implement an interface, which allows for the inv
 the **_Workflow_** class, which needed to be concrete class.  This class contains the method to create a workflow action, using 
 Activator.CreateInstance() which isn't great for DI.  For this purpose, the class provides the 
 
-```
+```csharp
 CreateWorkflowActionInstance<T>()
 ```
 
@@ -57,13 +57,48 @@ method which can be overridden if you want to take control over how workflow act
 
 As of version 1.3.0, however, there is a better option.  The `WorkflowServer` class (required for the execution of workflows), has a `DependencyResolver` property, that implements the `IWorkflowEngineDependencyResolver` interface.  This can be set as part of your application's bootstrapping process:
 
-```
+```csharp
 MyDependencyResolver resolver = new MyDependencyResolver();
 workflowServer.DependencyResolver = resolver;
 ```
 
 The interface has one method: `T GetInstance<T>` - which allows you to use your own DI framework to instantiate the action class.
 
+In .NET6, you can add the following code in your ConfigureServices() method - just make sure it's at the end of the method so it gets the benefit of the configured services!
+
+```csharp
+services.AddSingleton<IWorkflowServer>((sp) => 
+{
+    var store = sp.GetService<IMongoDbWorkflowProvider>().GetStore();
+    var workflowServer = new WorkflowServer(store);
+    workflowServer.DependencyResolver = new MyResolver(services.BuildServiceProvider());
+    return workflowServer;
+});
+```
+
+Your resolver would look like this:
+
+```csharp
+private class MyResolver : IWorkflowEngineDependencyResolver
+{
+  private readonly IServiceProvider _serviceProvider;
+
+  public MyResolver(IServiceProvider serviceProvider)
+  {
+    this._serviceProvider = serviceProvider;
+  }
+
+  public T GetInstance<T>() where T : class
+  {
+    var result = _serviceProvider.GetService<T>();
+    if (result == null)
+    {
+      throw new Exception("Class " + typeof(T).ToString() + " has not been registered with the container");
+    }
+    return result;
+  }
+}
+```
 ### Events
 
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 
@@ -91,11 +126,15 @@ The following indexes are created by default:
 
 On the CompletedWorkflows collection:
 
-```db.CompletedWorkflows.createIndex({ "Workflow.CreatedOn" : -1 }, { name : "CompletedWorkflow_CreatedOn" })```
+```csharp
+db.CompletedWorkflows.createIndex({ "Workflow.CreatedOn" : -1 }, { name : "CompletedWorkflow_CreatedOn" })
+```
 
 On the Workflows collection (only create this if you generate a lot of workflows - usually your active workflow count should stay low so an index is not necessary):
 
-```db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : "Workflow_Priority_RetryCount_CreatedOn" })```
+```csharp
+db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : "Workflow_Priority_RetryCount_CreatedOn" })
+```
 
 ## Serialisation
 
@@ -105,6 +144,8 @@ By default, when a class is deserialised, an exception will be thrown if a prope
 
 To remove this dependency, you can add the following attribute to your workflow class definition:
 
-```[MongoDB.Bson.Serialization.Attributes.BsonIgnoreExtraElements]```
+```csharp
+[MongoDB.Bson.Serialization.Attributes.BsonIgnoreExtraElements]
+```
 
 Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
