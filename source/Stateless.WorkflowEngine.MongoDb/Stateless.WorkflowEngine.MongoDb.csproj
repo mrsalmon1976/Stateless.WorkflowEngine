@@ -5,8 +5,8 @@
     <Authors>Matt Salmon</Authors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="2.13.2" />
-    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.2.3" />
+    <PackageReference Include="MongoDB.Driver" Version="2.19.0" />
+    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.7.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
