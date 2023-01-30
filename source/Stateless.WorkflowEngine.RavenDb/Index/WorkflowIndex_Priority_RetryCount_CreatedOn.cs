@@ -1,5 +1,4 @@
 ﻿using Raven.Client.Documents.Indexes;
-using Stateless.WorkflowEngine.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -6,7 +6,6 @@ using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System.Threading.Tasks;
 using Stateless;
-using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
 
@@ -40,6 +39,12 @@ namespace Stateless.WorkflowEngine
         /// <param name="count">The number of workflows that can be executed.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
         int ExecuteWorkflows(int count);
+
+        /// <summary>
+        /// Gets the count of active (unsuspended) workflows on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        long GetActiveCount();
 
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
@@ -88,7 +93,7 @@ namespace Stateless.WorkflowEngine
             this.WorkflowRegistrationService = new WorkflowRegistrationService();
             this.WorkflowExceptionHandler = new WorkflowExceptionHandler();
 
-            workflowStore.Initialise(this.Options.AutoCreateTables, this.Options.AutoCreateIndexes);
+            workflowStore.Initialise(this.Options.AutoCreateTables, this.Options.AutoCreateIndexes, this.Options.PersistWorkflowDefinitions);
         }
 
         /// <summary>
@@ -207,6 +212,15 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Gets the count of active (unsuspended) workflows on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        public long GetActiveCount()
+        {
+            return _workflowStore.GetActiveCount();
+        }
+
+        /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -234,6 +248,32 @@ namespace Stateless.WorkflowEngine
         public void RegisterWorkflowType<T>() where T : Workflow
         {
             this._workflowStore.RegisterType(typeof(T));
+
+            if (this.Options.PersistWorkflowDefinitions)
+            {
+                try
+                {
+                    Type workflowType = typeof(T);
+                    Workflow workflow = Activator.CreateInstance(workflowType) as Workflow;
+                    string graph = workflow.GetGraph();
+
+                    // check to see if the definition already exists 
+                    WorkflowDefinition workflowDefinition = this._workflowStore.GetDefinitionByQualifiedName(workflowType.FullName);
+                    if (workflowDefinition == null)
+                    {
+                        workflowDefinition = new WorkflowDefinition();
+                    }
+                    workflowDefinition.Name = workflowType.Name;
+                    workflowDefinition.QualifiedName = workflowType.FullName;
+                    workflowDefinition.Graph = graph;
+                    workflowDefinition.LastUpdatedUtc = DateTime.UtcNow;
+                    this._workflowStore.SaveDefinition(workflowDefinition);
+                }
+                catch (Exception ex)
+                {
+                    throw new WorkflowException("Unable to generate workflow definition graph - ensure the WorkflowDefinitions configuration is correct or remove definitions from server options", ex);
+                }
+            }
         }
 
     }

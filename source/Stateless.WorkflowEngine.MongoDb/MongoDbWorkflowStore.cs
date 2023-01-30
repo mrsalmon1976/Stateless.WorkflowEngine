@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stateless.WorkflowEngine.Models;
 using MongoDB.Driver;
 using Stateless.WorkflowEngine.Stores;
 using MongoDB.Bson;
@@ -17,16 +16,18 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         public const string DefaultCollectionActive = "Workflows";
         public const string DefaultCollectionCompleted = "CompletedWorkflows";
+        public const string DefaultCollectionDefinitions = "WorkflowDefinitions";
 
-        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted)
+        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted, DefaultCollectionDefinitions)
         {
         }
 
-        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName)
+        public MongoDbWorkflowStore(IMongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName, string workflowDefinitionCollectionName)
         {
             this.MongoDatabase = mongoDatabase;
             this.CollectionActive = activeCollectionName;
             this.CollectionCompleted = completedCollectionName;
+            this.CollectionDefinitions = workflowDefinitionCollectionName;
 
             this.SchemaService = new MongoDbSchemaService();
         }
@@ -44,6 +45,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public string CollectionCompleted { get; set; }
 
         /// <summary>
+        /// Gets/sets the name of the MongoDb collection holding workflow definitions.  Defaults to "WorkflowDefinitions".
+        /// </summary>
+        public string CollectionDefinitions { get; set; }
+
+        /// <summary>
         /// Gets/sets the mongo database associated with the store.
         /// </summary>
         public IMongoDatabase MongoDatabase { get; set; }
@@ -56,6 +62,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public IMongoCollection<MongoWorkflow> GetCompletedCollection()
         {
             return this.MongoDatabase.GetCollection<MongoWorkflow>(this.CollectionCompleted);
+        }
+
+        public IMongoCollection<WorkflowDefinition> GetDefinitionCollection()
+        {
+            return this.MongoDatabase.GetCollection<WorkflowDefinition>(this.CollectionDefinitions);
         }
 
         /// <summary>
@@ -82,15 +93,48 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetActiveCount()
+        {
+            var collection = GetCollection();
+            return collection
+                .Find(x => x.Workflow.IsSuspended == false)
+                .CountDocuments();
+        }
+
+        /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName)
+        {
+            var collection = GetDefinitionCollection();
+            return collection
+                   .Find(x => x.QualifiedName == qualifiedName)
+                   .SingleOrDefault();
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override IEnumerable<WorkflowDefinition> GetDefinitions()
+        {
+            var collection = GetDefinitionCollection();
+            return collection.Find(_ => true).ToList();
+        }
+
+        /// <summary>
         /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
         public override long GetIncompleteCount()
         {
             var collection = GetCollection();
-            return collection
-                .Find(x => x.Workflow.IsSuspended == false)
-                .CountDocuments();
+            return collection.EstimatedDocumentCount();
         }
 
         /// <summary>
@@ -252,12 +296,18 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// </summary>
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
-        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
             if (autoCreateTables || autoCreateIndexes)
             {
                 this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionCompleted);
+
+                if (persistWorkflowDefinitions)
+                {
+                    this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionDefinitions);
+                }
+
             }
 
             if (autoCreateIndexes)
@@ -302,6 +352,16 @@ namespace Stateless.WorkflowEngine.MongoDb
                 MongoWorkflow wc = new MongoWorkflow(wf);
                 coll.ReplaceOne(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
             }
+        }
+
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override void SaveDefinition(WorkflowDefinition workflowDefinition)
+        {
+            var coll = GetDefinitionCollection();
+            coll.ReplaceOne(x => x.Id == workflowDefinition.Id, workflowDefinition, new ReplaceOptions() { IsUpsert = true });
         }
 
         /// <summary>

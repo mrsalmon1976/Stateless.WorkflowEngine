@@ -35,5 +35,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
         public string ActiveCollection { get; set; }
         
         public string CompletedCollection { get; set; }
+
+        public string WorkflowDefinitionCollection { get; set; }
     }
 }

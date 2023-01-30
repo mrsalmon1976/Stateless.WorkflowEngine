@@ -47,19 +47,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Models
             }
         }
 
-
-        //public string ResumeOnFriendly
-        //{
-        //    get
-        //    {
-        //        if (!ResumeOn.HasValue || ResumeOn.Value < new DateTime(1900, 1, 1))
-        //        {
-        //            return "-";
-        //        }
-        //        return this.ResumeOn.Value.ToString("yyyy-MM-dd HH:mm:ss");
-        //    }
-        //}
-
         public string LastExceptionFriendly 
         {
             get
@@ -72,6 +59,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Models
                 }
                 return result;
             }
+        }
+
+        public override string GetGraph()
+        {
+            throw new NotImplementedException();
         }
 
         public override void Fire(string triggerName)

@@ -47,7 +47,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Factories
                 var client = new MongoClient(url);
                 var db = client.GetDatabase(connectionModel.Database);
 
-                workflowStore = new MongoDbWorkflowStore(db, connectionModel.ActiveCollection, connectionModel.CompletedCollection);
+                workflowStore = new MongoDbWorkflowStore(db, connectionModel.ActiveCollection, connectionModel.CompletedCollection, connectionModel.WorkflowDefinitionCollection);
             }
             else
             {

@@ -2,15 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
 using System.IO;
-using Stateless.WorkflowEngine.Models;
-using Test.Stateless.WorkflowEngine.Workflows.Basic;
-using Test.Stateless.WorkflowEngine.Workflows.Broken;
-using Test.Stateless.WorkflowEngine.Workflows.Delayed;
-using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using MongoDB.Driver;
 using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.MongoDb;
@@ -69,7 +63,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(false, false);
+            workflowStore.Initialise(false, false, false);
 
             schemaService.DidNotReceive().EnsureCollectionExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
         }
@@ -81,7 +75,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(false, true);
+            workflowStore.Initialise(false, true, false);
 
             schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
             schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
@@ -95,7 +89,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(true, autoCreateIndexes);
+            workflowStore.Initialise(true, autoCreateIndexes, false);
 
             schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
             schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
@@ -109,7 +103,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(autoCreateTables, false);
+            workflowStore.Initialise(autoCreateTables, false, false);
 
             schemaService.DidNotReceive().EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
             schemaService.DidNotReceive().EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
@@ -123,7 +117,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(autoCreateTables, true);
+            workflowStore.Initialise(autoCreateTables, true, false);
 
             schemaService.Received(1).EnsureActiveIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
         }
@@ -136,7 +130,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
             workflowStore.SchemaService = schemaService;
 
-            workflowStore.Initialise(autoCreateTables, true);
+            workflowStore.Initialise(autoCreateTables, true, false);
 
             schemaService.Received(1).EnsureCompletedIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
         }

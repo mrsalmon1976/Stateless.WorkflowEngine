@@ -1,6 +1,5 @@
 ﻿using Stateless.WorkflowEngine.Commands;
 using Stateless.WorkflowEngine.Exceptions;
-using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
 using System;

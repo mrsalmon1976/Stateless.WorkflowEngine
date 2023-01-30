@@ -2,20 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
 using System.IO;
-using Stateless.WorkflowEngine.Models;
-using Test.Stateless.WorkflowEngine.Workflows.Basic;
-using Test.Stateless.WorkflowEngine.Workflows.Broken;
-using Test.Stateless.WorkflowEngine.Workflows.Delayed;
-using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using MongoDB.Driver;
-using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.MongoDb;
-using NSubstitute;
-using MongoDB.Bson.Serialization;
 using MongoDB.Bson;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stateless.WorkflowEngine.Exceptions;
-using Stateless.WorkflowEngine.Models;
 
 namespace Stateless.WorkflowEngine.Stores
 {
@@ -14,6 +12,8 @@ namespace Stateless.WorkflowEngine.Stores
     {
         private readonly Dictionary<Guid, Workflow> _activeWorkflows = new Dictionary<Guid, Workflow>();
         private readonly Dictionary<Guid, Workflow> _completedWorkflows = new Dictionary<Guid, Workflow>();
+        private readonly List<WorkflowDefinition> _workflowDefinitions = new List<WorkflowDefinition>();
+        private static object syncLock = new object();
 
         /// <summary>
         /// Archives a workflow, moving it into the completed store.
@@ -38,9 +38,37 @@ namespace Stateless.WorkflowEngine.Stores
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
-        public override long GetIncompleteCount()
+        public override long GetActiveCount()
         {
             return this._activeWorkflows.Where(x => x.Value.IsSuspended == false).Count();
+        }
+
+        /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName)
+        {
+            return this._workflowDefinitions.Where(x => x.QualifiedName == qualifiedName).SingleOrDefault();
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override IEnumerable<WorkflowDefinition> GetDefinitions()
+        {
+            return _workflowDefinitions;
+        }
+
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetIncompleteCount()
+        {
+            return this._activeWorkflows.Count();
         }
 
         /// <summary>
@@ -141,7 +169,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
-        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
             // does nothing - tables are in-memory and there are no indexes
         }
@@ -181,6 +209,23 @@ namespace Stateless.WorkflowEngine.Stores
             foreach (Workflow w in workflows)
             {
                 Save(w);
+            }
+        }
+
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override void SaveDefinition(WorkflowDefinition workflowDefinition)
+        {
+            lock (syncLock)
+            {
+                WorkflowDefinition existingDefinition = this.GetDefinitionByQualifiedName(workflowDefinition.QualifiedName);
+                if (existingDefinition != null)
+                {
+                    this._workflowDefinitions.Remove(existingDefinition);
+                }
+                this._workflowDefinitions.Add(workflowDefinition);
             }
         }
 

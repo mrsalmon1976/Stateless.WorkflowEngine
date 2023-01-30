@@ -79,7 +79,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             using (var session = _documentStore.OpenSession())
             {
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
-                workflowStore.Initialise(false, false);
+                workflowStore.Initialise(false, false, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
                 Assert.AreEqual(0, indexNames.Count());
@@ -92,7 +92,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             using (var session = _documentStore.OpenSession())
             {
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
-                workflowStore.Initialise(false, true);
+                workflowStore.Initialise(false, true, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
                 Assert.Greater(indexNames.Count(), 0);
@@ -108,7 +108,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             using (var session = _documentStore.OpenSession())
             {
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
-                workflowStore.Initialise(false, true);
+                workflowStore.Initialise(false, true, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
                 Assert.Greater(indexNames.Count(), 0);

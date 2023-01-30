@@ -11,7 +11,6 @@ using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
-using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
 using Stateless.WorkflowEngine.Events;
@@ -57,21 +56,24 @@ namespace Test.Stateless.WorkflowEngine
             Assert.AreEqual(autoCreateIndexes, workflowServer.Options.AutoCreateIndexes);
         }
 
-        [TestCase(true, true)]
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(false, false)]
-        public void Constructor_InitialisesWorkflowStore(bool autoCreateTables, bool autoCreateIndexes)
+        [TestCase(true, true, true)]
+        [TestCase(true, false, true)]
+        [TestCase(true, true, false)]
+        [TestCase(false, true, true)]
+        [TestCase(false, false, true)]
+        [TestCase(false, true, false)]
+        public void Constructor_InitialisesWorkflowStore(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
             WorkflowServerOptions options = new WorkflowServerOptions();
             options.AutoCreateTables = autoCreateTables;
             options.AutoCreateIndexes = autoCreateIndexes;
+            options.PersistWorkflowDefinitions = persistWorkflowDefinitions;
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
 
             WorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
 
-            workflowStore.Received(1).Initialise(autoCreateTables, autoCreateIndexes);
+            workflowStore.Received(1).Initialise(autoCreateTables, autoCreateIndexes, persistWorkflowDefinitions);
         }
 
 

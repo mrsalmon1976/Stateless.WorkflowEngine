@@ -1,5 +1,4 @@
 ﻿using Stateless.WorkflowEngine.Exceptions;
-using Stateless.WorkflowEngine.Models;
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -39,7 +38,26 @@ namespace Stateless.WorkflowEngine.Stores
         T Get<T>(Guid id) where T : Workflow;
 
         /// <summary>
-        /// Gets the count of workflows in the active collection (excluding suspended workflows).
+        /// Gets the count of unsuspended workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        long GetActiveCount();
+
+        /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName);
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<WorkflowDefinition> GetDefinitions();
+
+        /// <summary>
+        /// Gets the count of workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
         long GetIncompleteCount();
@@ -126,7 +144,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
-        void Initialise(bool autoCreateTables, bool autoCreateIndexes);
+        void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
 
 
         /// <summary>
@@ -146,6 +164,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        void SaveDefinition(WorkflowDefinition workflowDefinition);
 
         /// <summary>
         /// Moves an active workflow into a suspended state.
@@ -203,6 +227,25 @@ namespace Stateless.WorkflowEngine.Stores
 
         /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public abstract long GetActiveCount();
+
+        /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public abstract WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName);
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public abstract IEnumerable<WorkflowDefinition> GetDefinitions();
+
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
         public abstract long GetIncompleteCount();
@@ -329,7 +372,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
-        public abstract void Initialise(bool autoCreateTables, bool autoCreateIndexes);
+        public abstract void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
 
 
         /// <summary>
@@ -349,6 +392,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         public abstract void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public abstract void SaveDefinition(WorkflowDefinition workflowDefinition);
 
         /// <summary>
         /// Moves an active workflow into a suspended state.

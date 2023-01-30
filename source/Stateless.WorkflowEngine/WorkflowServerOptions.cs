@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Stateless.WorkflowEngine.Models
+namespace Stateless.WorkflowEngine
 {
     public class WorkflowServerOptions
     {
@@ -10,10 +10,13 @@ namespace Stateless.WorkflowEngine.Models
         {
             this.AutoCreateIndexes = true;
             this.AutoCreateTables = true;
+            this.PersistWorkflowDefinitions = true;
         }
 
         public bool AutoCreateTables { get; set; }
 
         public bool AutoCreateIndexes { get; set; }
+
+        public bool PersistWorkflowDefinitions { get; set; }
     }
 }

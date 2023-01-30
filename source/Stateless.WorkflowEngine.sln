@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.We
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.WebConsole.Common", "Test.Stateless.WorkflowEngine.WebConsole.Common\Test.Stateless.WorkflowEngine.WebConsole.Common.csproj", "{59C02308-C163-42FD-9A0F-471117C6A0AD}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example", "Example\Example.csproj", "{61307C2A-43B4-46A0-AC6D-53DA3A732450}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +95,10 @@ Global
 		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{59C02308-C163-42FD-9A0F-471117C6A0AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

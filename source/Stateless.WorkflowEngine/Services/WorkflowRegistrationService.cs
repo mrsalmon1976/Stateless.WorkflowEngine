@@ -1,5 +1,4 @@
 ﻿using Stateless.WorkflowEngine.Exceptions;
-using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Generic;

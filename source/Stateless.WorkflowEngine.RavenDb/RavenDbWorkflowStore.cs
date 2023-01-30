@@ -14,7 +14,6 @@ namespace Stateless.WorkflowEngine.RavenDb
     public class RavenDbWorkflowStore : WorkflowStore
     {
         private readonly IDocumentStore _documentStore;
-        private readonly string _database;
 
         /// <summary>
         /// 
@@ -24,24 +23,13 @@ namespace Stateless.WorkflowEngine.RavenDb
         public RavenDbWorkflowStore(IDocumentStore documentStore)
         {
             this._documentStore = documentStore;
-            this._database = documentStore.Database;
         }
 
         private IDocumentSession OpenSession()
         {
-            // if no database is specified, we're assuming it's embedded so we can't use the 
-            // override.  If it's embedded, make sure we wait for indexes after saves for testing purposes.
-            //if (String.IsNullOrWhiteSpace(this._database))
-            //{
-            //    var session = this._documentStore.OpenSession();
-            //    session.Advanced.WaitForIndexesAfterSaveChanges();
-            //    return session;
-            //}
-
             var session = this._documentStore.OpenSession();
             session.Advanced.WaitForIndexesAfterSaveChanges();
             return session;
-            //return this._documentStore.OpenSession(this._database);
         }
 
         /// <summary>
@@ -78,6 +66,17 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override long GetActiveCount()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == false).Count();
+            }
+        }
+        /// <summary>
         /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>
         /// <returns></returns>
@@ -85,7 +84,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == false).Count();
+                return session.Query<RavenWorkflow>().Count();
             }
         }
 
@@ -135,6 +134,40 @@ namespace Stateless.WorkflowEngine.RavenDb
                 }
             }
             return w;
+        }
+
+        /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+
+                var result = from s in session.Query<RavenWorkflowDefinition>()
+                    .Customize(x => x.WaitForNonStaleResults())
+                    .Where(x => x.WorkflowDefinition.QualifiedName == qualifiedName)
+                             select s.WorkflowDefinition;
+                return result.SingleOrDefault();
+            }
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override IEnumerable<WorkflowDefinition> GetDefinitions()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+
+                var result = from s in session.Query<RavenWorkflowDefinition>()
+                    .Customize(x => x.WaitForNonStaleResults())
+                             select s.WorkflowDefinition;
+                return result.ToList();
+            }
         }
 
         /// <summary>
@@ -215,7 +248,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// </summary>
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
-        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes)
+        public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
             if (autoCreateIndexes)
             {
@@ -266,6 +299,18 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override void SaveDefinition(WorkflowDefinition workflowDefinition)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                session.Store(new RavenWorkflowDefinition(workflowDefinition));
+                session.SaveChanges();
+            }
+        }
         /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>

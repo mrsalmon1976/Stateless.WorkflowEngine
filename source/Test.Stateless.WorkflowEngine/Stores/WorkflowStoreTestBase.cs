@@ -10,12 +10,25 @@ using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Newtonsoft.Json;
+using Test.Stateless.WorkflowEngine.Workflows.Broken;
+using System.IO;
 
 namespace Test.Stateless.WorkflowEngine.Stores
 {
     public abstract class WorkflowStoreTestBase
     {
         #region Protected Methods
+
+        protected virtual WorkflowDefinition CreateWorkflowDefinition<T>() where T : Workflow
+        {
+            Type workflowType = typeof(T);
+            WorkflowDefinition workflowDefinition = new WorkflowDefinition();
+            workflowDefinition.Name = workflowType.Name;
+            workflowDefinition.QualifiedName = workflowType.FullName;
+            workflowDefinition.Graph = Path.GetRandomFileName();
+            workflowDefinition.LastUpdatedUtc = DateTime.UtcNow;
+            return workflowDefinition;
+        }
 
         /// <summary>
         /// Gets the store relevant to the test.
@@ -251,6 +264,110 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetActiveCount Tests
+
+        [Test]
+        public void GetActiveCount_NoSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+
+            long result = store.GetActiveCount();
+            Assert.AreEqual(count, result);
+        }
+
+        [Test]
+        public void GetActiveCount_WithSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+
+            long result = store.GetActiveCount();
+            Assert.AreEqual(count, result);
+        }
+
+        #endregion
+
+        #region GetDefinitions Tests
+
+        [Test]
+        public void GetDefinitions_NoDefinitions_EmptyEnumerableReturned()
+        {
+            IWorkflowStore store = GetStore();
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
+
+            Assert.AreEqual(0, savedDefinitions.Count());
+        }
+
+        [Test]
+        public void GetDefinitions_DefinitionsAdded_AllDefinitionsReturned()
+        {
+            IWorkflowStore store = GetStore();
+            WorkflowDefinition basicWorkflowDefinition = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(basicWorkflowDefinition);
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
+
+            Assert.AreEqual(2, savedDefinitions.Count());
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName));
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
+        }
+
+        #endregion
+
+        #region GetDefinitionByQualifiedName Tests
+
+        [Test]
+        public void GetDefinitionByQualifiedName_NotFound_ReturnsNull()
+        {
+            IWorkflowStore store = GetStore();
+            Type basicWorkflowType = typeof(BasicWorkflow);
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            WorkflowDefinition result = store.GetDefinitionByQualifiedName(basicWorkflowType.FullName);
+
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void GetDefinitionByQualifiedName_Exists_Returned()
+        {
+            IWorkflowStore store = GetStore();
+            Type basicWorkflowType = typeof(BasicWorkflow);
+            WorkflowDefinition basicWorkflowDefinition = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(basicWorkflowDefinition);
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            WorkflowDefinition result = store.GetDefinitionByQualifiedName(basicWorkflowType.FullName);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(basicWorkflowType.Name, result.Name);
+            Assert.AreEqual(basicWorkflowType.FullName, result.QualifiedName);
+        }
+
+        #endregion
+
         #region GetIncomplete Tests
 
         [Test]
@@ -411,7 +528,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
 
             long result = store.GetIncompleteCount();
-            Assert.AreEqual(count, result);
+            Assert.AreEqual(count + 3, result);
         }
 
         #endregion
@@ -456,7 +573,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
-        #region GetCompletedCount Tests
+        #region GetSuspendedCount Tests
 
         [Test]
         public void GetSuspendedCount_OnExecute_ReturnsAccurateCount()
@@ -536,6 +653,47 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Assert.IsNotNull(workflow);
             Assert.AreEqual(id, workflow.Id);
             Assert.AreEqual(BasicWorkflow.State.DoingStuff.ToString(), workflow.CurrentState); 
+        }
+
+        #endregion
+
+        #region SaveDefinition Tests
+
+        [Test]
+        public void SaveDefinition_NewDefinitions_DefinitionAdded()
+        {
+            IWorkflowStore store = GetStore();
+            WorkflowDefinition basicWorkflowDefinition = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(basicWorkflowDefinition);
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
+
+            Assert.AreEqual(2, savedDefinitions.Count());
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName));
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
+        }
+
+        [Test]
+        public void SaveDefinition_DefinitionExists_DefinitionUpdated()
+        {
+            IWorkflowStore store = GetStore();
+            WorkflowDefinition basicWorkflowDefinition1 = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition basicWorkflowDefinition2 = this.CreateWorkflowDefinition<BasicWorkflow>();
+            basicWorkflowDefinition2.Id = basicWorkflowDefinition1.Id;
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(basicWorkflowDefinition1);
+            store.SaveDefinition(basicWorkflowDefinition2);
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
+
+            Assert.AreEqual(2, savedDefinitions.Count());
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition1.QualifiedName));
+            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
         }
 
         #endregion
