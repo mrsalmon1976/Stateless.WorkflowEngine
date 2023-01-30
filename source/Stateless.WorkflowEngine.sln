@@ -1,13 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31112.23
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stateless.WorkflowEngine", "Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj", "{EB4615D8-4123-4316-8D92-285680D6100C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine", "Test.Stateless.WorkflowEngine\Test.Stateless.WorkflowEngine.csproj", "{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.Example", "Test.Stateless.WorkflowEngine.Example\Test.Stateless.WorkflowEngine.Example.csproj", "{126458CC-A57F-4A82-80E3-EDD3D5C10D18}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{63251489-0863-4B6D-85AB-DEA53F9A2877}"
 	ProjectSection(SolutionItems) = preProject
@@ -55,10 +53,6 @@ Global
 		{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{126458CC-A57F-4A82-80E3-EDD3D5C10D18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{126458CC-A57F-4A82-80E3-EDD3D5C10D18}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{126458CC-A57F-4A82-80E3-EDD3D5C10D18}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{126458CC-A57F-4A82-80E3-EDD3D5C10D18}.Release|Any CPU.Build.0 = Release|Any CPU
 		{650FF1F8-3DCC-4AA5-9D18-E4F77DB03C78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{650FF1F8-3DCC-4AA5-9D18-E4F77DB03C78}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{650FF1F8-3DCC-4AA5-9D18-E4F77DB03C78}.Release|Any CPU.ActiveCfg = Release|Any CPU

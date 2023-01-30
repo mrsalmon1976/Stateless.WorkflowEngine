@@ -286,7 +286,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var coll = GetCollection();
             MongoWorkflow wc = new MongoWorkflow(workflow);
-            coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
+            coll.ReplaceOne(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
         }
 
         /// <summary>
@@ -300,7 +300,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             foreach (Workflow wf in workflows)
             {
                 MongoWorkflow wc = new MongoWorkflow(wf);
-                coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
+                coll.ReplaceOne(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
             }
         }
 
@@ -322,7 +322,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(true);
-                coll.ReplaceOne(filter, doc, new UpdateOptions() { IsUpsert = false });
+                coll.ReplaceOne(filter, doc, new ReplaceOptions() { IsUpsert = false });
             }
         }
 
@@ -347,7 +347,7 @@ namespace Stateless.WorkflowEngine.MongoDb
                 workflowElement["IsSuspended"] = BsonValue.Create(false);
                 workflowElement["RetryCount"] = BsonValue.Create(0);
                 workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
-                coll.ReplaceOne(filter, doc, new UpdateOptions() { IsUpsert = false });
+                coll.ReplaceOne(filter, doc, new ReplaceOptions() { IsUpsert = false });
             }
         }
 
