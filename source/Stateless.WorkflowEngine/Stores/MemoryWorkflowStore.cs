@@ -13,7 +13,7 @@ namespace Stateless.WorkflowEngine.Stores
     public class MemoryWorkflowStore : WorkflowStore
     {
         private readonly Dictionary<Guid, Workflow> _activeWorkflows = new Dictionary<Guid, Workflow>();
-        private readonly Dictionary<Guid, CompletedWorkflow> _completedWorkflows = new Dictionary<Guid, CompletedWorkflow>();
+        private readonly Dictionary<Guid, Workflow> _completedWorkflows = new Dictionary<Guid, Workflow>();
 
         /// <summary>
         /// Archives a workflow, moving it into the completed store.
@@ -22,7 +22,7 @@ namespace Stateless.WorkflowEngine.Stores
         public override void Archive(Workflow workflow)
         {
             _activeWorkflows.Remove(workflow.Id);
-            _completedWorkflows.Add(workflow.Id, new CompletedWorkflow(workflow));
+            _completedWorkflows.Add(workflow.Id, workflow);
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public override CompletedWorkflow GetCompletedOrDefault(Guid id)
+        public override Workflow GetCompletedOrDefault(Guid id)
         {
             if (_completedWorkflows.ContainsKey(id))
             {

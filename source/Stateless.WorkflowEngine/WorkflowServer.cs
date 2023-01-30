@@ -175,6 +175,7 @@ namespace Stateless.WorkflowEngine
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
+                workflow.CompletedOn = DateTime.UtcNow;
                 _workflowStore.Archive(workflow);
                 workflow.OnComplete();
                 if (this.WorkflowCompleted != null)

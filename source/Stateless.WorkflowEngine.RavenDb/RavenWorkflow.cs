@@ -2,23 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.Models
+namespace Stateless.WorkflowEngine.RavenDb
 {
-    public class WorkflowContainer
+    public class RavenWorkflow
     {
-        public WorkflowContainer() { }
-        public WorkflowContainer(Workflow workflow)
+        public RavenWorkflow() { }
+        public RavenWorkflow(Workflow workflow)
         {
-            this.Id = workflow.Id;
+            this.Id = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
             this.Workflow = workflow;
             this.WorkflowType = workflow.GetType().AssemblyQualifiedName;
         }
 
-        public Guid Id { get; set; }
+        public string Id { get; set; }
 
         public Workflow Workflow { get; set; }
 
         public string WorkflowType { get; set; }
+
+
     }
 }

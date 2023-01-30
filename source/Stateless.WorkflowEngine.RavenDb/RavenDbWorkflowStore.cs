@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Stateless.WorkflowEngine.Exceptions;
-using Raven.Client;
-using Stateless.WorkflowEngine.Models;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb.Index;
+using Raven.Client.Documents;
+using Raven.Client.Documents.Session;
 
 namespace Stateless.WorkflowEngine.RavenDb
 {
@@ -22,24 +21,27 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// </summary>
         /// <param name="documentStore"></param>
         /// <param name="database">The RavenDb database name.  For embedded databases, specify null or empty string.</param>
-        public RavenDbWorkflowStore(IDocumentStore documentStore, string database)
+        public RavenDbWorkflowStore(IDocumentStore documentStore)
         {
             this._documentStore = documentStore;
-            this._database = database;
+            this._database = documentStore.Database;
         }
 
         private IDocumentSession OpenSession()
         {
             // if no database is specified, we're assuming it's embedded so we can't use the 
             // override.  If it's embedded, make sure we wait for indexes after saves for testing purposes.
-            if (String.IsNullOrWhiteSpace(this._database))
-            {
-                var session = this._documentStore.OpenSession();
-                session.Advanced.WaitForIndexesAfterSaveChanges();
-                return session;
-            }
-            
-            return this._documentStore.OpenSession(this._database);
+            //if (String.IsNullOrWhiteSpace(this._database))
+            //{
+            //    var session = this._documentStore.OpenSession();
+            //    session.Advanced.WaitForIndexesAfterSaveChanges();
+            //    return session;
+            //}
+
+            var session = this._documentStore.OpenSession();
+            session.Advanced.WaitForIndexesAfterSaveChanges();
+            return session;
+            //return this._documentStore.OpenSession(this._database);
         }
 
         /// <summary>
@@ -50,10 +52,11 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                WorkflowContainer wf = session.Load<WorkflowContainer>(workflow.Id);
-                session.Delete<WorkflowContainer>(wf);
+                string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+                RavenWorkflow wf = session.Load<RavenWorkflow>(fid);
+                session.Delete<RavenWorkflow>(wf);
 
-                session.Store(new CompletedWorkflow(wf.Workflow));
+                session.Store(new RavenCompletedWorkflow(wf.Workflow));
 
                 session.SaveChanges();
             }
@@ -67,8 +70,9 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                WorkflowContainer wf = session.Load<WorkflowContainer>(id);
-                session.Delete<WorkflowContainer>(wf);
+                string fid = RavenDbIdUtility.FormatWorkflowId(id);
+                RavenWorkflow wf = session.Load<RavenWorkflow>(fid);
+                session.Delete<RavenWorkflow>(wf);
                 session.SaveChanges();
             }
         }
@@ -81,7 +85,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return session.Query<WorkflowContainer>().Where(x => x.Workflow.IsSuspended == false).Count();
+                return session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == false).Count();
             }
         }
 
@@ -93,10 +97,10 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return from s in session.Query<WorkflowContainer>()
+                return (from s in session.Query<RavenWorkflow>()
                     .Where(x => x.WorkflowType == workflowType)
                     .OrderBy(x => x.Workflow.CreatedOn)
-                    select s.Workflow;
+                    select s.Workflow).ToList();
             }
         }
 
@@ -108,7 +112,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return session.Query<CompletedWorkflow>().Count();
+                return session.Query<RavenCompletedWorkflow>().Count();
             }
         }
 
@@ -118,14 +122,19 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public override CompletedWorkflow GetCompletedOrDefault(Guid id)
+        public override Workflow GetCompletedOrDefault(Guid id)
         {
-            CompletedWorkflow workflow = null;
+            string cid = RavenDbIdUtility.FormatCompletedWorkflowId(id);
+            Workflow w = null;
             using (IDocumentSession session = this.OpenSession())
             {
-                workflow = session.Load<CompletedWorkflow>(id);
+                var rcw = session.Load<RavenCompletedWorkflow>(cid);
+                if (rcw != null)
+                {
+                    w = rcw.Workflow;
+                }
             }
-            return workflow;
+            return w;
         }
 
         /// <summary>
@@ -136,10 +145,11 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <exception cref="System.NotImplementedException"></exception>
         public override Workflow GetOrDefault(Guid id)
         {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
             Workflow workflow = null;
             using (IDocumentSession session = this.OpenSession())
             {
-                WorkflowContainer wc = session.Load<WorkflowContainer>(id);
+                RavenWorkflow wc = session.Load<RavenWorkflow>(fid);
                 if (wc != null)
                 {
                     workflow = wc.Workflow;
@@ -158,13 +168,13 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return from s in session.Query<WorkflowContainer>()
+                return (from s in session.Query<RavenWorkflow>()
                     .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)
                     .OrderByDescending(x => x.Workflow.Priority)
                     .ThenByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
-                    select s.Workflow;
+                    select s.Workflow).ToList();
             }
         }
 
@@ -177,13 +187,13 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return from s in session.Query<WorkflowContainer>()
+                return (from s in session.Query<RavenWorkflow>()
                     .Where(x => x.Workflow.ResumeOn <= DateTime.UtcNow)
                     .OrderByDescending(x => x.Workflow.Priority)
                     .ThenByDescending(x => x.Workflow.RetryCount)
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
-                       select s.Workflow;
+                       select s.Workflow).ToList();
             }
         }
 
@@ -195,7 +205,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                return session.Query<WorkflowContainer>().Where(x => x.Workflow.IsSuspended == true).Count();
+                return session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == true).Count();
             }
         }
 
@@ -234,7 +244,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                WorkflowContainer wc = new WorkflowContainer(workflow);
+                RavenWorkflow wc = new RavenWorkflow(workflow);
                 session.Store(wc);  
                 session.SaveChanges();
             }
@@ -250,7 +260,7 @@ namespace Stateless.WorkflowEngine.RavenDb
             {
                 foreach (Workflow w in workflows)
                 {
-                    session.Store(new WorkflowContainer(w));
+                    session.Store(new RavenWorkflow(w));
                 }
                 session.SaveChanges();
             }

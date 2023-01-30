@@ -1,4 +1,4 @@
-﻿using Raven.Client.Indexes;
+﻿using Raven.Client.Documents.Indexes;
 using Stateless.WorkflowEngine.Models;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.RavenDb.Index
 {
-    public class WorkflowIndex_Priority_RetryCount_CreatedOn : AbstractIndexCreationTask<WorkflowContainer>
+    public class WorkflowIndex_Priority_RetryCount_CreatedOn : AbstractIndexCreationTask<RavenWorkflow>
     {
 
         public class Result

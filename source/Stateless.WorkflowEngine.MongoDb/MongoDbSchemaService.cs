@@ -30,7 +30,7 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         public void EnsureActiveIndexExists(IMongoDatabase database, string collectionName)
         {
-            var collection = database.GetCollection<WorkflowContainer>(collectionName);
+            var collection = database.GetCollection<MongoWorkflow>(collectionName);
 
             bool indexExists = IndexExists(collection.Indexes.List().ToList(), IndexNames.Workflow_Priority_RetryCount_CreatedOn);
             if (indexExists)
@@ -42,19 +42,19 @@ namespace Stateless.WorkflowEngine.MongoDb
             var indexOptions = new CreateIndexOptions();
             indexOptions.Name = IndexNames.Workflow_Priority_RetryCount_CreatedOn;
 
-            var indexKeys = Builders<WorkflowContainer>
+            var indexKeys = Builders<MongoWorkflow>
                 .IndexKeys
                 .Descending(wf => wf.Workflow.Priority)
                 .Descending(wf => wf.Workflow.RetryCount)
                 .Ascending(wf => wf.Workflow.CreatedOn);
 
-            var indexModel = new CreateIndexModel<WorkflowContainer>(indexKeys, indexOptions);
+            var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);
         }
 
         public void EnsureCompletedIndexExists(IMongoDatabase database, string collectionName)
         {
-            var collection = database.GetCollection<CompletedWorkflow>(collectionName);
+            var collection = database.GetCollection<MongoWorkflow>(collectionName);
 
             bool indexExists = IndexExists(collection.Indexes.List().ToList(), IndexNames.CompletedWorkflow_CreatedOn);
             if (indexExists)
@@ -65,11 +65,11 @@ namespace Stateless.WorkflowEngine.MongoDb
             var indexOptions = new CreateIndexOptions();
             indexOptions.Name = IndexNames.CompletedWorkflow_CreatedOn;
 
-            var indexKeys = Builders<CompletedWorkflow>
+            var indexKeys = Builders<MongoWorkflow>
                 .IndexKeys
                 .Descending(wf => wf.Workflow.CreatedOn);
 
-            var indexModel = new CreateIndexModel<CompletedWorkflow>(indexKeys, indexOptions);
+            var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);
         }
 

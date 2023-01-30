@@ -1,8 +1,6 @@
 ﻿using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using Raven.Client;
-using Raven.Client.Document;
-using Raven.Client.Embedded;
 using Raven.Client.Extensions;
 using System;
 using System.Collections.Generic;

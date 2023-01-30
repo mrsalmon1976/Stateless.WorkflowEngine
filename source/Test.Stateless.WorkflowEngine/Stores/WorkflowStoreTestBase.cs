@@ -9,7 +9,6 @@ using NUnit.Framework;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
-using Stateless.WorkflowEngine.Models;
 using Newtonsoft.Json;
 
 namespace Test.Stateless.WorkflowEngine.Stores

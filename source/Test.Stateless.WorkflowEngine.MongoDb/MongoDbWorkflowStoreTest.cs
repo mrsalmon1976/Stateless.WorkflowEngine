@@ -218,7 +218,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
         protected override T DeserializeJsonWorkflow<T>(string json)
         {
-            WorkflowContainer container = BsonSerializer.Deserialize<WorkflowContainer>(json);
+            MongoWorkflow container = BsonSerializer.Deserialize<MongoWorkflow>(json);
             return (T)container.Workflow;
         }
 

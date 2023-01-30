@@ -187,6 +187,30 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
+        public void ExecuteWorkflow_OnCompletion_CompletedOn_IsSet()
+        {
+            DateTime startTime = DateTime.UtcNow;
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.Complete.ToString();
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            workflowEngine.ExecuteWorkflow(workflow);
+
+            DateTime endTime = DateTime.UtcNow;
+
+            Assert.IsNotNull(workflow.CompletedOn); 
+            Assert.LessOrEqual(startTime, workflow.CompletedOn);
+            Assert.GreaterOrEqual(endTime, workflow.CompletedOn);
+
+        }
+
+
+        [Test]
         public void ExecuteWorkflow_OnCompletion_WorkflowOnCompleteCalled()
         {
             // set up the store and the workflows

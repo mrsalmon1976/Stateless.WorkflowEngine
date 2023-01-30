@@ -194,7 +194,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
         private List<BsonDocument> GetIndexList(string collectionName)
         {
-            var indexManager = _database.GetCollection<WorkflowContainer>(collectionName).Indexes;
+            var indexManager = _database.GetCollection<MongoWorkflow>(collectionName).Indexes;
             return indexManager.List().ToList();
         }
 

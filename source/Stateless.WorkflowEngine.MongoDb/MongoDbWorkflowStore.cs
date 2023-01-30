@@ -48,14 +48,14 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// </summary>
         public IMongoDatabase MongoDatabase { get; set; }
 
-        public IMongoCollection<WorkflowContainer> GetCollection()
+        public IMongoCollection<MongoWorkflow> GetCollection()
         {
-            return this.MongoDatabase.GetCollection<WorkflowContainer>(this.CollectionActive);
+            return this.MongoDatabase.GetCollection<MongoWorkflow>(this.CollectionActive);
         }
 
-        public IMongoCollection<CompletedWorkflow> GetCompletedCollection()
+        public IMongoCollection<MongoWorkflow> GetCompletedCollection()
         {
-            return this.MongoDatabase.GetCollection<CompletedWorkflow>(this.CollectionCompleted);
+            return this.MongoDatabase.GetCollection<MongoWorkflow>(this.CollectionCompleted);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             coll.DeleteOne(x => x.Id == workflow.Id);
 
             var collCompleted = GetCompletedCollection();
-            collCompleted.InsertOne(new CompletedWorkflow(workflow));
+            collCompleted.InsertOne(new MongoWorkflow(workflow));
         }
 
         /// <summary>
@@ -126,10 +126,16 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public override CompletedWorkflow GetCompletedOrDefault(Guid id)
+        public override Workflow GetCompletedOrDefault(Guid id)
         {
             var collection = GetCompletedCollection();
-            return collection.Find(x => x.Id == id).SingleOrDefault();
+            Workflow workflow = null;
+            var mongoWorkflow = collection.Find(x => x.Id == id).SingleOrDefault();
+            if (mongoWorkflow != null)
+            {
+                workflow = mongoWorkflow.Workflow;
+            }
+            return workflow;
         }
 
         public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
@@ -159,7 +165,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             Workflow workflow = null;
             var collection = GetCollection();
-            WorkflowContainer wc = collection.Find(x => x.Id == id).SingleOrDefault();
+            MongoWorkflow wc = collection.Find(x => x.Id == id).SingleOrDefault();
             if (wc != null)
             {
                 workflow = wc.Workflow;
@@ -279,7 +285,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Save(Workflow workflow)
         {
             var coll = GetCollection();
-            WorkflowContainer wc = new WorkflowContainer(workflow);
+            MongoWorkflow wc = new MongoWorkflow(workflow);
             coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
         }
 
@@ -290,10 +296,10 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Save(IEnumerable<Workflow> workflows)
         {
             var coll = GetCollection();
-            var containers = workflows.Select(x => new WorkflowContainer(x));
+            var containers = workflows.Select(x => new MongoWorkflow(x));
             foreach (Workflow wf in workflows)
             {
-                WorkflowContainer wc = new WorkflowContainer(wf);
+                MongoWorkflow wc = new MongoWorkflow(wf);
                 coll.ReplaceOne(x => x.Id == wc.Id, wc, new UpdateOptions() { IsUpsert = true });
             }
         }

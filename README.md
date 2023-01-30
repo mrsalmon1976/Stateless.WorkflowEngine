@@ -15,6 +15,17 @@ The engine supports multiple data stores:
  
 All stores will use two collections: Workflows and CompletedWorkflows.  When a workflow is registered via the server or client, it is persisted in the Workflows collection.  The workflow will then move through various states until completion, in which case it will be moved to the CompletedWorkflows collection.  This store is never read by the workflow engine, it is purely for archiving purposes.
 
+### Version Info
+
+This table shows the client version and the associated driver/client versions used.
+
+| Store     | Version   | Package        | Package Version |
+|-----------|-----------|----------------|-----------------|
+| MongoDb   | 2.6.0     | MongoDB.Driver | 2.13.2          |
+|           | 3.0.0     | MongoDB.Driver | 2.19.0          |
+| RavenDb   | 2.6.0     | RavenDB.Client | 3.5.7           |
+|           | 3.0.0     | RavenDB.Client | 5.4.4           |
+
 ## Workflow Configuration
 
 Workflows are configured in similar fashion to Stateless.  You should make an effort to understand how Stateless works before attempting to use this workflow engine.  All configuration should go into the Initialise override on the Workflow itself.  Extra properties can be added to your custom workflows, and these will be serialized with the workflow when it is persisted to the store. The Stateless concepts of State and Triggers remain the same, and are used by the workflow engine to move between actions in the workflow.

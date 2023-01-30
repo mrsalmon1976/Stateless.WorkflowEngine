@@ -61,7 +61,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        CompletedWorkflow GetCompleted(Guid id);
+        Workflow GetCompleted(Guid id);
 
         /// <summary>
         /// Gets the count of completed workflows in the completed collection.
@@ -74,7 +74,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        CompletedWorkflow GetCompletedOrDefault(Guid id);
+        Workflow GetCompletedOrDefault(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
@@ -255,12 +255,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public CompletedWorkflow GetCompleted(Guid id)
+        public Workflow GetCompleted(Guid id)
         {
-            CompletedWorkflow workflow = this.GetCompletedOrDefault(id);
+            Workflow workflow = this.GetCompletedOrDefault(id);
             if (workflow == null)
             {
-                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                throw new WorkflowNotFoundException(String.Format("No completed workflow found matching id {0}", id));
             }
             return workflow;
         }
@@ -277,7 +277,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public abstract CompletedWorkflow GetCompletedOrDefault(Guid id);
+        public abstract Workflow GetCompletedOrDefault(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.

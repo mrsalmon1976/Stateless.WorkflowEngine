@@ -7,10 +7,10 @@ using System.Text;
 namespace Stateless.WorkflowEngine.MongoDb
 {
     [BsonIgnoreExtraElements]
-    internal class MongoDbWorkflowContainer
+    public class MongoWorkflow
     {
-        public MongoDbWorkflowContainer() { }
-        public MongoDbWorkflowContainer(MongoDbWorkflow workflow)
+        public MongoWorkflow() { }
+        public MongoWorkflow(Workflow workflow)
         {
             this.Id = workflow.Id;
             this.Workflow = workflow;
@@ -19,7 +19,7 @@ namespace Stateless.WorkflowEngine.MongoDb
 
         public Guid Id { get; set; }
 
-        public MongoDbWorkflow Workflow { get; set; }
+        public Workflow Workflow { get; set; }
 
         public string WorkflowType { get; set; }
     }

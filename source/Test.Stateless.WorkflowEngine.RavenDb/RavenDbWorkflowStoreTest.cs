@@ -1,23 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
-using Raven.Client;
-using Raven.Client.Extensions;
-using Raven.Client.Embedded;
-using System.IO;
-using Raven.Client.Document;
-using Stateless.WorkflowEngine.Models;
-using Test.Stateless.WorkflowEngine.Workflows.Basic;
-using Test.Stateless.WorkflowEngine.Workflows.Broken;
-using Test.Stateless.WorkflowEngine.Workflows.Delayed;
-using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb;
-using Raven.Abstractions.Indexing;
+using Raven.Client.Documents;
+using Raven.Client.Documents.Operations;
+using Raven.Client.Exceptions.Database;
+using Raven.Client.Exceptions;
+using Raven.Client.ServerWide.Operations;
+using Raven.Client.ServerWide;
+using Raven.Client.Documents.Operations.Indexes;
 
 namespace Test.Stateless.WorkflowEngine.RavenDb
 {
@@ -30,48 +24,49 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
     public class RavenDbWorkflowStoreTest : WorkflowStoreTestBase
     {
 
-        private EmbeddableDocumentStore _documentStore;
+        private IDocumentStore _documentStore;
+        private const string DbName = "StatelessWorkflowRavenDbTest";
 
         #region SetUp and TearDown
 
-        [OneTimeSetUp]
-        public void RavenDbWorkflowStoreTest_OneTimeSetUp()
-        {
-            _documentStore = new EmbeddableDocumentStore
-            {
-                RunInMemory = true,
-                UseEmbeddedHttpServer = true,
-            };
-            _documentStore.Configuration.Storage.Voron.AllowOn32Bits = true;
-            _documentStore.Initialize();
-
-        }
-
-        [OneTimeTearDown]
-        public void RavenDbWorkflowStoreTest_OneTimeTearDown()
-        {
-            _documentStore.Dispose();
-        }
 
         [SetUp]
         public void RavenDbWorkflowStoreTest_SetUp()
         {
-            // make sure there is no data in the database for the next test
-            ClearTestData();
+            _documentStore = new DocumentStore
+            {
+                Urls = new String[] { "http://localhost:8080" },
+                Database = DbName
+            };
+            _documentStore.Initialize();
+
+            var result = _documentStore.Maintenance.Server.Send(new GetDatabaseRecordOperation(DbName));
+            if (result == null)
+            {
+                try
+                {
+                    _documentStore.Maintenance.Server.Send(new CreateDatabaseOperation(new DatabaseRecord(DbName)));
+                }
+                catch (ConcurrencyException)
+                {
+                    // The database was already created before calling CreateDatabaseOperation
+                }
+            }
         }
 
         [TearDown]
         public void RavenDbWorkflowStoreTest_TearDown()
         {
-            // make sure there is no data in the database for the next test
-            ClearTestData();
+            _documentStore.Maintenance.Server.Send(new DeleteDatabasesOperation(DbName, true));
+            _documentStore.Dispose();
 
-            // remove any indexes
-            var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100);
-            foreach (IndexDefinition index in indexes)
-            {
-                _documentStore.DatabaseCommands.DeleteIndex(index.Name);
-            }
+
+            //// remove any indexes
+            //var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100);
+            //foreach (IndexDefinition index in indexes)
+            //{
+            //    _documentStore.DatabaseCommands.DeleteIndex(index.Name);
+            //}
         }
 
         #endregion
@@ -86,8 +81,8 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
                 workflowStore.Initialise(false, false);
 
-                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
-                Assert.AreEqual(0, indexes.Count());
+                string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
+                Assert.AreEqual(0, indexNames.Count());
             }
         }
 
@@ -99,10 +94,10 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
                 workflowStore.Initialise(false, true);
 
-                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
-                Assert.Greater(indexes.Count(), 0);
+                string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
+                Assert.Greater(indexNames.Count(), 0);
 
-                var expectedIndex = indexes.FirstOrDefault(x => x.Name == "WorkflowIndex/Priority/RetryCount/CreatedOn");
+                var expectedIndex = indexNames.FirstOrDefault(x => x == "WorkflowIndex/Priority/RetryCount/CreatedOn");
                 Assert.IsNotNull(expectedIndex);
             }
         }
@@ -115,42 +110,15 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
                 workflowStore.Initialise(false, true);
 
-                var indexes = _documentStore.DatabaseCommands.GetIndexes(0, 100).Where(x => !x.Name.StartsWith("Auto"));
-                Assert.Greater(indexes.Count(), 0);
+                string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
+                Assert.Greater(indexNames.Count(), 0);
 
-                var expectedIndex = indexes.FirstOrDefault(x => x.Name == "CompletedWorkflowIndex/CreatedOn");
+                var expectedIndex = indexNames.FirstOrDefault(x => x == "CompletedWorkflowIndex/CreatedOn");
                 Assert.IsNotNull(expectedIndex);
             }
         }
 
         #endregion
-
-        #region Private Methods
-
-        private void ClearTestData()
-        {
-            using (IDocumentSession session = _documentStore.OpenSession())
-            {
-                // drop all workflows
-                var xx = session.Query<WorkflowContainer>().Take(1000);
-                IEnumerable<WorkflowContainer> workflows = session.Query<WorkflowContainer>().Take(1000);
-                foreach (WorkflowContainer wi in workflows)
-                {
-                    session.Delete(wi);
-                }
-
-                // drop all complete workflows
-                IEnumerable<CompletedWorkflow> completedWorkflows = session.Query<CompletedWorkflow>().Take(1000);
-                foreach (CompletedWorkflow cw in completedWorkflows)
-                {
-                    session.Delete(cw);
-                }
-                session.SaveChanges();
-            }
-        }
-
-        #endregion
-
 
         #region Protected Methods
 
@@ -160,7 +128,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
         /// <returns></returns>
         protected override IWorkflowStore GetStore()
         {
-            return new RavenDbWorkflowStore(_documentStore, null);
+            return new RavenDbWorkflowStore(_documentStore);
         }
 
         #endregion

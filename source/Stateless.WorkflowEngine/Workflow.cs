@@ -45,6 +45,11 @@ namespace Stateless.WorkflowEngine
         public virtual DateTime CreatedOn { get; set; }
 
         /// <summary>
+        /// The date/time the workflow completed.
+        /// </summary>
+        public virtual DateTime? CompletedOn { get; internal set; }
+
+        /// <summary>
         /// Gets/sets the class used to resolve dependencies.  This will be set by the workflow server before 
         /// executing a workflow step, and if a value is supplied, this will be used to create the workflow 
         /// action.
