@@ -32,6 +32,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         {
             public const string Default = "/store";
 
+            public const string Definition = "/store/definition";
+
             public const string List = "/store/list";
 
             public const string Remove = "/store/remove";

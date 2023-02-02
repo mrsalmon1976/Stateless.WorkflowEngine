@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using AutoMapper;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Newtonsoft.Json;
@@ -24,6 +25,8 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
         IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
 
+        string GetWorkflowDefinition(ConnectionModel connectionModel, string qualifiedWorkflowName);
+
         /// <summary>
         /// Converts a JSON workflow into a UIWorkflow object.
         /// </summary>
@@ -31,6 +34,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
         /// <param name="workflowStoreType"></param>
         /// <returns></returns>
         UIWorkflow GetWorkflowInfoFromJson(string json, WorkflowStoreType workflowStoreType);
+
 
     }
 
@@ -55,6 +59,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             foreach (string doc in documents)
             {
                 var wf = GetWorkflowInfoFromJson(doc, connectionModel.WorkflowStoreType);
+
+                WorkflowDefinition workflowDefinition = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName);
+                wf.WorkflowGraph = workflowDefinition?.Graph;
+                
                 workflows.Add(wf);
             }
 
@@ -75,7 +83,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             {
                 //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
                 UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(json);
-                wc.Workflow.WorkflowType = wc.WorkflowType;
                 return wc.Workflow;
             }
             else
@@ -104,6 +111,14 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             }
 
             return model;
+        }
+
+        public string GetWorkflowDefinition(ConnectionModel connectionModel, string qualifiedWorkflowName)
+        {
+            if (connectionModel == null) throw new ArgumentNullException("Null connection model supplied");
+
+            IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
+            return workflowStore.GetDefinitionByQualifiedName(qualifiedWorkflowName)?.Graph;
         }
     }
 }

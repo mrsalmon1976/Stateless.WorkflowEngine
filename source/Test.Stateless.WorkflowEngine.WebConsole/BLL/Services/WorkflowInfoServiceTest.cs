@@ -78,5 +78,53 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
         }
 
         #endregion
+
+        #region GetWorkflowDefinition Tests
+
+        [Test]
+        public void GetWorkflowDefinition_ModelIsNull_ThrowsException()
+        {
+            TestDelegate del = () => _workflowInfoService.GetWorkflowDefinition(null, "test");
+            // assert
+            Assert.Throws<ArgumentNullException>(del);
+        }
+
+        [Test]
+        public void GetWorkflowStoreInfo_DefinitionDoesNotExist_ReturnssNull()
+        {
+            ConnectionModel connectionModel = new ConnectionModel();
+            string qualifedWorkflowName = Guid.NewGuid().ToString();
+
+            WorkflowDefinition workflowDefinition = null;
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
+            workflowStore.GetDefinitionByQualifiedName(qualifedWorkflowName).Returns(workflowDefinition);
+
+            string result = _workflowInfoService.GetWorkflowDefinition(connectionModel, qualifedWorkflowName);
+
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void GetWorkflowStoreInfo_DefinitionExists_ReturnsGraphValue()
+        {
+            ConnectionModel connectionModel = new ConnectionModel();
+            string qualifedWorkflowName = Guid.NewGuid().ToString();
+
+            WorkflowDefinition workflowDefinition = new WorkflowDefinition();
+            workflowDefinition.Graph = Guid.NewGuid().ToString();
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
+            workflowStore.GetDefinitionByQualifiedName(qualifedWorkflowName).Returns(workflowDefinition);
+
+            string result = _workflowInfoService.GetWorkflowDefinition(connectionModel, qualifedWorkflowName);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(workflowDefinition.Graph, result);
+        }
+
+        #endregion
     }
 }

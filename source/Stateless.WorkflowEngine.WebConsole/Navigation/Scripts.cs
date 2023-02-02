@@ -17,5 +17,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
         public const string UpdateView = "/Content/Js/Views/UpdateView.js";
 
         public const string UserView = "/Content/Js/Views/UserView.js";
+
+        public static class VizJs
+        {
+            public const string Default = "/Content/Js/viz.js/viz.js";
+
+            public const string FullRender = "/Content/Js/viz.js/full.render.js";
+
+        }
     }
 }

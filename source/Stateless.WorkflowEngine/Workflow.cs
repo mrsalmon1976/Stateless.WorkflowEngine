@@ -67,8 +67,24 @@ namespace Stateless.WorkflowEngine
         public virtual string LastException { get; set; }
 
         /// <summary>
+        /// Gets the name of the workflow (class name).  Provides a setter for serialisation into document databases, but 
+        /// programmatically setting this value will have no impact.
+        /// </summary>
+        public virtual string Name 
+        { 
+            get 
+            {
+                return this.GetType().Name;
+            } 
+            set
+            {
+                // does nothing
+            }
+        }
+
+        /// <summary>
         /// Gets/sets the time the workflow can be resumed.  Set to DateTime.Min to ensure workflows are picked up - nullable 
-        /// properties are not used here as MongoDb's QUery does not support it.
+        /// properties are not used here as MongoDb's Query does not support it.
         /// </summary>
         public virtual DateTime ResumeOn { get; set; }
 
@@ -99,6 +115,22 @@ namespace Stateless.WorkflowEngine
         /// Gets/sets the retry intervals, in seconds, of the workflow.
         /// </summary>
         public virtual int[] RetryIntervals { get; set; }
+
+        /// <summary>
+        /// Gets the qualified name of the workflow (full qualified class name).  Provides a setter for serialisation into document databases, but 
+        /// programmatically setting this value will have no impact.
+        /// </summary>
+        public virtual string QualifiedName
+        {
+            get
+            {
+                return this.GetType().FullName;
+            }
+            set
+            {
+                // does nothing
+            }
+        }
 
         /// <summary>
         /// Gets/sets the current state of the workflow.

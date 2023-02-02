@@ -4,6 +4,7 @@ var StoreView = function () {
     var that = this;
 
     this.workflowViewModel = null;
+    this.workflowDefinitionViewModel = null;
     this.workflowCount = 50;
 
     this.getSelectedWorkflowIds = function () {
@@ -60,6 +61,7 @@ var StoreView = function () {
 
         // remove event handlers
         $('a.workflow-id').off('click');
+        $('a.workflow-qualified-name').off('click');
         $('#chk-workflow-all').off('click');
         $('#btn-suspend').off('click');
         $('#btn-unsuspend').off('click');
@@ -76,6 +78,7 @@ var StoreView = function () {
             $('#pnl-workflows').html(response);
             // attach event handlers again
             $('a.workflow-id').on('click', function () { that.openWorkflowDialog($(this)); });
+            $('a.workflow-qualified-name').on('click', function () { that.openWorkflowDefinitionDialog($(this)); });
             $('#chk-workflow-all').on('click', function () { that.toggleWorkflowCheckboxes($(this)); });
             $('#btn-suspend').on('click', function () { that.suspendWorkflows(); });
             $('#btn-unsuspend').on('click', function () { that.unsuspendWorkflows(); });
@@ -113,6 +116,14 @@ var StoreView = function () {
             that.workflowViewModel = new StoreViewWorkflowViewModel();
         }
         that.workflowViewModel.showDialog(evtSource.data('id'), evtSource.data().type, function () { that.loadWorkflows(); });
+    };
+
+    this.openWorkflowDefinitionDialog = function (evtSource) {
+
+        if (that.workflowDefinitionViewModel == null) {
+            that.workflowDefinitionViewModel = new StoreViewWorkflowDefinitionViewModel();
+        }
+        that.workflowDefinitionViewModel.showDialog(evtSource.data('qualified-name'));
     };
 
     this.submitWorkflowActions = function (workflowIds, target) {
@@ -215,7 +226,8 @@ var StoreViewWorkflowViewModel = function () {
         that.workflowId = workflowId;
         that.connectionId = $('#pnl-workflows').data().modelId;
         that.closeDialogCallback = closeDialogCallback;
-        $('#txt-workflow-json').val('').show();
+
+        var workflowJsonElement = $('#txt-workflow-json').val('').show();
         $('#dlg-workflow').modal('show');
         $('#spinner-single').show();
         $('#workflow-msg-error').hide();
@@ -231,7 +243,7 @@ var StoreViewWorkflowViewModel = function () {
 
         request.done(function (response) {
             //debugger;
-            $('#txt-workflow-json').val(response.workflowJson);
+            workflowJsonElement.val(response.workflowJson);
             $('#workflow-header-id').html(workflowTypeName + ' :: ' + that.workflowId);
 
             // pull stats we need from the json
@@ -249,7 +261,7 @@ var StoreViewWorkflowViewModel = function () {
             else {
                 $('#workflow-msg-error').html('An error has occurred: ' + xhr.errorThrown);
             }
-            $('#txt-workflow-json').hide();
+            workflowJsonElement.hide();
             $('#workflow-msg-error').show().removeClass('hidden');
         });
         request.always(function (xhr, textStatus) {
@@ -352,6 +364,70 @@ var StoreViewWorkflowViewModel = function () {
         });
     };
 
+};
+
+var StoreViewWorkflowDefinitionViewModel = function () {
+
+    var that = this;
+
+    this.workflowQualifiedName = null;
+    this.connectionId = null;
+    this.closeDialogCallback = null;
+
+    this.showDialog = function (workflowQualifiedName) {
+
+        that.workflowQualifiedName = workflowQualifiedName;
+        that.connectionId = $('#pnl-workflows').data().modelId;
+
+        $('#dlg-workflow-definition').modal('show');
+
+        var spinnerElement = $('#definition-spinner-single').show();
+        var errorElement = $('#workflow-definition-msg-error').hide();
+        var headerElement = $('#workflow-definition-header-id').html(that.workflowQualifiedName);
+        var graphElement = $('#workflow-definition-graph').empty().append('Loading graph data....');
+
+        var request = $.ajax({
+            url: '/store/definition?id=' + that.connectionId + '&qname=' + that.workflowQualifiedName,
+            method: "GET",
+            dataType: 'json'
+        });
+
+        request.done(function (response) {
+
+            //debugger;
+            var viz = new Viz();
+            var options = {
+                engine: 'dot',
+                interaction: { hover: true },
+                nodes: { color: 'red', font: { size: 14, color: "#000" } }
+            };
+
+            viz.renderSVGElement(response.graph, options)
+                .then(function (element) {
+                    graphElement.empty().append(element);
+                    $(element).width('100%');
+                })
+                .catch(error => {
+                    graphElement.empty().append('An error occurred:' + error);
+                });
+
+        });
+
+        request.fail(function (xhr, textStatus, errorThrown) {
+            //debugger;
+            if (xhr.status == 404 && xhr.responseJSON != null && xhr.responseJSON.message != null) {
+                errorElement.html(xhr.responseJSON.message);
+                headerElement.html('Workflow Definition Not Found');
+            }
+            else {
+                errorElement.html('An error has occurred: ' + xhr.errorThrown);
+            }
+            errorElement.show().removeClass('hidden');
+        });
+        request.always(function (xhr, textStatus) {
+            spinnerElement.hide();
+        });
+    };
 };
 
 $(document).ready(function()

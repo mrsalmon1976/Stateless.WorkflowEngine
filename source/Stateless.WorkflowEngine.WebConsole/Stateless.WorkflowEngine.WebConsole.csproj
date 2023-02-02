@@ -228,6 +228,7 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
     <Compile Include="Caching\CacheKeys.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Caching\WebConsoleMemoryCache.cs" />
@@ -237,7 +238,6 @@
     <Compile Include="BLL\Data\Stores\UserStore.cs" />
     <Compile Include="BLL\Factories\WorkflowStoreFactory.cs" />
     <Compile Include="BLL\Models\UIWorkflow.cs" />
-    <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
     <Compile Include="BLL\Security\Claims.cs" />
     <Compile Include="BLL\Security\EncryptionProvider.cs" />
     <Compile Include="BLL\Security\PasswordProvider.cs" />
@@ -427,6 +427,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\Views\UserView.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\Js\viz.js\full.render.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\Js\viz.js\viz.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="favicon.ico">

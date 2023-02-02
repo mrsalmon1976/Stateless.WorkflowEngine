@@ -25,8 +25,17 @@
             {
             <tr @if (wf.IsSuspended) { <text> class="danger" </text> }>
                 <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
-                <td><a href="#" data-id="@wf.Id" data-type="@wf.WorkflowClassName" class="workflow-id">@wf.Id</a></td>
-                <td><span title="@wf.WorkflowTypeName">@wf.WorkflowClassName</span></td>
+                <td><a href="#" data-id="@wf.Id" data-type="@wf.Name" class="workflow-id">@wf.Id</a></td>
+                <td>
+                    @if (String.IsNullOrEmpty(wf.WorkflowGraph))
+                    {
+                        <span title="@wf.QualifiedName">@wf.Name</span>
+                    }
+                    else
+                    {
+                        <a href="#" data-id="@wf.Id" data-qualified-name="@wf.QualifiedName" title="@wf.QualifiedName" class="workflow-qualified-name">@wf.Name</a>
+                    }
+                </td>
                 <td>@wf.ResumeOn.ToLocalTime()</td>
                 <td>@(wf.IsSuspended ? "Yes" : "No")</td>
                 <td>@wf.CurrentState</td>

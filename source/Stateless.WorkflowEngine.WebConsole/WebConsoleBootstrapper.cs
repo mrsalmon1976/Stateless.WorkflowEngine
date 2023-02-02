@@ -21,6 +21,8 @@ using Microsoft.Extensions.Caching.Memory;
 using NLog;
 using System;
 using Stateless.WorkflowEngine.WebConsole.Caching;
+using Org.BouncyCastle.Asn1.CryptoPro;
+using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -75,6 +77,7 @@ namespace Stateless.WorkflowEngine.WebConsole
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
                 cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
                 cfg.CreateMap<UserViewModel, UserModel>();
+                //cfg.CreateMap<Workflow, UIWorkflow>();
             });
             var mapper = config.CreateMapper();
             container.Register<IMapper>(mapper);

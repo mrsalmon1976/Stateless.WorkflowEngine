@@ -9,71 +9,95 @@ using System.Threading.Tasks;
 namespace Stateless.WorkflowEngine.WebConsole.BLL.Models
 {
     [BsonIgnoreExtraElements]
-    public class UIWorkflow : Workflow
+    public class UIWorkflow
     {
-        private string _workflowTypeName = String.Empty;
+        //private string _workflowTypeName = String.Empty;
 
-        public string WorkflowType { get; set; }
+        //public string WorkflowType { get; set; }
 
-        public string WorkflowClassName
-        {
-            get
-            {
-                string className = this.WorkflowTypeName;
-                int loc = className.LastIndexOf(".");
-                if (loc > -1)
-                {
-                    className = className.Substring(loc + 1);
-                }
-                return className;
-            }
-        }
+        public virtual DateTime CreatedOn { get; set; }
 
-        public string WorkflowTypeName
-        {
-            get
-            {
-                if (String.IsNullOrEmpty(_workflowTypeName))
-                {
-                    if (String.IsNullOrWhiteSpace(this.WorkflowType))
-                    {
-                        return String.Empty;
-                    }
+        public virtual string CurrentState { get; set; }
 
-                    ParsedAssemblyQualifiedName p = new ParsedAssemblyQualifiedName(this.WorkflowType);
-                    _workflowTypeName = p.TypeName;
-                }
-                return _workflowTypeName;
-            }
-        }
+        public Guid Id { get; set; }
 
-        public string LastExceptionFriendly 
-        {
-            get
-            {
-                string result = this.LastException ?? "";
-                int idx = result.IndexOf('\n');
-                if (idx > -1)
-                {
-                    return result.Substring(0, idx).Trim();
-                }
-                return result;
-            }
-        }
+        public bool IsSuspended { get; set; }
 
-        public override string GetGraph()
-        {
-            throw new NotImplementedException();
-        }
+        public virtual string Name { get; set; }
 
-        public override void Fire(string triggerName)
-        {
-            // does nothing!
-        }
+        public virtual int Priority { get; set; }
 
-        public override void Initialise(string initialState)
-        {
-            // does nothing!
-        }
+        public virtual string QualifiedName {  get; set; }
+
+        public virtual DateTime ResumeOn { get; set; }
+
+        public virtual string ResumeTrigger { get; set; }
+
+        public virtual int RetryCount { get; set; }
+
+        public virtual int[] RetryIntervals { get; set; }
+
+        public virtual string WorkflowGraph { get; set; }
+
+        //public string WorkflowClassName
+        //{
+        //    get
+        //    {
+        //        string className = this.WorkflowTypeName;
+        //        int loc = className.LastIndexOf(".");
+        //        if (loc > -1)
+        //        {
+        //            className = className.Substring(loc + 1);
+        //        }
+        //        return className;
+        //    }
+        //}
+
+        //public string WorkflowTypeName
+        //{
+        //    get
+        //    {
+        //        if (String.IsNullOrEmpty(_workflowTypeName))
+        //        {
+        //            if (String.IsNullOrWhiteSpace(this.WorkflowType))
+        //            {
+        //                return String.Empty;
+        //            }
+
+        //            ParsedAssemblyQualifiedName p = new ParsedAssemblyQualifiedName(this.WorkflowType);
+        //            _workflowTypeName = p.TypeName;
+        //        }
+        //        return _workflowTypeName;
+        //    }
+        //}
+
+        //public string LastExceptionFriendly 
+        //{
+        //    get
+        //    {
+        //        string result = this.LastException ?? "";
+        //        int idx = result.IndexOf('\n');
+        //        if (idx > -1)
+        //        {
+        //            return result.Substring(0, idx).Trim();
+        //        }
+        //        return result;
+        //    }
+        //}
+
+        //public override string GetGraph()
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        //public override void Fire(string triggerName)
+        //{
+        //    // does nothing!
+        //}
+
+        //public override void Initialise(string initialState)
+        //{
+        //    // does nothing!
+        //}
     }
 }

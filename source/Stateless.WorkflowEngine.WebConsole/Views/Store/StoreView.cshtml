@@ -63,6 +63,26 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="dlg-workflow-definition" tabindex="-1" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-dialog modal-wide" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">Workflow Definition : <span id="workflow-definition-header-id"></span></h4>
+            </div>
+            <div class="modal-body">
+                <div id="workflow-definition-msg-error" class="alert alert-danger hidden" role="alert">An error occurred.</div>
+                <div id="workflow-definition-graph"></div>
+            </div>
+            <div class="modal-footer">
+                <i id="definition-spinner-single" class="pull-left fa fa-circle-o-notch fa-spin fa-2x fa-fw" style="margin-left:5px;display:none;"></i>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="dlg-workflow-update" tabindex="-1" role="dialog" aria-labelledby="dlg-workflow-uodate-header">
     <div class="modal-dialog modal-wide" role="document">
         <div class="modal-content">

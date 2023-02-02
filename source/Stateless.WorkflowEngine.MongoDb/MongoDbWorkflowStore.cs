@@ -25,9 +25,9 @@ namespace Stateless.WorkflowEngine.MongoDb
         public MongoDbWorkflowStore(IMongoDatabase mongoDatabase, string activeCollectionName, string completedCollectionName, string workflowDefinitionCollectionName)
         {
             this.MongoDatabase = mongoDatabase;
-            this.CollectionActive = activeCollectionName;
-            this.CollectionCompleted = completedCollectionName;
-            this.CollectionDefinitions = workflowDefinitionCollectionName;
+            this.CollectionActive = activeCollectionName ?? DefaultCollectionActive;
+            this.CollectionCompleted = completedCollectionName ?? DefaultCollectionCompleted;
+            this.CollectionDefinitions = workflowDefinitionCollectionName ?? DefaultCollectionDefinitions;
 
             this.SchemaService = new MongoDbSchemaService();
         }

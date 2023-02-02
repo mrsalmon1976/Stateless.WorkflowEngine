@@ -1,14 +1,9 @@
-﻿using AutoMapper;
-using Encryption;
-using Nancy;
-using Nancy.Authentication.Forms;
-using Nancy.Bootstrapper;
-using Nancy.Responses.Negotiation;
+﻿using Nancy;
 using Nancy.Testing;
-using Nancy.ViewEngines.Razor;
 using Newtonsoft.Json;
 using NSubstitute;
 using NUnit.Framework;
+using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
@@ -16,18 +11,11 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Security;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
-using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 using Stateless.WorkflowEngine.WebConsole.Modules;
 using Stateless.WorkflowEngine.WebConsole.Navigation;
-using Stateless.WorkflowEngine.WebConsole.ViewModels;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Login;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Store;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -118,6 +106,111 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         }
         #endregion
 
+        #region Definition Tests
+
+        [Test]
+        public void Definition_NoConnectionFound_ReturnsBadRequest()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = null;
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Get(Actions.Store.Definition, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.Query("id", connectionId.ToString());
+            });
+            string responseBody = response.Body.AsString();
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+
+            Assert.That(responseBody.Contains("No connection found"));
+            _userStore.Received(1).GetConnection(connectionId);
+        }
+
+        [Test]
+        public void Definition_NoWorkflowDefinitionFound_ReturnsNotFound()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            WorkflowDefinition workflowDefinition = null;
+            workflowStore.GetDefinitionByQualifiedName(Arg.Any<string>()).Returns(workflowDefinition);
+
+            // execute
+            var response = browser.Get(Actions.Store.Definition, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.Query("id", connectionId.ToString());
+                with.Query("qname", Guid.NewGuid().ToString());
+            });
+            string responseBody = response.Body.AsString();
+            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+
+            Assert.That(responseBody.Contains("No workflow definition found"));
+            _userStore.Received(1).GetConnection(connectionId);
+        }
+
+        [Test]
+        public void Definition_WorkflowDefinitionFound_SetsModelAndReturnsView()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+            string qualifiedName = Guid.NewGuid().ToString();
+
+            var connectionId = Guid.NewGuid();
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(workflowStore);
+
+            WorkflowDefinition workflowDefinition = new WorkflowDefinition();
+
+            workflowStore.GetDefinitionByQualifiedName(qualifiedName).Returns(workflowDefinition);
+
+            // execute
+            var response = browser.Get(Actions.Store.Definition, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.Query("id", connectionId.ToString());
+                with.Query("qname", qualifiedName);
+            });
+            string responseBody = response.Body.AsString();
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            WorkflowDefinition result = JsonConvert.DeserializeObject<WorkflowDefinition>(responseBody);
+            Assert.AreEqual(workflowDefinition.Id, result.Id);
+            workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
+
+        }
+        #endregion
+
         #region List Tests
 
         [Test]
@@ -167,7 +260,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 UIWorkflow wf = new UIWorkflow();
                 wf.Id = Guid.NewGuid();
-                wf.WorkflowType = typeof(UIWorkflow).FullName;
+                wf.QualifiedName = typeof(UIWorkflow).FullName;
                 workflows.Add(wf);
             }
             _workflowInfoService.GetIncompleteWorkflows(connection, 50).Returns(workflows);
