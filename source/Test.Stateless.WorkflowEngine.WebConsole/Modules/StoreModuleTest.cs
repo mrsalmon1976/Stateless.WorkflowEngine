@@ -1,4 +1,5 @@
 ﻿using Nancy;
+using Nancy.Security;
 using Nancy.Testing;
 using Newtonsoft.Json;
 using NSubstitute;
@@ -16,6 +17,8 @@ using Stateless.WorkflowEngine.WebConsole.Navigation;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Store;
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
+using static MongoDB.Driver.WriteConcern;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -104,6 +107,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 .ShouldExistOnce()
                 .And.ShouldContain(connection.Host);
         }
+
+
         #endregion
 
         #region Definition Tests
@@ -289,15 +294,120 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             //response.Body["td"]
             //    .ShouldExistExactly(count);
         }
+
+        /*
+        [Test]
+        public void List_UserHasSuspendClaim_SuspendButtonIsVisible()
+        {
+            string[] claims = { Claims.SuspendWorkflow };
+
+            StoreModule sm = new StoreModule(_userStore, _workflowInfoService, _workflowStoreFactory);
+            UserIdentity userIdentity = new UserIdentity();
+            userIdentity.Claims = claims;
+            NancyContext nc = new NancyContext();
+            nc.CurrentUser = userIdentity;
+            sm.Context = nc;
+
+            sm.List();
+
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap", Claims = claims };
+            var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            List<UIWorkflow> workflows = new List<UIWorkflow>();
+            UIWorkflow wf = new UIWorkflow();
+            wf.Id = Guid.NewGuid();
+            wf.QualifiedName = typeof(UIWorkflow).FullName;
+            workflows.Add(wf);
+            _workflowInfoService.GetIncompleteWorkflows(connection, 10).Returns(workflows);
+
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Post(Actions.Store.List, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("ConnectionId", connectionId.ToString());
+                with.FormValue("WorkflowCount", "10");
+            });
+
+            // assert
+            //response.Body["#btn-suspend-single"].ShouldExistOnce();
+        }
+
+        [Test]
+        public void List_UserWithoutSuspendClaim_SuspendButtonDoesNotExist()
+        {
+            Assert.Fail();
+            // setup
+            string[] claims = { Claims.UserList };
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap", Claims = claims };
+            var browser = CreateBrowser(currentUser);
+            var connectionId = Guid.NewGuid();
+
+            ConnectionModel connection = new ConnectionModel()
+            {
+                Id = connectionId,
+                Host = "myserver"
+            };
+
+            _userStore.GetConnection(connectionId).Returns(connection);
+
+            // execute
+            var response = browser.Get(Actions.Store.Default, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.Query("id", connectionId.ToString());
+            });
+
+            // assert
+            response.Body["#btn-suspend-single"].ShouldNotExist();
+        }
+        */
+
         #endregion
 
         #region Remove Tests
+
+        [Test]
+        public void Remove_WithoutRemoveWorkflowClaim_ReturnsForbidden()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
+            // execute
+            var response = browser.Post(Actions.Store.Remove, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", Guid.NewGuid().ToString());
+                with.FormValue("ConnectionId", Guid.NewGuid().ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
+        }
+
 
         [Test]
         public void Remove_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.RemoveWorkflow };
+
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -324,6 +434,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.RemoveWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -358,6 +469,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.RemoveWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
@@ -397,10 +509,32 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Suspend Tests
 
         [Test]
+        public void Suspend_WithoutSuspendWorkflowClaim_ReturnsForbidden()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
+            // execute
+            var response = browser.Post(Actions.Store.Suspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", Guid.NewGuid().ToString());
+                with.FormValue("ConnectionId", Guid.NewGuid().ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
+        }
+
+        [Test]
         public void Suspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.SuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -427,6 +561,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.SuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -461,6 +596,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.SuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();
@@ -500,10 +636,32 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         #region Unsuspend Tests
 
         [Test]
+        public void Unsuspend_WithoutUnspendWorkflowClaim_ReturnsForbidden()
+        {
+            // setup
+            var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            var browser = CreateBrowser(currentUser);
+
+            // execute
+            var response = browser.Post(Actions.Store.Unsuspend, (with) =>
+            {
+                with.HttpRequest();
+                with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
+                with.FormValue("WorkflowIds", Guid.NewGuid().ToString());
+                with.FormValue("ConnectionId", Guid.NewGuid().ToString());
+            });
+
+            // assert
+            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
+        }
+
+        [Test]
         public void Unsuspend_NoConnectionFound_ReturnsNotFoundResponse()
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.UnsuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -530,6 +688,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.UnsuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId = Guid.NewGuid();
             var connectionId = Guid.NewGuid();
@@ -564,6 +723,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
         {
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
+            currentUser.Claims = new[] { Claims.UnsuspendWorkflow };
             var browser = CreateBrowser(currentUser);
             var workflowId1 = Guid.NewGuid();
             var workflowId2 = Guid.NewGuid();

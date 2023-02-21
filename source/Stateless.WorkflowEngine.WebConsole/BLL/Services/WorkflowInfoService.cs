@@ -8,6 +8,7 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.BLL.Utils;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using System;
 using System.Collections.Generic;
@@ -83,7 +84,26 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             {
                 //string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(document);
                 UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(json);
-                return wc.Workflow;
+                UIWorkflow workflow = wc.Workflow;
+
+                // this for backward-compatibility only - workflows registed prior to v3.0 did not 
+                // have a Name property.  Change made 03/02/2023 - this can be removed in future 
+                // versions although it does no harm being here
+                if (String.IsNullOrEmpty(workflow.Name))
+                {
+                    if (!String.IsNullOrEmpty(wc.WorkflowType))
+                    {
+                        ParsedAssemblyQualifiedName p = new ParsedAssemblyQualifiedName(wc.WorkflowType);
+                        string className = p.TypeName;
+                        int loc = className.LastIndexOf(".");
+                        if (loc > -1)
+                        {
+                            workflow.Name = className.Substring(loc + 1);
+                        }
+                    }
+                }
+
+                return workflow;
             }
             else
             {
@@ -101,7 +121,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             try
             {
                 IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
-                model.ActiveCount = workflowStore.GetIncompleteCount();
+                model.ActiveCount = workflowStore.GetActiveCount();
                 model.SuspendedCount = workflowStore.GetSuspendedCount();
                 model.CompleteCount = workflowStore.GetCompletedCount();
             }

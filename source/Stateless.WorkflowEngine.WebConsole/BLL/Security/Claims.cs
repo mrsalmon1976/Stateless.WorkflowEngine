@@ -14,6 +14,9 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
             { 
                 ConnectionAdd, 
                 ConnectionDelete,
+                RemoveWorkflow,
+                SuspendWorkflow,
+                UnsuspendWorkflow,
                 UserAdd,
                 UserDelete,
                 UserList
@@ -24,11 +27,17 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
 
         public const string ConnectionDelete = "ConnectionDelete";
 
+        public const string RemoveWorkflow = "RemoveWorkflow";
+
         public const string UserAdd = "UserAdd";
 
         public const string UserDelete = "UserDelete";
 
         public const string UserList = "UserList";
+
+        public const string SuspendWorkflow = "SuspendWorkflow";
+
+        public const string UnsuspendWorkflow = "UnsuspendWorkflow";
 
         public static IReadOnlyList<string> AllClaims { get; private set; }
     }

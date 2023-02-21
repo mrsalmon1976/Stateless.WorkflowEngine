@@ -85,19 +85,6 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Models
         //    }
         //}
 
-        //public override string GetGraph()
-        //{
-        //    throw new NotImplementedException();
-        //}
 
-        //public override void Fire(string triggerName)
-        //{
-        //    // does nothing!
-        //}
-
-        //public override void Initialise(string initialState)
-        //{
-        //    // does nothing!
-        //}
     }
 }

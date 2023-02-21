@@ -20,7 +20,12 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Store
         public Guid ConnectionId { get; set; }
 
         public List<UIWorkflow> Workflows { get; private set; }
-        
+
+        public bool IsSuspendButtonVisible { get; set; }
+
+        public bool IsUnsuspendButtonVisible { get; set; }
+
+        public bool IsDeleteWorkflowButtonVisible { get; set; }
 
     }
 }

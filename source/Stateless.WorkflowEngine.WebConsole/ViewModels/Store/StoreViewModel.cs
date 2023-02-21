@@ -10,5 +10,12 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Store
     public class StoreViewModel
     {
         public ConnectionModel Connection { get; set; }
+
+        public bool IsSuspendButtonVisible { get; set; }
+
+        public bool IsUnsuspendButtonVisible { get; set; }
+
+        public bool IsDeleteWorkflowButtonVisible { get; set; }
+
     }
 }

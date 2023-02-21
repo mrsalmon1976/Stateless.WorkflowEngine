@@ -201,8 +201,8 @@
       <HintPath>..\packages\SystemWrapper.0.4\lib\SystemWrapper.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="ZstdSharp, Version=0.6.2.0, Culture=neutral, PublicKeyToken=8d151af33a4ad5cf, processorArchitecture=MSIL">
-      <HintPath>..\packages\ZstdSharp.Port.0.6.2\lib\net461\ZstdSharp.dll</HintPath>
+    <Reference Include="ZstdSharp, Version=0.6.7.0, Culture=neutral, PublicKeyToken=8d151af33a4ad5cf, processorArchitecture=MSIL">
+      <HintPath>..\packages\ZstdSharp.Port.0.6.7\lib\net461\ZstdSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

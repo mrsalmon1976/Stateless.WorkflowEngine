@@ -55,8 +55,14 @@
                                     
             </div>
             <div class="modal-footer">
-                <button id="btn-delete-single" type="button" class="btn btn-danger pull-left">Delete</button>
-                <button id="btn-suspend-single" type="button" class="btn btn-warning pull-left">Suspend</button>
+                @if (Model.IsDeleteWorkflowButtonVisible)
+                {
+                    <button id="btn-delete-single" type="button" class="btn btn-danger pull-left">Delete</button>
+                }
+                @if (Model.IsSuspendButtonVisible)
+                {
+                    <button id="btn-suspend-single" type="button" class="btn btn-warning pull-left">Suspend</button>
+                }
                 <i id="spinner-single" class="pull-left fa fa-circle-o-notch fa-spin fa-2x fa-fw" style="margin-left:5px;display:none;"></i>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>

@@ -19,6 +19,7 @@ using Nancy.Security;
 using Nancy.ViewEngines.Razor;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 using NUnit.Framework;
+using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 {
@@ -83,6 +84,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             container.Register<IUserMapper, UserMapper>();
             container.Register<IUserStore>(Substitute.For<IUserStore>());
             container.Register<IUserValidator>(Substitute.For<IUserValidator>());
+            container.Register<IWorkflowInfoService>(Substitute.For<IWorkflowInfoService>());
             if (this.ConfigureRequestContainerCallback != null)
             {
                 this.ConfigureRequestContainerCallback(container);

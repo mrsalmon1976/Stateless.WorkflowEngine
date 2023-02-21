@@ -45,7 +45,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             ConnectionModel connectionModel = new ConnectionModel();
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.When(x => x.GetIncompleteCount()).Do((ci) => { throw new Exception(exceptionMessage); });
+            workflowStore.When(x => x.GetActiveCount()).Do((ci) => { throw new Exception(exceptionMessage); });
             _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
 
             ConnectionInfoViewModel model = _workflowInfoService.GetWorkflowStoreInfo(connectionModel);
@@ -65,7 +65,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             ConnectionModel connectionModel = new ConnectionModel();
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetIncompleteCount().Returns(activeCount);
+            workflowStore.GetActiveCount().Returns(activeCount);
             workflowStore.GetSuspendedCount().Returns(suspendedCount);
             workflowStore.GetCompletedCount().Returns(completedCount);
             _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);

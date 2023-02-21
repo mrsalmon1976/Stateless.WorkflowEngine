@@ -49,16 +49,19 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // deletes a collection of workflows in a single database
             Post[Actions.Store.Remove] = (x) =>
             {
+                this.RequiresClaims(new[] { Claims.RemoveWorkflow });
                 return Remove();
             };
             // suspends a collection of workflows in a single database
             Post[Actions.Store.Suspend] = (x) =>
             {
+                this.RequiresClaims(new[] { Claims.SuspendWorkflow });
                 return Suspend();
             };
             // unsuspends a collection of workflows in a single database
             Post[Actions.Store.Unsuspend] = (x) =>
             {
+                this.RequiresClaims(new[] { Claims.UnsuspendWorkflow });
                 return Unsuspend();
             };
             // loads a single workflow
@@ -71,16 +74,20 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         public dynamic Default()
         {
             var id = Request.Query["id"];
+            var connection = _userStore.GetConnection(id);
 
-            StoreViewModel model = new StoreViewModel();
-            model.Connection = _userStore.GetConnection(id);
-
-            if (model.Connection == null)
+            if (connection == null)
             {
                 throw new ArgumentException("No connection found matching the supplied id");
             }
 
-            return this.View[Views.Store.Default, model];
+            var currentUser = this.Context.CurrentUser;
+            StoreViewModel viewModel = new StoreViewModel();
+            viewModel.Connection = connection;
+            viewModel.IsSuspendButtonVisible = currentUser.HasClaim(Claims.SuspendWorkflow);
+            viewModel.IsUnsuspendButtonVisible = currentUser.HasClaim(Claims.UnsuspendWorkflow);
+            viewModel.IsDeleteWorkflowButtonVisible = currentUser.HasClaim(Claims.RemoveWorkflow);
+            return this.View[Views.Store.Default, viewModel];
         }
 
         public dynamic Definition()
@@ -118,10 +125,15 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             }
             
             IEnumerable<UIWorkflow> workflows = _workflowInfoService.GetIncompleteWorkflows(connection, model.WorkflowCount);
-            
+            var currentUser = this.Context.CurrentUser;
+
             WorkflowListViewModel viewModel = new WorkflowListViewModel();
             viewModel.ConnectionId = connection.Id;
             viewModel.Workflows.AddRange(workflows);
+            viewModel.IsSuspendButtonVisible = currentUser.HasClaim(Claims.SuspendWorkflow);
+            viewModel.IsUnsuspendButtonVisible = currentUser.HasClaim(Claims.UnsuspendWorkflow);
+            viewModel.IsDeleteWorkflowButtonVisible = currentUser.HasClaim(Claims.RemoveWorkflow);
+
 
             return this.View[Views.Store.ListPartial, viewModel];
 
