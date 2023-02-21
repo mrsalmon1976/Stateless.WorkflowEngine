@@ -3,9 +3,14 @@ Clear-Host
 
 function GetMSBuildPath()
 {
-	# default to latest version isntalled with VS2019
-	$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe"
+	$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
 
+	# default to latest version isntalled with VS2019
+	if ([System.IO.File]::Exists($msbuild) -eq $false)
+	{
+		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe"
+	}
+	
 	# try look for MSBuild 15.x in other locations
 	if ([System.IO.File]::Exists($msbuild) -eq $false)
 	{
@@ -59,6 +64,7 @@ function UpdateProjectVersion
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/Version" -newValue $version
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/AssemblyVersion" -newValue $version
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/FileVersion" -newValue $version
+	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//package/metadata/version" -newValue $version
 	$doc.Save($filePath)
 }
 
@@ -88,6 +94,15 @@ function UpdateAssemblyVersion
     	%{$_ -replace 'AssemblyFileVersion\("[0-9]+(\.([0-9]+|\*)){1,3}"\)', $newFileVersion }  > $tmpFile
 
  	Move-Item $tmpFile $assemblyFilePath -force
+}
+
+function UpdateNuspecVersion
+{
+	param ([string]$filePath, [string]$version)
+	[xml]$xmlDoc = Get-Content $filePath
+	$xmlDoc.package.metadata.version = $version
+	$xmlDoc.Save($filePath)
+	
 }
 
 function ZipFile
@@ -120,7 +135,9 @@ $version = Read-Host -Prompt "What version are we building? [e.g. 2.3.0]"
 # make sure the files reflect the correct assembly version
 UpdateAssemblyVersion -assemblyFilePath "$source\SharedAssemblyInfo.cs" -version $version
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" -version $version
+UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.nuspec" -version $version
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version
+UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.nuspec" -version $version
 
 # run msbuild on the solution
 Write-Host "Building solution $version"
