@@ -1,10 +1,12 @@
 ﻿using Example.Shared.Workflows.FileCreation.Actions;
+using MongoDB.Bson.Serialization.Attributes;
 using Stateless.WorkflowEngine;
 using System;
 using System.IO;
 
 namespace Example.Shared.Workflows.FileCreation
 {
+    [BsonIgnoreExtraElements]
     public class FileCreationWorkflow : StateWorkflow<FileCreationWorkflow.State, FileCreationWorkflow.Trigger>
     {
 
