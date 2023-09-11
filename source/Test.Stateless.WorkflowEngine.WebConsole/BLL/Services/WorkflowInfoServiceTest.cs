@@ -249,6 +249,30 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
         }
 
+        [Test]
+        public void GetIncompleteWorkflows_WorkflowWithNoQualifiedName_GraphDataNotPopulated()
+        {
+            // setup 
+            string graphData = Guid.NewGuid().ToString();
+            const int workflowCount = 1;
+            ConnectionModel connectionModel = new ConnectionModel();
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            _workflowStoreFactory.GetWorkflowStore(connectionModel).Returns(workflowStore);
+
+            List<UIWorkflowContainer> workflows = CreateUiWorkflows(workflowCount, workflowGraph: graphData);
+            List<string> workflowsJson = workflows.Select(x => JsonConvert.SerializeObject(x)).ToList();
+            workflowsJson[0] = workflowsJson[0].Replace("QualifiedName", "REDACTED");
+            workflowStore.GetIncompleteWorkflowsAsJson(workflowCount).Returns(workflowsJson);
+
+            // execute
+            IEnumerable<UIWorkflow> result = _workflowInfoService.GetIncompleteWorkflows(connectionModel, workflowCount);
+
+            // assert
+            Assert.AreEqual(workflowCount, result.Count());
+            workflowStore.DidNotReceive().GetDefinitionByQualifiedName(Arg.Any<string>());
+        }
+
         #endregion
 
         #region Private Methods

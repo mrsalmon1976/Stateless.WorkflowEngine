@@ -56,15 +56,18 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             {
                 var wf = GetWorkflowInfoFromJson(doc, connectionModel.WorkflowStoreType);
 
-                if (workflowGraphs.ContainsKey(wf.QualifiedName))
+                if (!String.IsNullOrEmpty(wf.QualifiedName))    // for backward compatibility only
                 {
-                    wf.WorkflowGraph = workflowGraphs[wf.QualifiedName];
-                }
-                else
-                {
-                    WorkflowDefinition workflowDefinition = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName);
-                    wf.WorkflowGraph = workflowDefinition?.Graph;
-                    workflowGraphs.Add(wf.QualifiedName, workflowDefinition?.Graph);
+                    if (workflowGraphs.ContainsKey(wf.QualifiedName))
+                    {
+                        wf.WorkflowGraph = workflowGraphs[wf.QualifiedName];
+                    }
+                    else
+                    {
+                        WorkflowDefinition workflowDefinition = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName);
+                        wf.WorkflowGraph = workflowDefinition?.Graph;
+                        workflowGraphs.Add(wf.QualifiedName, workflowDefinition?.Graph);
+                    }
                 }
                 
                 workflows.Add(wf);
