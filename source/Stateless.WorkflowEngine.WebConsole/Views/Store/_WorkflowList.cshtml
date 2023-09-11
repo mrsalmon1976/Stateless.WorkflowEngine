@@ -2,8 +2,35 @@
 @using Stateless.WorkflowEngine;
 @using Stateless.WorkflowEngine.WebConsole.Navigation
 @using Stateless.WorkflowEngine.WebConsole.BLL.Models
+@using System.Collections.Generic;
 @if (Model.Workflows.Count > 0)
 {
+    var workflowsWithDefinitions = Model.GetWorkflowsWithDefinitions();
+
+    <div class="row">
+        <div class="col-md-12" style="margin-bottom:10px;">
+            <span class="pull-left font120" style="margin-right: 30px;">@Model.DatabaseName</span>
+            <span class="label label-default pull-right store-info-label">Suspended: <span id="lbl-suspended-cnt">0</span></span>
+            <span class="label label-default pull-right store-info-label">Active: <span id="lbl-active-cnt">0</span></span>
+            @if (workflowsWithDefinitions.Count > 0)
+            {
+                <div class="dropdown pull-right" style="margin-right:10px;">
+                    <a id="drop3" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        Workflows
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="drop3">
+                        @foreach (string qualifiedName in workflowsWithDefinitions)
+                        {
+                            <li class="font90"><a href="#" class="workflow-qualified-name" data-qualified-name="@qualifiedName">@qualifiedName</a></li>
+                        }
+                    </ul>
+
+                </div>
+            }
+        </div>
+    </div>
+
     <table class="table table-striped table-hover table-bordered font90">
         <thead>
             <tr>
@@ -23,28 +50,28 @@
         <tbody>
             @foreach (var wf in Model.Workflows)
             {
-            <tr @if (wf.IsSuspended) { <text> class="danger" </text> }>
-                <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
-                <td><a href="#" data-id="@wf.Id" data-type="@wf.Name" class="workflow-id">@wf.Id</a></td>
-                <td>
-                    @if (String.IsNullOrEmpty(wf.WorkflowGraph))
-                    {
-                        <span title="@wf.QualifiedName">@wf.Name</span>
-                    }
-                    else
-                    {
-                        <a href="#" data-id="@wf.Id" data-qualified-name="@wf.QualifiedName" title="@wf.QualifiedName" class="workflow-qualified-name">@wf.Name</a>
-                    }
-                </td>
-                <td>@wf.ResumeOn.ToLocalTime()</td>
-                <td>@(wf.IsSuspended ? "Yes" : "No")</td>
-                <td>@wf.CurrentState</td>
-                <td>@wf.ResumeTrigger</td>
-                <td>@wf.Priority</td>
-                <td>@wf.RetryCount</td>
-                <td>@(String.Join(",", wf.RetryIntervals))</td>
-                <td>@wf.CreatedOn.ToLocalTime()</td>
-            </tr>
+                <tr @if (wf.IsSuspended) { <text> class="danger" </text> }>
+                    <td><input type="checkbox" value="@wf.Id" class="chk-workflow" /></td>
+                    <td><a href="#" data-id="@wf.Id" data-type="@wf.Name" class="workflow-id">@wf.Id</a></td>
+                    <td>
+                        @if (String.IsNullOrEmpty(wf.WorkflowGraph))
+                        {
+                            <span title="@wf.QualifiedName">@wf.Name</span>
+                        }
+                        else
+                        {
+                            <a href="#" data-id="@wf.Id" data-qualified-name="@wf.QualifiedName" title="@wf.QualifiedName" class="workflow-qualified-name">@wf.Name</a>
+                        }
+                    </td>
+                    <td>@wf.ResumeOn.ToLocalTime()</td>
+                    <td>@(wf.IsSuspended ? "Yes" : "No")</td>
+                    <td>@wf.CurrentState</td>
+                    <td>@wf.ResumeTrigger</td>
+                    <td>@wf.Priority</td>
+                    <td>@wf.RetryCount</td>
+                    <td>@(String.Join(",", wf.RetryIntervals))</td>
+                    <td>@wf.CreatedOn.ToLocalTime()</td>
+                </tr>
             }
         </tbody>
     </table>

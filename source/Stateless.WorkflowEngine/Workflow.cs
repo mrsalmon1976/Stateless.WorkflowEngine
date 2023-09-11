@@ -191,7 +191,28 @@ namespace Stateless.WorkflowEngine
             {
                 workflowAction = this.DependencyResolver.GetInstance<T>();
             }
+
+            this.OnActionExecuting(workflowAction);
             workflowAction.Execute(this);
+            this.OnActionExecuted(workflowAction);
+        }
+
+        /// <summary>
+        /// Fires before a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// </summary>
+        /// <param name="action"></param>
+        public virtual void OnActionExecuting(IWorkflowAction action)
+        {
+
+        }
+
+        /// <summary>
+        /// Fires after a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// </summary>
+        /// <param name="action"></param>
+        public virtual void OnActionExecuted(IWorkflowAction action)
+        {
+
         }
 
         /// <summary>

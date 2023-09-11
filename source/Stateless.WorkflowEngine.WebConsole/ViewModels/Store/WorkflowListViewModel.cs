@@ -27,5 +27,21 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Store
 
         public bool IsDeleteWorkflowButtonVisible { get; set; }
 
+        public string DatabaseName { get; set; }
+
+        /// <summary>
+        /// Utility method to extract all the workflow graphs where they have been set (null values ignored).
+        /// </summary>
+        /// <returns></returns>
+        public List<string> GetWorkflowsWithDefinitions()
+        {
+            return this.Workflows
+                .Where(x => !String.IsNullOrEmpty(x.WorkflowGraph))
+                .Select(x => x.QualifiedName)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+        }
+
     }
 }

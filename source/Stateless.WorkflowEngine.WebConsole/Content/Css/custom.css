@@ -64,6 +64,13 @@
 .font90 {
     font-size: 90%;
 }
+.font120 {
+    font-size: 120%;
+}
+.store-info-label {
+    padding:4px 10px 4px 10px;
+    margin-left:8px;
+}
 .logo-icon {
     width: 75px;
     height: 75px;

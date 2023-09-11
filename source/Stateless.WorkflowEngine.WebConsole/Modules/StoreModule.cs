@@ -128,12 +128,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = this.Context.CurrentUser;
 
             WorkflowListViewModel viewModel = new WorkflowListViewModel();
+            viewModel.DatabaseName = connection.Database;
             viewModel.ConnectionId = connection.Id;
             viewModel.Workflows.AddRange(workflows);
             viewModel.IsSuspendButtonVisible = currentUser.HasClaim(Claims.SuspendWorkflow);
             viewModel.IsUnsuspendButtonVisible = currentUser.HasClaim(Claims.UnsuspendWorkflow);
             viewModel.IsDeleteWorkflowButtonVisible = currentUser.HasClaim(Claims.RemoveWorkflow);
-
 
             return this.View[Views.Store.ListPartial, viewModel];
 

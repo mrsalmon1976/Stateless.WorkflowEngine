@@ -54,15 +54,22 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
             IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
             IEnumerable<string> documents = workflowStore.GetIncompleteWorkflowsAsJson(count);
             List<UIWorkflow> workflows = new List<UIWorkflow>();
+            Dictionary<string, string> workflowGraphs = new Dictionary<string, string>();
 
-            // for MongoDb, we can't use the GetIncomplete call because the Bson Deserialization call will fail 
-            // with unknown types
             foreach (string doc in documents)
             {
                 var wf = GetWorkflowInfoFromJson(doc, connectionModel.WorkflowStoreType);
 
-                WorkflowDefinition workflowDefinition = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName);
-                wf.WorkflowGraph = workflowDefinition?.Graph;
+                if (workflowGraphs.ContainsKey(wf.QualifiedName))
+                {
+                    wf.WorkflowGraph = workflowGraphs[wf.QualifiedName];
+                }
+                else
+                {
+                    WorkflowDefinition workflowDefinition = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName);
+                    wf.WorkflowGraph = workflowDefinition?.Graph;
+                    workflowGraphs.Add(wf.QualifiedName, workflowDefinition?.Graph);
+                }
                 
                 workflows.Add(wf);
             }

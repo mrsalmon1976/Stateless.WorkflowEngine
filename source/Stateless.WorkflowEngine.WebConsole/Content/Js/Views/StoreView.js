@@ -1,8 +1,8 @@
-﻿
-var StoreView = function () {
+﻿var StoreView = function () {
 
     var that = this;
 
+    this.connectionId = null;
     this.workflowViewModel = null;
     this.workflowDefinitionViewModel = null;
     this.workflowCount = 50;
@@ -20,6 +20,8 @@ var StoreView = function () {
     };
 
     this.init = function () {
+
+        this.connectionId = $('#pnl-workflows').data().modelId;
         $('#btn-refresh').on('click', function () { that.loadWorkflows(); });
         $('#btn-suspend-single').on('click', function () { that.workflowViewModel.toggleWorkflowSuspension(); });
         $('#btn-delete-single').on('click', function () { that.workflowViewModel.confirmWorkflowDelete(); });
@@ -52,10 +54,51 @@ var StoreView = function () {
             }
         });
     };
+    this.loadWorkflowInfo = function () {
+
+        var that = this;
+
+        var request = $.ajax({
+            url: "/connection/info",
+            method: "POST",
+            dataType: 'json',
+            data: { "id": this.connectionId }
+        });
+
+        request.done(function (response) {
+
+            that.updateStoreInfoLabel("#lbl-active-cnt", response.activeCount, 100, 10000);
+            that.updateStoreInfoLabel("#lbl-suspended-cnt", response.suspendedCount, 0, 0);
+        });
+
+        request.fail(function (xhr, textStatus, errorThrown) {
+            Utils.handleAjaxError(xhr, $('#pnl-workflows'));
+        });
+
+    };
+
+    this.updateStoreInfoLabel = function (selector, workflowCount, warningThreshold, errorThreshold) {
+
+        var labelClass = 'label-success'; 
+        if (workflowCount === null || workflowCount === '' || parseInt(workflowCount) > errorThreshold) {
+            labelClass = "label-danger";
+        }
+        else if (parseInt(workflowCount) > warningThreshold) {
+            labelClass = "label-warning";
+        }
+
+        var txt = numeral(workflowCount).format('0,0');
+        var lbl = $(selector);
+        lbl.text(txt);
+
+        lbl.closest('.store-info-label').removeClass('label-default').removeClass('label-warning').removeClass('label-success').removeClass('label-danger').addClass(labelClass);
+
+    };
 
     this.loadWorkflows = function () {
 
-        var connId = $('#pnl-workflows').data().modelId;
+        var that = this;
+        var connId = this.connectionId;
         $('#pnl-loading').show();
         $('#pnl-workflows').html('');
 
@@ -91,6 +134,7 @@ var StoreView = function () {
 
         });
         request.always(function (xhr, textStatus) {
+            that.loadWorkflowInfo();
             $('#pnl-loading').hide();
         });
     };
