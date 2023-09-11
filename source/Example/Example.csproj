@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="MongoDB.Driver" Version="2.21.0" />
-    <PackageReference Include="RavenDB.Client" Version="5.4.100" />
+    <PackageReference Include="RavenDB.Client" Version="5.4.109" />
   </ItemGroup>
 
   <ItemGroup>

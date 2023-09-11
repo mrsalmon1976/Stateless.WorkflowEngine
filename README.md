@@ -26,6 +26,7 @@ This table shows the client version and the associated driver/client versions us
 |           | 3.1.0     | MongoDB.Driver | 2.21.0          |
 | RavenDb   | 2.6.0     | RavenDB.Client | 3.5.7           |
 |           | 3.0.0     | RavenDB.Client | 5.4.4           |
+|           | 3.1.0     | RavenDB.Client | 5.4.109         |
 
 ## Workflow Configuration
 
