@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>Stateless.WorkflowEngine</id>
-    <version>3.0.1</version>
+    <version>3.1.0</version>
     <authors>Matt Salmon</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A workflow wrapper for the Stateless library that includes persistence, retries, and workflow suspension.</description>
     <dependencies>
       <group targetFramework=".NETStandard2.0">
-        <dependency id="Newtonsoft.Json" version="13.0.2" />
+        <dependency id="Newtonsoft.Json" version="13.0.3" />
       </group>
     </dependencies>
     <releaseNotes>Visit https://github.com/mrsalmon1976/Stateless.WorkflowEngine/releases for release notes</releaseNotes>
