@@ -96,8 +96,6 @@ namespace Stateless.WorkflowEngine.WebConsole
         {
             base.ConfigureRequestContainer(container, context);
             
-            IAppSettings settings = container.Resolve<IAppSettings>();
-
             // WebConsole classes and controllers
             container.Register<IUserMapper, UserMapper>();
 

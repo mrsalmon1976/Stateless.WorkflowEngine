@@ -1,9 +1,5 @@
-﻿using AutoMapper;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Driver;
+﻿using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
-using Stateless.WorkflowEngine.MongoDb;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
