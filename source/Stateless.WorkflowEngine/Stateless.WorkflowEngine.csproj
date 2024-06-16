@@ -8,6 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Stateless" Version="4.2.1" />
+    <PackageReference Include="Stateless" Version="5.16.0" />
   </ItemGroup>
 </Project>
