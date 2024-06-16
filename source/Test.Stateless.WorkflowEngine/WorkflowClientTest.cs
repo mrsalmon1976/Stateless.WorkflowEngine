@@ -48,7 +48,7 @@ namespace Test.Stateless.WorkflowEngine
             bool result = workflowClient.Exists(workflowId);
 
             workflowStore.Received(1).Get(workflowId);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace Test.Stateless.WorkflowEngine
             bool result = workflowClient.Exists(workflowId);
 
             workflowStore.Received(1).Get(workflowId);
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
         }
 
         #endregion
@@ -156,7 +156,7 @@ namespace Test.Stateless.WorkflowEngine
 
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), commandFactory);
             BasicWorkflow result = (BasicWorkflow)workflowClient.Unsuspend(workflowId);
-            Assert.AreEqual(workflowId, result.Id);
+            Assert.That(result.Id, Is.EqualTo(workflowId));
 
         }
 

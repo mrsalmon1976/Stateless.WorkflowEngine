@@ -53,7 +53,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
 
             // assert
             string contents = File.ReadAllText(_eventLogPath);
-            Assert.AreEqual(String.Empty, contents);
+            Assert.That(contents, Is.EqualTo(String.Empty));
         }
 
         [Test]
@@ -66,7 +66,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
 
             // assert
             string contents = File.ReadAllText(_eventLogPath);
-            Assert.AreEqual("abc", contents);
+            Assert.That(contents, Is.EqualTo("abc"));
         }
 
         [Test]
@@ -80,7 +80,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
             // assert
             string contents = File.ReadAllText(_eventLogPath);
             string expected = String.Format("a{0}b{0}c{0}", Environment.NewLine);
-            Assert.AreEqual(expected, contents);
+            Assert.That(contents, Is.EqualTo(expected));
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Logging
             // assert
             string contents = File.ReadAllText(_eventLogPath);
             string expected = String.Format("ab{0}cd{0}", Environment.NewLine);
-            Assert.AreEqual(expected, contents);
+            Assert.That(contents, Is.EqualTo(expected));
         }
 
     }

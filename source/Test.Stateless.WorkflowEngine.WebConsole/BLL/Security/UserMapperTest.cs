@@ -33,7 +33,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Security
         {
             _userStore.Users.Returns(new List<UserModel>());
             IUserIdentity userIdentity = _userMapper.GetUserFromIdentifier(Guid.NewGuid(), new NancyContext());
-            Assert.IsNull(userIdentity);
+            Assert.That(userIdentity, Is.Null);
         }
 
         [Test]
@@ -51,12 +51,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Security
             IUserIdentity userIdentity = _userMapper.GetUserFromIdentifier(user.Id, new NancyContext());
 
             // assert
-            Assert.IsNotNull(userIdentity);
+            Assert.That(userIdentity, Is.Not.Null);
 
-            Assert.AreEqual(user.UserName, userIdentity.UserName);
+            Assert.That(userIdentity.UserName, Is.EqualTo(user.UserName));
             foreach (string claim in Claims.AllClaims)
             {
-                Assert.Contains(claim, userIdentity.Claims.ToList());
+                Assert.That(userIdentity.Claims.ToList().Contains(claim), Is.True);
             }
         }
 
@@ -75,16 +75,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Security
             IUserIdentity userIdentity = _userMapper.GetUserFromIdentifier(user.Id, new NancyContext());
 
             // assert
-            Assert.IsNotNull(userIdentity);
+            Assert.That(userIdentity, Is.Not.Null);
 
             // make sure the user has been mapped and has the supplied claim
-            Assert.AreEqual(user.UserName, userIdentity.UserName);
-            Assert.Contains(Claims.ConnectionAdd, userIdentity.Claims.ToList());
+            Assert.That(userIdentity.UserName, Is.EqualTo(user.UserName));
+            Assert.That(userIdentity.Claims.ToList().Contains(Claims.ConnectionAdd), Is.True);
 
             // user should not have any other claims
             foreach (string claim in Claims.AllClaims.Where(x => x != Claims.ConnectionAdd))
             {
-                Assert.Contains(claim, userIdentity.Claims.ToList());
+                Assert.That(userIdentity.Claims.ToList().Contains(claim), Is.True);
             }
         }
 

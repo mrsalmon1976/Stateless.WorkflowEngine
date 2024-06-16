@@ -61,9 +61,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             _versionUpdateService.InstallUpdate();
 
             // assert
-            Assert.AreEqual(autoUpdaterFolder, processWrapper.StartInfo.WorkingDirectory);
-            Assert.AreEqual(UpdateConstants.AutoUpdaterExeFileName, processWrapper.StartInfo.FileName);
-            Assert.AreEqual(UpdateConstants.StartInfoVerb, processWrapper.StartInfo.Verb);
+            Assert.That(processWrapper.StartInfo.WorkingDirectory, Is.EqualTo(autoUpdaterFolder));
+            Assert.That(processWrapper.StartInfo.FileName, Is.EqualTo(UpdateConstants.AutoUpdaterExeFileName));
+            Assert.That(processWrapper.StartInfo.Verb, Is.EqualTo(UpdateConstants.StartInfoVerb));
             processWrapper.Received(1).Start();
         }
 

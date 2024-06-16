@@ -82,7 +82,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 workflowStore.Initialise(false, false, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
-                Assert.AreEqual(0, indexNames.Count());
+                Assert.That(indexNames.Count(), Is.EqualTo(0));
             }
         }
 
@@ -95,10 +95,10 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 workflowStore.Initialise(false, true, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
-                Assert.Greater(indexNames.Count(), 0);
+                Assert.That(indexNames.Count(), Is.GreaterThan(0));
 
                 var expectedIndex = indexNames.FirstOrDefault(x => x == "WorkflowIndex/Priority/RetryCount/CreatedOn");
-                Assert.IsNotNull(expectedIndex);
+                Assert.That(expectedIndex, Is.Not.Null);
             }
         }
 
@@ -111,10 +111,10 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
                 workflowStore.Initialise(false, true, false);
 
                 string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
-                Assert.Greater(indexNames.Count(), 0);
+                Assert.That(indexNames.Count(), Is.GreaterThan(0));
 
                 var expectedIndex = indexNames.FirstOrDefault(x => x == "CompletedWorkflowIndex/CreatedOn");
-                Assert.IsNotNull(expectedIndex);
+                Assert.That(expectedIndex, Is.Not.Null);
             }
         }
 

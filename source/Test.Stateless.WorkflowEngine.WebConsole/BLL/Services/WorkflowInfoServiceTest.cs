@@ -52,8 +52,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             ConnectionInfoViewModel model = _workflowInfoService.GetWorkflowStoreInfo(connectionModel);
 
-            Assert.AreEqual(exceptionMessage, model.ConnectionError);
-            Assert.IsNull(model.ActiveCount);
+            Assert.That(model.ConnectionError, Is.EqualTo(exceptionMessage));
+            Assert.That(model.ActiveCount, Is.Null);
         }
 
         [Test]
@@ -74,9 +74,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             ConnectionInfoViewModel model = _workflowInfoService.GetWorkflowStoreInfo(connectionModel);
 
-            Assert.AreEqual(activeCount, model.ActiveCount);
-            Assert.AreEqual(completedCount, model.CompleteCount);
-            Assert.AreEqual(suspendedCount, model.SuspendedCount);
+            Assert.That(model.ActiveCount, Is.EqualTo(activeCount));
+            Assert.That(model.CompleteCount, Is.EqualTo(completedCount));
+            Assert.That(model.SuspendedCount, Is.EqualTo(suspendedCount));
         }
 
         #endregion
@@ -105,7 +105,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             string result = _workflowInfoService.GetWorkflowDefinition(connectionModel, qualifedWorkflowName);
 
-            Assert.IsNull(result);
+            Assert.That(result, Is.Null);
         }
 
         [Test]
@@ -123,8 +123,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             string result = _workflowInfoService.GetWorkflowDefinition(connectionModel, qualifedWorkflowName);
 
-            Assert.IsNotNull(result);
-            Assert.AreEqual(workflowDefinition.Graph, result);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result, Is.EqualTo(workflowDefinition.Graph));
         }
 
         #endregion
@@ -182,9 +182,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             IEnumerable<UIWorkflow> result = _workflowInfoService.GetIncompleteWorkflows(connectionModel, workflowCount);
 
             // assert
-            Assert.AreEqual(workflowCount, result.Count());
+            Assert.That(result.Count(), Is.EqualTo(workflowCount));
             UIWorkflow wfResult = result.Single();
-            Assert.AreEqual(graphData, wfResult.WorkflowGraph);
+            Assert.That(wfResult.WorkflowGraph, Is.EqualTo(graphData));
             workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
         }
 
@@ -209,9 +209,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             IEnumerable<UIWorkflow> result = _workflowInfoService.GetIncompleteWorkflows(connectionModel, workflowCount);
 
             // assert
-            Assert.AreEqual(workflowCount, result.Count());
+            Assert.That(result.Count(), Is.EqualTo(workflowCount));
             UIWorkflow wfResult = result.Single();
-            Assert.IsNull(wfResult.WorkflowGraph);
+            Assert.That(wfResult.WorkflowGraph, Is.Null);
             workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
         }
 
@@ -241,10 +241,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             IEnumerable<UIWorkflow> result = _workflowInfoService.GetIncompleteWorkflows(connectionModel, workflowCount);
 
             // assert
-            Assert.AreEqual(workflowCount, result.Count());
+            Assert.That(result.Count(), Is.EqualTo(workflowCount));
             foreach (UIWorkflow wf in result)
             {
-                Assert.AreEqual(graphData, wf.WorkflowGraph);
+                Assert.That(wf.WorkflowGraph, Is.EqualTo(graphData));
             }
             workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
         }
@@ -269,7 +269,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             IEnumerable<UIWorkflow> result = _workflowInfoService.GetIncompleteWorkflows(connectionModel, workflowCount);
 
             // assert
-            Assert.AreEqual(workflowCount, result.Count());
+            Assert.That(result.Count(), Is.EqualTo(workflowCount));
             workflowStore.DidNotReceive().GetDefinitionByQualifiedName(Arg.Any<string>());
         }
 

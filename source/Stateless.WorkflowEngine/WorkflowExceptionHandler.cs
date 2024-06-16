@@ -31,17 +31,8 @@ namespace Stateless.WorkflowEngine
             }
             else
             {
-                if (workflow.IsSingleInstance)
-                {
-                    // we can't suspend single instance workflows, but we've exceeded the RetryIntervals specified on the 
-                    // workflow....so just keep retrying using the last interval
-                    workflow.ResumeOn = DateTime.UtcNow.AddSeconds(workflow.RetryIntervals[workflow.RetryIntervals.Length - 1]);
-                }
-                else
-                {
-                    // if the workflow is multiple instance, we've run out of retry intervalsso we suspend the workflow
-                    workflow.IsSuspended = true;
-                }
+                // we're out of tries - suspend
+                workflow.IsSuspended = true;
             }
 
         }

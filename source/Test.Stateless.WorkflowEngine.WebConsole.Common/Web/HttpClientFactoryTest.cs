@@ -18,7 +18,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Web
             IHttpClientFactory clientFactory = new HttpClientFactory();
             using (HttpClient client = clientFactory.GetHttpClient())
             {
-                Assert.AreEqual(1, client.DefaultRequestHeaders.Count());
+                Assert.That(client.DefaultRequestHeaders.Count(), Is.EqualTo(1));
             }
         }
     }

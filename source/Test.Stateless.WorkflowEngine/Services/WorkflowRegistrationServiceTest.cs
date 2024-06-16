@@ -31,7 +31,7 @@ namespace Test.Stateless.WorkflowEngine
             // execute
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
 
         }
 
@@ -66,7 +66,7 @@ namespace Test.Stateless.WorkflowEngine
             // execute
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
 
         }
 

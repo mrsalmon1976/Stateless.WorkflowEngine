@@ -43,7 +43,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             string currentVersion = System.Version.Parse(versionInfo.FileVersion).ToString(3);
 
             // assert
-            Assert.AreEqual(currentVersion, webConsoleVersion);
+            Assert.That(webConsoleVersion, Is.EqualTo(currentVersion));
 
         }
     }

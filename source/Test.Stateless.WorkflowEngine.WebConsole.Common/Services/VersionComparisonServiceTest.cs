@@ -39,8 +39,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
             _gitHubVersionService.Received(1).GetVersionInfo(latestVersionUrl);
-            Assert.IsFalse(result.IsNewVersionAvailable);
-            Assert.AreEqual(version, result.LatestReleaseVersionInfo.VersionNumber);
+            Assert.That(result.IsNewVersionAvailable, Is.False);
+            Assert.That(result.LatestReleaseVersionInfo.VersionNumber, Is.EqualTo(version));
         }
 
         [Test]
@@ -60,8 +60,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             VersionComparisonResult result = versionComparisonService.CheckIfNewVersionAvailable().GetAwaiter().GetResult();
 
             _gitHubVersionService.Received(1).GetVersionInfo(latestVersionUrl);
-            Assert.IsTrue(result.IsNewVersionAvailable);
-            Assert.AreEqual(versionLatest, result.LatestReleaseVersionInfo.VersionNumber);
+            Assert.That(result.IsNewVersionAvailable, Is.True);
+            Assert.That(result.LatestReleaseVersionInfo.VersionNumber, Is.EqualTo(versionLatest));
         }
 
     }

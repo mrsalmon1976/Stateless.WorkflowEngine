@@ -36,9 +36,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         [Test]
         public void EnsureEmptyUpdateTempFolderExists_FolderDoesNotExist_CreatesFolder()
         {
-            Assert.IsFalse(Directory.Exists(_updateLocationService.UpdateTempFolder));
+            Assert.That(Directory.Exists(_updateLocationService.UpdateTempFolder), Is.False);
             _updateLocationService.EnsureEmptyUpdateTempFolderExists();
-            Assert.IsTrue(Directory.Exists(_updateLocationService.UpdateTempFolder));
+            Assert.That(Directory.Exists(_updateLocationService.UpdateTempFolder), Is.True);
         }
 
         [Test]
@@ -46,7 +46,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
         {
             Directory.CreateDirectory(_updateLocationService.UpdateTempFolder);
             _updateLocationService.EnsureEmptyUpdateTempFolderExists();
-            Assert.IsTrue(Directory.Exists(_updateLocationService.UpdateTempFolder));
+            Assert.That(Directory.Exists(_updateLocationService.UpdateTempFolder), Is.True);
 
         }
 
@@ -56,13 +56,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             string filePath = Path.Combine(_updateLocationService.UpdateTempFolder, "myfile.txt");
             Directory.CreateDirectory(_updateLocationService.UpdateTempFolder);
             File.WriteAllText(filePath, "this is a test");
-            Assert.IsTrue(File.Exists(filePath));
+            Assert.That(File.Exists(filePath), Is.True);
 
 
             _updateLocationService.EnsureEmptyUpdateTempFolderExists();
             
-            Assert.IsTrue(Directory.Exists(_updateLocationService.UpdateTempFolder));
-            Assert.IsFalse(File.Exists(filePath));
+            Assert.That(Directory.Exists(_updateLocationService.UpdateTempFolder), Is.True);
+            Assert.That(File.Exists(filePath), Is.False);
 
         }
 

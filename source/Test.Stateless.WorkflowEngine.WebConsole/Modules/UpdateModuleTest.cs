@@ -43,7 +43,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
-            Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
 
         }
 
@@ -68,9 +68,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // assert
             VersionCheckResult actionResult = JsonConvert.DeserializeObject<VersionCheckResult>(response.Body.AsString());
 
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(checkResult.IsNewVersionAvailable, actionResult.IsNewVersionAvailable);
-            Assert.AreEqual(checkResult.LatestReleaseVersionNumber, actionResult.LatestReleaseVersionNumber);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(actionResult.IsNewVersionAvailable, Is.EqualTo(checkResult.IsNewVersionAvailable));
+            Assert.That(actionResult.LatestReleaseVersionNumber, Is.EqualTo(checkResult.LatestReleaseVersionNumber));
             _versionCheckService.Received(1).CheckIfNewVersionAvailable();
         }
 
@@ -88,7 +88,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             {
                 with.HttpRequest();
             });
-            Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
         }
 
         [Test]
@@ -105,8 +105,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.FormsAuth(currentUser.Id, new Nancy.Authentication.Forms.FormsAuthenticationConfiguration());
             });
 
-            Assert.AreEqual(HttpStatusCode.SeeOther, response.StatusCode);
-            Assert.AreEqual(Actions.Update.Index, response.Headers["Location"]);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.SeeOther));
+            Assert.That(response.Headers["Location"], Is.EqualTo(Actions.Update.Index));
 
             _versionUpdateService.Received(1).InstallUpdate();
         }

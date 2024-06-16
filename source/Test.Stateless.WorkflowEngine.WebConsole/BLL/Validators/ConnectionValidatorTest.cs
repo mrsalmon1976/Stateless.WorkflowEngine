@@ -28,8 +28,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
             
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
         }
 
         [TestCase(WorkflowStoreType.MongoDb, "")]
@@ -42,9 +42,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Host"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Host"), Is.True);
         }
 
         [TestCase(WorkflowStoreType.MongoDb, 0)]
@@ -57,9 +57,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Port"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Port"), Is.True);
         }
 
         [TestCase(WorkflowStoreType.MongoDb, "")]
@@ -72,9 +72,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Database"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Database"), Is.True);
         }
 
         [TestCase(WorkflowStoreType.MongoDb, "")]
@@ -87,9 +87,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Active collection"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Active collection"), Is.True);
         }
 
 
@@ -103,9 +103,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Completed collection"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Completed collection"), Is.True);
         }
 
         [TestCase(WorkflowStoreType.MongoDb, null)]
@@ -118,9 +118,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _connectionValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Password and confirmation password do not match"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Password and confirmation password do not match"), Is.True);
         }
 
     }

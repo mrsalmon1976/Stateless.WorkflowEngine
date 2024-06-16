@@ -67,8 +67,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 // assert
                 //Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
                 //Assert.IsTrue(response.Body.AsString().Contains("No connection found"));
-                Assert.IsInstanceOf<ArgumentException>(ex.InnerException.InnerException);
-                Assert.IsTrue(ex.InnerException.InnerException.Message.Contains("No connection found"));
+                Assert.That(ex.InnerException.InnerException, Is.InstanceOf<ArgumentException>());
+                Assert.That(ex.InnerException.InnerException.Message.Contains("No connection found"), Is.True);
             }
             _userStore.Received(1).GetConnection(connectionId);
         }
@@ -99,8 +99,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             string responseBody = response.Body.AsString();
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual(response.ContentType, "text/html");
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That("text/html", Is.EqualTo(response.ContentType));
             
 
             response.Body["title"]
@@ -133,7 +133,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.Query("id", connectionId.ToString());
             });
             string responseBody = response.Body.AsString();
-            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
 
             Assert.That(responseBody.Contains("No connection found"));
             _userStore.Received(1).GetConnection(connectionId);
@@ -169,7 +169,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.Query("qname", Guid.NewGuid().ToString());
             });
             string responseBody = response.Body.AsString();
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             Assert.That(responseBody.Contains("No workflow definition found"));
             _userStore.Received(1).GetConnection(connectionId);
@@ -207,10 +207,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 with.Query("qname", qualifiedName);
             });
             string responseBody = response.Body.AsString();
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             WorkflowDefinition result = JsonConvert.DeserializeObject<WorkflowDefinition>(responseBody);
-            Assert.AreEqual(workflowDefinition.Id, result.Id);
+            Assert.That(result.Id, Is.EqualTo(workflowDefinition.Id));
             workflowStore.Received(1).GetDefinitionByQualifiedName(qualifiedName);
 
         }
@@ -239,7 +239,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
             _userStore.Received(1).GetConnection(connectionId);
         }
 
@@ -280,8 +280,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual("text/html", response.ContentType);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(response.ContentType, Is.EqualTo("text/html"));
 
             // SUCKS - for some reason this view throws a reference exception trying to load 
             // Stateless.WorkflowEngine which is handled in the app with the config file.  Not sure 
@@ -396,7 +396,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
             _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
         }
 
@@ -425,7 +425,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
             _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
         }
 
@@ -459,7 +459,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).Delete(workflowId);
         }
@@ -498,7 +498,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).Delete(workflowId1);
             workflowStore.Received(1).Delete(workflowId2);
@@ -525,7 +525,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
             _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
         }
 
@@ -552,7 +552,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
             _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
         }
 
@@ -586,7 +586,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).SuspendWorkflow(workflowId);
         }
@@ -625,7 +625,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).SuspendWorkflow(workflowId1);
             workflowStore.Received(1).SuspendWorkflow(workflowId2);
@@ -652,7 +652,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
             _userStore.DidNotReceive().GetConnection(Arg.Any<Guid>());
         }
 
@@ -679,7 +679,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
             _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
         }
 
@@ -713,7 +713,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).UnsuspendWorkflow(workflowId);
         }
@@ -752,7 +752,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _workflowStoreFactory.Received(1).GetWorkflowStore(connection);
             workflowStore.Received(1).UnsuspendWorkflow(workflowId1);
             workflowStore.Received(1).UnsuspendWorkflow(workflowId2);
@@ -794,7 +794,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
             workflowStore.Received(1).GetWorkflowAsJson(workflowId);
         }
 
@@ -835,13 +835,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-            Assert.AreEqual("application/json; charset=utf-8", response.ContentType);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(response.ContentType, Is.EqualTo("application/json; charset=utf-8"));
 
             WorkflowViewModel wvm = JsonConvert.DeserializeObject<WorkflowViewModel>(response.Body.AsString());
-            Assert.IsNotNull(wvm);
-            Assert.AreEqual(json, wvm.WorkflowJson);
-            Assert.AreEqual(uiWorkflow.IsSuspended, wvm.IsSuspended);
+            Assert.That(wvm, Is.Not.Null);
+            Assert.That(wvm.WorkflowJson, Is.EqualTo(json));
+            Assert.That(wvm.IsSuspended, Is.EqualTo(uiWorkflow.IsSuspended));
         }
 
         #endregion

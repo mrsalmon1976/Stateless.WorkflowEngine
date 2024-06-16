@@ -48,7 +48,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater
             bool result = _updateOrchestrator.Run().Result;
 
             // assert
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
             _versionComparisonService.Received(1).CheckIfNewVersionAvailable();
             _updateDownloadService.DidNotReceive().DownloadFile(Arg.Any<string>(), Arg.Any<string>());
 
@@ -69,7 +69,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater
             bool result = _updateOrchestrator.Run().Result;
 
             // assert
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
             Received.InOrder(async () =>
             {
                 await _versionComparisonService.Received(1).CheckIfNewVersionAvailable();

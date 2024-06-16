@@ -61,9 +61,9 @@ namespace Test.Stateless.WorkflowEngine.Commands
             _command.WorkflowId = workflow.Id;
             Workflow result = _command.Execute();
 
-            Assert.IsFalse(workflow.IsSuspended);
-            Assert.LessOrEqual(workflow.ResumeOn, DateTime.UtcNow);
-            Assert.Greater(DateTime.UtcNow.AddSeconds(2), workflow.ResumeOn);
+            Assert.That(workflow.IsSuspended, Is.False);
+            Assert.That(workflow.ResumeOn, Is.LessThanOrEqualTo(DateTime.UtcNow));
+            Assert.That(DateTime.UtcNow.AddSeconds(2), Is.GreaterThan(workflow.ResumeOn));
         }
 
         [Test]
@@ -81,7 +81,7 @@ namespace Test.Stateless.WorkflowEngine.Commands
             _command.WorkflowId = workflow.Id;
             Workflow result = _command.Execute();
 
-            Assert.AreEqual(workflow.Id, result.Id);
+            Assert.That(result.Id, Is.EqualTo(workflow.Id));
         }
 
         #endregion

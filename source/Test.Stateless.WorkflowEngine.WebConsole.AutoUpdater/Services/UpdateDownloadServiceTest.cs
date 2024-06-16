@@ -28,7 +28,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
             updateDownloadService.DownloadFile(GitHubReadMeUri, downloadPath).GetAwaiter().GetResult();
 
             // assert
-            Assert.IsTrue(File.Exists(downloadPath));
+            Assert.That(File.Exists(downloadPath), Is.True);
             DeleteFileIfExists(downloadPath);
         }
 

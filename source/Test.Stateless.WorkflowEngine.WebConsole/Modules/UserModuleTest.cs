@@ -71,11 +71,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Length); 
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Length, Is.EqualTo(1)); 
         }
 
         [Test]
@@ -100,12 +100,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Length);
-            Assert.IsTrue(result.Messages[0].Contains("do not match"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Length, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("do not match"), Is.True);
         }
 
         [Test]
@@ -147,15 +147,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             // check the result
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Length);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Length, Is.EqualTo(0));
 
             // make sure the user was updated and saved
-            Assert.AreEqual(newHashedPassword, user.Password);
+            Assert.That(user.Password, Is.EqualTo(newHashedPassword));
             _userStore.Received(1).Save();
             _passwordProvider.Received(1).GenerateSalt();
             _passwordProvider.Received(1).HashPassword(newPassword, salt);
@@ -196,11 +196,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 // assert
                 if (claim == Claims.UserAdd)
                 {
-                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
                 }
                 else
                 {
-                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
                 }
             }
 
@@ -231,12 +231,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             // check the result
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Length);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Length, Is.EqualTo(1));
             _userStore.DidNotReceive().Save();
 
         }
@@ -265,12 +265,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             // check the result
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Length);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Length, Is.EqualTo(1));
             _userStore.DidNotReceive().Save();
 
         }
@@ -305,18 +305,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             // check the result
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Length);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Length, Is.EqualTo(0));
             _userStore.Received(1).Save();
 
             // the user should have been added
             List<UserModel> users = _userStore.Users;
-            Assert.AreEqual(1, users.Count);
-            Assert.AreEqual(userName, users[0].UserName);
+            Assert.That(users.Count, Is.EqualTo(1));
+            Assert.That(users[0].UserName, Is.EqualTo(userName));
         }
 
         [Test]
@@ -354,18 +354,18 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             // check the result
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Length);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Length, Is.EqualTo(0));
 
             _passwordProvider.Received(1).GenerateSalt();
             _passwordProvider.Received(1).HashPassword(password, salt);
 
             List<UserModel> users = _userStore.Users;
-            Assert.AreEqual(hashedPassword, users[0].Password);
+            Assert.That(users[0].Password, Is.EqualTo(hashedPassword));
         }
 
         #endregion

@@ -187,8 +187,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Utility
 
             // assert 
             DirectoryInfo di = new DirectoryInfo(sourceFolder);
-            Assert.AreEqual(0, di.GetDirectories().Count());
-            Assert.AreEqual(0, di.GetFiles().Count());
+            Assert.That(di.GetDirectories().Count(), Is.EqualTo(0));
+            Assert.That(di.GetFiles().Count(), Is.EqualTo(0));
         }
 
         [Test]
@@ -233,7 +233,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Utility
             _fileUtility.DeleteDirectoryRecursive(sourceFolder);
 
             // assert 
-            Assert.IsFalse(Directory.Exists(sourceFolder));
+            Assert.That(Directory.Exists(sourceFolder), Is.False);
         }
 
         #endregion

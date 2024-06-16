@@ -28,16 +28,16 @@ namespace Test.Stateless.WorkflowEngine
         public void Constructor_NoOptions_DefaultOptionsCreated()
         {
             WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            Assert.IsTrue(workflowServer.Options.AutoCreateIndexes);
-            Assert.IsTrue(workflowServer.Options.AutoCreateTables);
+            Assert.That(workflowServer.Options.AutoCreateIndexes, Is.True);
+            Assert.That(workflowServer.Options.AutoCreateTables, Is.True);
         }
 
         [Test]
         public void Constructor_NullOptions_DefaultOptionsCreated()
         {
             WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), null);
-            Assert.IsTrue(workflowServer.Options.AutoCreateIndexes);
-            Assert.IsTrue(workflowServer.Options.AutoCreateTables);
+            Assert.That(workflowServer.Options.AutoCreateIndexes, Is.True);
+            Assert.That(workflowServer.Options.AutoCreateTables, Is.True);
         }
 
         [TestCase(true, true)]
@@ -52,8 +52,8 @@ namespace Test.Stateless.WorkflowEngine
 
             WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>(), options);
 
-            Assert.AreEqual(autoCreateTables, workflowServer.Options.AutoCreateTables);
-            Assert.AreEqual(autoCreateIndexes, workflowServer.Options.AutoCreateIndexes);
+            Assert.That(workflowServer.Options.AutoCreateTables, Is.EqualTo(autoCreateTables));
+            Assert.That(workflowServer.Options.AutoCreateIndexes, Is.EqualTo(autoCreateIndexes));
         }
 
         [TestCase(true, true, true)]
@@ -81,16 +81,16 @@ namespace Test.Stateless.WorkflowEngine
         public void Constructor_OnCreate_WorkflowRegistrationServiceCreated()
         {
             WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            Assert.IsNotNull(workflowServer.WorkflowRegistrationService);
-            Assert.IsInstanceOf(typeof(WorkflowRegistrationService), workflowServer.WorkflowRegistrationService);
+            Assert.That(workflowServer.WorkflowRegistrationService, Is.Not.Null);
+            Assert.That(workflowServer.WorkflowRegistrationService, Is.InstanceOf<WorkflowRegistrationService>());
         }
 
         [Test]
         public void Constructor_OnCreate_WorkflowExceptionHandlerCreated()
         {
             WorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            Assert.IsNotNull(workflowServer.WorkflowExceptionHandler);
-            Assert.IsInstanceOf(typeof(WorkflowExceptionHandler), workflowServer.WorkflowExceptionHandler);
+            Assert.That(workflowServer.WorkflowExceptionHandler, Is.Not.Null);
+            Assert.That(workflowServer.WorkflowExceptionHandler, Is.InstanceOf<WorkflowExceptionHandler>());
         }
 
         #endregion
@@ -121,7 +121,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
             workflowServer.ExecuteWorkflow(workflow);
 
-            Assert.AreEqual(BasicWorkflow.State.Complete.ToString(), workflow.CurrentState);
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.Complete.ToString()));
 
         }
 
@@ -140,7 +140,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
 
-            Assert.AreEqual(0, workflow.RetryCount);
+            Assert.That(workflow.RetryCount, Is.EqualTo(0));
 
         }
 
@@ -158,9 +158,9 @@ namespace Test.Stateless.WorkflowEngine
             // execute
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
-
-            Assert.IsNull(workflowStore.GetOrDefault(workflow.Id));
-            Assert.IsNotNull(workflowStore.GetCompleted(workflow.Id));
+                    
+            Assert.That(workflowStore.GetOrDefault(workflow.Id), Is.Null);
+            Assert.That(workflowStore.GetCompleted(workflow.Id), Is.Not.Null);
 
         }
 
@@ -185,7 +185,7 @@ namespace Test.Stateless.WorkflowEngine
 
             workflowServer.ExecuteWorkflow(workflow);
 
-            Assert.IsTrue(eventRaised);
+            Assert.That(eventRaised, Is.True);
         }
 
         [Test]
@@ -205,9 +205,9 @@ namespace Test.Stateless.WorkflowEngine
 
             DateTime endTime = DateTime.UtcNow;
 
-            Assert.IsNotNull(workflow.CompletedOn); 
-            Assert.LessOrEqual(startTime, workflow.CompletedOn);
-            Assert.GreaterOrEqual(endTime, workflow.CompletedOn);
+            Assert.That(workflow.CompletedOn, Is.Not.Null); 
+            Assert.That(workflow.CompletedOn, Is.GreaterThanOrEqualTo(startTime));
+            Assert.That(workflow.CompletedOn, Is.LessThanOrEqualTo(endTime));
 
         }
 
@@ -300,7 +300,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
 
-            Assert.AreEqual("Complete", workflow.CurrentState);
+            Assert.That(workflow.CurrentState, Is.EqualTo("Complete"));
 
         }
 
@@ -327,7 +327,7 @@ namespace Test.Stateless.WorkflowEngine
             };
             workflowServer.ExecuteWorkflow(workflow);
 
-            Assert.IsTrue(eventRaised);
+            Assert.That(eventRaised, Is.True);
         }
 
         [Test]
@@ -368,18 +368,18 @@ namespace Test.Stateless.WorkflowEngine
             // execute
             workflowServer.ExecuteWorkflows(5);
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
-            Assert.AreEqual(DelayedWorkflow.State.DoingStuff.ToString(), workflow.CurrentState);
+            Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
 
             // execute again - nothing should have changed
             workflowServer.ExecuteWorkflows(5);
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
-            Assert.AreEqual(DelayedWorkflow.State.DoingStuff.ToString(), workflow.CurrentState);
-
+			Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
+			
             // delay and run - should be now be complete
             Thread.Sleep(3100);
             workflowServer.ExecuteWorkflows(5);
-            Assert.IsNull(workflowStore.GetOrDefault(workflow.Id));
-            Assert.IsNotNull(workflowStore.GetCompletedOrDefault(workflow.Id));
+            Assert.That(workflowStore.GetOrDefault(workflow.Id), Is.Null);
+            Assert.That(workflowStore.GetCompletedOrDefault(workflow.Id), Is.Not.Null);
 
         }
 
@@ -408,7 +408,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             int result = workflowServer.ExecuteWorkflows(executeCount);
-            Assert.AreEqual(expectedResult, result);
+            Assert.That(result, Is.EqualTo(expectedResult));
 
         }
 
@@ -425,14 +425,14 @@ namespace Test.Stateless.WorkflowEngine
             workflow.ResumeTrigger = DependencyInjectionWorkflow.Trigger.DoStuff.ToString();
             workflowStore.Save(workflow);
 
-            Assert.AreEqual(0, workflow.RetryCount);
+            Assert.That(workflow.RetryCount, Is.EqualTo(0));
 
             // execute
             workflowServer.ExecuteWorkflows(10);
 
             // we won't get an error, but check the workflow to see if any error occurred
-            Assert.AreEqual(1, workflow.RetryCount);
-            Assert.IsTrue(workflow.LastException.Contains("MissingMethodException"));
+            Assert.That(workflow.RetryCount, Is.EqualTo(1));
+            Assert.That(workflow.LastException.Contains("MissingMethodException"), Is.True);
         }
 
         [Test]
@@ -453,9 +453,9 @@ namespace Test.Stateless.WorkflowEngine
             workflowServer.DependencyResolver = resolver;
 
             // execute
-            Assert.AreEqual(0, resolver.RunCount);
+            Assert.That(resolver.RunCount, Is.EqualTo(0));
             workflowServer.ExecuteWorkflows(10);
-            Assert.AreEqual(1, resolver.RunCount);
+			Assert.That(resolver.RunCount, Is.EqualTo(1));
 
         }
 

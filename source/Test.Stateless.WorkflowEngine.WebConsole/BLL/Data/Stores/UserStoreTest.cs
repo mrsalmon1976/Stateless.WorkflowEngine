@@ -68,12 +68,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             // assert
             _fileWrap.Received(1).Exists(_path);
             _fileWrap.Received(1).ReadAllText(_path);
-            Assert.AreEqual(1, _userStore.Users.Count);
-            Assert.AreEqual(user.Id, _userStore.Users[0].Id);
-            Assert.AreEqual(user.UserName, _userStore.Users[0].UserName);
-            Assert.AreEqual(Roles.Admin, _userStore.Users[0].Role);
-            Assert.IsNotNull(_userStore.Users[0].Password);
-            Assert.IsNotEmpty(_userStore.Users[0].Password);
+            Assert.That(_userStore.Users.Count, Is.EqualTo(1));
+            Assert.That(_userStore.Users[0].Id, Is.EqualTo(user.Id));
+            Assert.That(_userStore.Users[0].UserName, Is.EqualTo(user.UserName));
+            Assert.That(_userStore.Users[0].Role, Is.EqualTo(Roles.Admin));
+            Assert.That(_userStore.Users[0].Password, Is.Not.Null);
+            Assert.That(_userStore.Users[0].Password, Is.Not.Empty);
         }
 
         [Test]
@@ -92,8 +92,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             _passwordProvider.Received(1).HashPassword("admin", Arg.Any<string>());
             _passwordProvider.Received(1).GenerateSalt();
 
-            Assert.AreEqual(1, _userStore.Users.Count);
-            Assert.AreEqual("admin", _userStore.Users[0].UserName);
+            Assert.That(_userStore.Users.Count, Is.EqualTo(1));
+            Assert.That(_userStore.Users[0].UserName, Is.EqualTo("admin"));
 
         }
 

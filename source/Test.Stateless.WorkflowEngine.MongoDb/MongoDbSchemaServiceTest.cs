@@ -70,7 +70,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
                 }
             }
 
-            Assert.AreEqual(1, collectionCount);
+            Assert.That(collectionCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -94,7 +94,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
                 }
             }
 
-            Assert.AreEqual(1, collectionCount);
+            Assert.That(collectionCount, Is.EqualTo(1));
         }
 
 
@@ -111,9 +111,9 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
             var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
             
-            Assert.AreEqual(2, indexes.Count);
+            Assert.That(indexes.Count, Is.EqualTo(2));
             bool result = IndexExists(indexes, IndexNames.Workflow_Priority_RetryCount_CreatedOn);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -128,9 +128,9 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
             var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
 
-            Assert.AreEqual(2, indexes.Count);
+            Assert.That(indexes.Count, Is.EqualTo(2));
             bool result = IndexExists(indexes, IndexNames.Workflow_Priority_RetryCount_CreatedOn);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
 
@@ -147,9 +147,9 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
             var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionCompleted);
 
-            Assert.AreEqual(2, indexes.Count);
+            Assert.That(indexes.Count, Is.EqualTo(2));
             bool result = IndexExists(indexes, IndexNames.CompletedWorkflow_CreatedOn);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -164,9 +164,9 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
             var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionCompleted);
 
-            Assert.AreEqual(2, indexes.Count);
+            Assert.That(indexes.Count, Is.EqualTo(2));
             bool result = IndexExists(indexes, IndexNames.CompletedWorkflow_CreatedOn);
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
 

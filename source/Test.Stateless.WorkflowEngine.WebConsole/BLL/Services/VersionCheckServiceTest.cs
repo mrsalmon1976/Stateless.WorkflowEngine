@@ -54,8 +54,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             // assert
 
-            Assert.AreEqual(comparisonResult.IsNewVersionAvailable, result.IsNewVersionAvailable);
-            Assert.AreEqual(comparisonResult.LatestReleaseVersionInfo.VersionNumber, result.LatestReleaseVersionNumber);
+            Assert.That(result.IsNewVersionAvailable, Is.EqualTo(comparisonResult.IsNewVersionAvailable));
+            Assert.That(result.LatestReleaseVersionNumber, Is.EqualTo(comparisonResult.LatestReleaseVersionInfo.VersionNumber));
             _versionComparisonService.Received(1).CheckIfNewVersionAvailable();
 
         }
@@ -76,11 +76,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             VersionCheckResult result = _versionCheckService.CheckIfNewVersionAvailable();
 
             // assert
-            _memoryCache.Received(1).Set<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, Arg.Any<VersionCheckResult>(), TimeSpan.FromMinutes(cacheMinutes));
-        }
+            _memoryCache.Received(1).Set<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, result, TimeSpan.FromMinutes(cacheMinutes));
+			_versionComparisonService.Received(1).CheckIfNewVersionAvailable();
+		}
 
 
-        [Test]
+		[Test]
         public void CheckIfNewVersionAvailable_ResultIsCached_DoesNotDoANewCheck()
         {
             // setup
@@ -94,7 +95,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             VersionCheckResult result = _versionCheckService.CheckIfNewVersionAvailable();
 
             // assert
-            _memoryCache.Received(0).Set<VersionCheckResult>(Arg.Any<string>(), Arg.Any<VersionCheckResult>(), Arg.Any<TimeSpan>());
+            _versionComparisonService.DidNotReceive().CheckIfNewVersionAvailable();
         }
 
         #endregion

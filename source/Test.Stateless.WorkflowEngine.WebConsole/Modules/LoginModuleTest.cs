@@ -70,7 +70,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             response.Body["#returnUrl"]
                 .ShouldExistOnce()
                 .And.ShouldContainAttribute("value", Actions.Dashboard.Default);
@@ -91,7 +91,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             response.Body["#returnUrl"]
                 .ShouldExistOnce()
                 .And.ShouldContainAttribute("value", "/test");
@@ -117,11 +117,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _passwordProvider.DidNotReceive().CheckPassword(Arg.Any<string>(), Arg.Any<string>());
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
+            Assert.That(result.Success, Is.False);
         }
 
         [Test]
@@ -138,11 +138,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _passwordProvider.DidNotReceive().CheckPassword(Arg.Any<string>(), Arg.Any<string>());
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
+            Assert.That(result.Success, Is.False);
         }
 
         [Test]
@@ -162,12 +162,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _passwordProvider.DidNotReceive().CheckPassword(Arg.Any<string>(), Arg.Any<string>());
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.IsTrue(userStoreChecked);
+            Assert.That(result.Success, Is.False);
+            Assert.That(userStoreChecked, Is.True);
         }
 
         [Test]
@@ -197,12 +197,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             _passwordProvider.Received(1).CheckPassword(Arg.Any<string>(), Arg.Any<string>());
 
             BasicResult result = JsonConvert.DeserializeObject<BasicResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.IsTrue(userStoreChecked);
+            Assert.That(result.Success, Is.False);
+            Assert.That(userStoreChecked, Is.True);
         }
 
         [Test]
@@ -246,12 +246,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.SeeOther, response.StatusCode);
-            Assert.IsNotNull(response.Headers["Location"]);
-            Assert.IsNotEmpty(response.Headers["Location"]);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.SeeOther));
+            Assert.That(response.Headers["Location"], Is.Not.Null);
+            Assert.That(response.Headers["Location"], Is.Not.Empty);
             _passwordProvider.Received(1).CheckPassword(Arg.Any<string>(), Arg.Any<string>());
-            Assert.IsTrue(userStoreChecked);
-            Assert.IsEmpty(response.Body.AsString());
+            Assert.That(userStoreChecked, Is.True);
+            Assert.That(response.Body.AsString(), Is.Empty);
         }
 
         #endregion

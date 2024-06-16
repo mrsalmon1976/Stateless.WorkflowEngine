@@ -159,7 +159,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         {
             MongoDbWorkflowStore store = (MongoDbWorkflowStore)GetStore();
             var coll = store.GetCollection();
-            Assert.AreEqual(MongoDbWorkflowStore.DefaultCollectionActive, coll.CollectionNamespace.CollectionName);
+            Assert.That(coll.CollectionNamespace.CollectionName, Is.EqualTo(MongoDbWorkflowStore.DefaultCollectionActive));
         }
 
         [Test]
@@ -169,7 +169,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore store = (MongoDbWorkflowStore)GetStore();
             store.CollectionActive = testCollection;
             var coll = store.GetCollection();
-            Assert.AreEqual(testCollection, coll.CollectionNamespace.CollectionName);
+            Assert.That(coll.CollectionNamespace.CollectionName, Is.EqualTo(testCollection));
             _database.DropCollection(testCollection);
         }
 
@@ -182,7 +182,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         {
             MongoDbWorkflowStore store = (MongoDbWorkflowStore)GetStore();
             var coll = store.GetCompletedCollection();
-            Assert.AreEqual(MongoDbWorkflowStore.DefaultCollectionCompleted, coll.CollectionNamespace.CollectionName);
+            Assert.That(coll.CollectionNamespace.CollectionName, Is.EqualTo(MongoDbWorkflowStore.DefaultCollectionCompleted));
         }
 
         [Test]
@@ -192,7 +192,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             MongoDbWorkflowStore store = (MongoDbWorkflowStore)GetStore();
             store.CollectionCompleted = testCollection;
             var coll = store.GetCompletedCollection();
-            Assert.AreEqual(testCollection, coll.CollectionNamespace.CollectionName);
+            Assert.That(coll.CollectionNamespace.CollectionName, Is.EqualTo(testCollection));
             _database.DropCollection(testCollection);
         }
 

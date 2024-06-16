@@ -53,8 +53,8 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(wf);
 
             store.Archive(wf);
-            Assert.IsNull(store.GetOrDefault(wf.Id));
-            Assert.IsNotNull(store.GetCompletedOrDefault(wf.Id));
+            Assert.That(store.GetOrDefault(wf.Id), Is.Null);
+            Assert.That(store.GetCompletedOrDefault(wf.Id), Is.Not.Null);
         }
 
         #endregion
@@ -72,11 +72,11 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(workflow);
 
             Workflow result1 = store.GetOrDefault(workflowId);
-            Assert.IsNotNull(result1);
+            Assert.That(result1, Is.Not.Null);
 
             store.Delete(workflowId);
             Workflow result2 = store.GetOrDefault(workflowId);
-            Assert.IsNull(result2);
+            Assert.That(result2, Is.Null);
         }
 
         #endregion
@@ -105,8 +105,8 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(wf);
 
             Workflow result = store.Get(wf.Id);
-            Assert.IsNotNull(result);
-            Assert.AreEqual(wf.Id, result.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
         }
 
         #endregion
@@ -133,8 +133,8 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only one should be returned
             List<Workflow> workflows = store.GetActive(10).ToList();
-            Assert.AreEqual(1, workflows.Count);
-            Assert.AreEqual(activeWorkflow.Id, workflows[0].Id);
+            Assert.That(workflows.Count, Is.EqualTo(1));
+            Assert.That(workflows[0].Id, Is.EqualTo(activeWorkflow.Id));
         }
 
         [Test]
@@ -161,11 +161,11 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetActive(10).ToList();
-            Assert.AreEqual(2, workflows.Count);
+            Assert.That(workflows.Count, Is.EqualTo(2));
 
-            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id));
-            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id));
-            Assert.IsNull(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id));
+            Assert.That(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id), Is.Null);
         }
 
         [Test]
@@ -196,10 +196,10 @@ namespace Test.Stateless.WorkflowEngine.Stores
             // fetch the workflows
             List<Workflow> workflows = store.GetActive(10).ToList();
 
-            Assert.AreEqual(workflow3.Id, workflows[0].Id);
-            Assert.AreEqual(workflow2.Id, workflows[1].Id);
-            Assert.AreEqual(workflow1.Id, workflows[2].Id);
-            Assert.AreEqual(workflow4.Id, workflows[3].Id);
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow2.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[3].Id, Is.EqualTo(workflow4.Id));
         }
 
         [Test]
@@ -227,9 +227,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetActive(10).ToList();
 
-            Assert.AreEqual(workflow3.Id, workflows[0].Id);
-            Assert.AreEqual(workflow1.Id, workflows[1].Id);
-            Assert.AreEqual(workflow2.Id, workflows[2].Id);
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow2.Id));
         }
 
         [Test]
@@ -257,9 +257,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetActive(10).ToList();
 
-            Assert.AreEqual(workflow2.Id, workflows[0].Id);
-            Assert.AreEqual(workflow1.Id, workflows[1].Id);
-            Assert.AreEqual(workflow3.Id, workflows[2].Id);
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow2.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow3.Id));
         }
 
         #endregion
@@ -278,7 +278,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             }
 
             long result = store.GetActiveCount();
-            Assert.AreEqual(count, result);
+            Assert.That(result, Is.EqualTo(count));
         }
 
         [Test]
@@ -296,7 +296,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
 
             long result = store.GetActiveCount();
-            Assert.AreEqual(count, result);
+            Assert.That(result, Is.EqualTo(count));
         }
 
         #endregion
@@ -310,7 +310,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
 
-            Assert.AreEqual(0, savedDefinitions.Count());
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(0));
         }
 
         [Test]
@@ -325,9 +325,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
 
-            Assert.AreEqual(2, savedDefinitions.Count());
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName));
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(2));
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName), Is.Not.Null);
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName), Is.Not.Null);
         }
 
         #endregion
@@ -345,7 +345,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             WorkflowDefinition result = store.GetDefinitionByQualifiedName(basicWorkflowType.FullName);
 
-            Assert.IsNull(result);
+            Assert.That(result, Is.Null);
         }
 
         [Test]
@@ -361,9 +361,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             WorkflowDefinition result = store.GetDefinitionByQualifiedName(basicWorkflowType.FullName);
 
-            Assert.IsNotNull(result);
-            Assert.AreEqual(basicWorkflowType.Name, result.Name);
-            Assert.AreEqual(basicWorkflowType.FullName, result.QualifiedName);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Name, Is.EqualTo(basicWorkflowType.Name));
+            Assert.That(result.QualifiedName, Is.EqualTo(basicWorkflowType.FullName));
         }
 
         #endregion
@@ -391,9 +391,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only one should be returned
             List<Workflow> workflows = store.GetIncomplete(10).ToList();
-            Assert.AreEqual(2, workflows.Count);
-            Assert.IsNotNull(workflows.SingleOrDefault(x => x.Id == activeWorkflow.Id));
-            Assert.IsNotNull(workflows.SingleOrDefault(x => x.Id == suspendedWorkflow.Id));
+            Assert.That(workflows.Count, Is.EqualTo(2));
+            Assert.That(workflows.SingleOrDefault(x => x.Id == activeWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.SingleOrDefault(x => x.Id == suspendedWorkflow.Id), Is.Not.Null);
         }
 
         [Test]
@@ -421,11 +421,11 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetIncomplete(10).ToList();
-            Assert.AreEqual(2, workflows.Count);
+            Assert.That(workflows.Count, Is.EqualTo(2));
 
-            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id));
-            Assert.IsNotNull(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id));
-            Assert.IsNull(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id));
+            Assert.That(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id), Is.Null);
         }
 
         [Test]
@@ -455,9 +455,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetIncomplete(10).ToList();
 
-            Assert.AreEqual(workflow3.Id, workflows[0].Id);
-            Assert.AreEqual(workflow1.Id, workflows[1].Id);
-            Assert.AreEqual(workflow2.Id, workflows[2].Id);
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow2.Id));
         }
 
         [Test]
@@ -488,10 +488,10 @@ namespace Test.Stateless.WorkflowEngine.Stores
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetIncomplete(10).ToList();
 
-            Assert.AreEqual(workflow4.Id, workflows[0].Id);
-            Assert.AreEqual(workflow3.Id, workflows[1].Id);
-            Assert.AreEqual(workflow1.Id, workflows[2].Id);
-            Assert.AreEqual(workflow2.Id, workflows[3].Id);
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow4.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[3].Id, Is.EqualTo(workflow2.Id));
         }
 
         #endregion
@@ -510,7 +510,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             }
 
             long result = store.GetIncompleteCount();
-            Assert.AreEqual(count, result);
+            Assert.That(result, Is.EqualTo(count));
         }
 
         [Test]
@@ -528,7 +528,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
 
             long result = store.GetIncompleteCount();
-            Assert.AreEqual(count + 3, result);
+            Assert.That(result, Is.EqualTo(count + 3));
         }
 
         #endregion
@@ -546,7 +546,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             IEnumerable<Workflow> result = store.GetAllByType(typeof(SingleInstanceWorkflow).AssemblyQualifiedName);
             Workflow wf = result.Single();
-            Assert.AreEqual(typeof(SingleInstanceWorkflow).FullName, wf.GetType().FullName);
+            Assert.That(wf.GetType().FullName, Is.EqualTo(typeof(SingleInstanceWorkflow).FullName));
             
         }
 
@@ -568,7 +568,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             }
 
             long result = store.GetCompletedCount();
-            Assert.AreEqual(count, result);
+            Assert.That(result, Is.EqualTo(count));
         }
 
         #endregion
@@ -595,7 +595,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             }
 
             long result = store.GetSuspendedCount();
-            Assert.AreEqual(suspendedCount, result);
+            Assert.That(result, Is.EqualTo(suspendedCount));
         }
 
         #endregion
@@ -614,13 +614,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only one should be returned
             List<string> documents = store.GetIncompleteWorkflowsAsJson(10).ToList();
-            Assert.AreEqual(2, documents.Count);
+            Assert.That(documents.Count, Is.EqualTo(2));
 
             // deserialize and check that we have the correct ones
             Workflow w1 = DeserializeJsonWorkflow<BasicWorkflow>(documents[0]);
-            Assert.AreEqual(workflow1.Id, w1.Id);
+            Assert.That(w1.Id, Is.EqualTo(workflow1.Id));
             Workflow w2 = DeserializeJsonWorkflow<BasicWorkflow>(documents[1]);
-            Assert.AreEqual(workflow2.Id, w2.Id);
+            Assert.That(w2.Id, Is.EqualTo(workflow2.Id));
 
         }
 
@@ -634,7 +634,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
             var store = this.GetStore();
 
             var doc = store.GetWorkflowAsJson(Guid.NewGuid());
-            Assert.IsNull(doc);
+            Assert.That(doc, Is.Null);
         }
 
         [Test]
@@ -646,13 +646,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(wf);
 
             string json = store.GetWorkflowAsJson(id);
-            Assert.IsNotNull(json);
+            Assert.That(json, Is.Not.Null);
 
             // convert back to the known type and make sure it's ok
             BasicWorkflow workflow = DeserializeJsonWorkflow<BasicWorkflow>(json);
-            Assert.IsNotNull(workflow);
-            Assert.AreEqual(id, workflow.Id);
-            Assert.AreEqual(BasicWorkflow.State.DoingStuff.ToString(), workflow.CurrentState); 
+            Assert.That(workflow, Is.Not.Null);
+            Assert.That(workflow.Id, Is.EqualTo(id));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString())); 
         }
 
         #endregion
@@ -671,9 +671,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
 
-            Assert.AreEqual(2, savedDefinitions.Count());
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName));
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(2));
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName), Is.Not.Null);
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName), Is.Not.Null);
         }
 
         [Test]
@@ -691,9 +691,9 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
 
-            Assert.AreEqual(2, savedDefinitions.Count());
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition1.QualifiedName));
-            Assert.IsNotNull(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName));
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(2));
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition1.QualifiedName), Is.Not.Null);
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName), Is.Not.Null);
         }
 
         #endregion
@@ -717,8 +717,8 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // assert: fetch the workflow - it should be available and suspended
             Workflow result = store.GetOrDefault(wf.Id);
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.IsSuspended);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsSuspended, Is.True);
         }
 
         #endregion
@@ -745,11 +745,11 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // assert: fetch the workflow - it should be available and unsuspended
             Workflow result = store.GetOrDefault(wf.Id);
-            Assert.IsNotNull(result);
-            Assert.IsFalse(result.IsSuspended);
-            Assert.AreEqual(0, result.RetryCount);
-            Assert.Greater(result.ResumeOn, beforeSuspend.AddMilliseconds(-1));
-            Assert.Less(result.ResumeOn, afterSuspend.AddMilliseconds(1));
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsSuspended, Is.False);
+            Assert.That(result.RetryCount, Is.EqualTo(0));
+            Assert.That(result.ResumeOn, Is.GreaterThan(beforeSuspend.AddMilliseconds(-1)));
+			Assert.That(result.ResumeOn, Is.LessThan(afterSuspend.AddMilliseconds(1)));
         }
 
         #endregion

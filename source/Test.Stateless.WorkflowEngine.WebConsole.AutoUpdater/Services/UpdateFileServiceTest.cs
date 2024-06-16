@@ -68,8 +68,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
             // assert
             _fileUtility.Received(1).CopyRecursive(applicationFolder, backupFolder, Arg.Any<IEnumerable<string>>());
-            Assert.IsTrue(receivedExclusions.Contains(backupFolder));
-            Assert.IsTrue(receivedExclusions.Contains(updateTempFolder));
+            Assert.That(receivedExclusions.Contains(backupFolder), Is.True);
+            Assert.That(receivedExclusions.Contains(updateTempFolder), Is.True);
 
         }
 
@@ -129,12 +129,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.AutoUpdater.Services
 
             // assert
             _fileUtility.Received(1).DeleteContents(applicationFolder, Arg.Any<IEnumerable<string>>());
-            Assert.IsTrue(receivedExclusions.Contains(backupFolder));
-            Assert.IsTrue(receivedExclusions.Contains(updateTempFolder));
-            Assert.IsTrue(receivedExclusions.Contains(dataFolder));
-            Assert.IsTrue(receivedExclusions.Contains(updateEventLogFilePath));
-            Assert.IsTrue(receivedExclusions.Contains(autoUpdaterFolder));
-            Assert.AreEqual(5, receivedExclusions.Count());
+            Assert.That(receivedExclusions.Contains(backupFolder), Is.True);
+            Assert.That(receivedExclusions.Contains(updateTempFolder), Is.True);
+            Assert.That(receivedExclusions.Contains(dataFolder), Is.True);
+            Assert.That(receivedExclusions.Contains(updateEventLogFilePath), Is.True);
+            Assert.That(receivedExclusions.Contains(autoUpdaterFolder), Is.True);
+            Assert.That(receivedExclusions.Count(), Is.EqualTo(5));
 
         }
 

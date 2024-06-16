@@ -95,11 +95,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 // assert
                 if (claim == Claims.ConnectionDelete)
                 {
-                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
                 }
                 else
                 {
-                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
                 }
             }
 
@@ -125,7 +125,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             _userStore.DidNotReceive().Save();
         }
@@ -158,10 +158,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
-            Assert.AreEqual(0, _userStore.Connections.Count);
-            Assert.AreEqual(0, connections.Count);
+            Assert.That(_userStore.Connections.Count, Is.EqualTo(0));
+            Assert.That(connections.Count, Is.EqualTo(0));
             _userStore.Received(1).Save();
         }
         #endregion
@@ -190,13 +190,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             _workflowStoreService.DidNotReceive().GetWorkflowStoreInfo(Arg.Any<ConnectionModel>());
             _cacheProvider.Received(1).Get<ConnectionInfoViewModel>(cacheKey);
 
             ConnectionInfoViewModel result = JsonConvert.DeserializeObject<ConnectionInfoViewModel>(response.Body.AsString());
-            Assert.AreEqual(cachedResult.ActiveCount, result.ActiveCount);
+            Assert.That(result.ActiveCount, Is.EqualTo(cachedResult.ActiveCount));
         }
 
         [Test]
@@ -219,7 +219,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             _workflowStoreService.DidNotReceive().GetWorkflowStoreInfo(Arg.Any<ConnectionModel>());
         }
@@ -253,14 +253,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             _workflowStoreService.Received(1).GetWorkflowStoreInfo(conn);
 
             ConnectionInfoViewModel result = JsonConvert.DeserializeObject<ConnectionInfoViewModel>(response.Body.AsString());
-            Assert.AreEqual(infoViewModel.ActiveCount, result.ActiveCount);
-            Assert.AreEqual(infoViewModel.SuspendedCount, result.SuspendedCount);
-            Assert.AreEqual(infoViewModel.CompleteCount, result.CompleteCount);
+            Assert.That(result.ActiveCount, Is.EqualTo(infoViewModel.ActiveCount));
+            Assert.That(result.SuspendedCount, Is.EqualTo(infoViewModel.SuspendedCount));
+            Assert.That(result.CompleteCount, Is.EqualTo(infoViewModel.CompleteCount));
         }
 
         [Test]
@@ -289,7 +289,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             _cacheProvider.Received(1).Set<ConnectionInfoViewModel>(cacheKey, Arg.Any<ConnectionInfoViewModel>(), TimeSpan.FromSeconds(5));
 
@@ -319,19 +319,19 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
-            Assert.IsNotNull(model);
-            Assert.AreEqual(model.Connections[0].Host, "a");
-            Assert.AreEqual(model.Connections[0].Database, "A");
-            Assert.AreEqual(model.Connections[1].Host, "A");
-            Assert.AreEqual(model.Connections[1].Database, "b");
-            Assert.AreEqual(model.Connections[2].Host, "y");
-            Assert.AreEqual(model.Connections[2].Database, "B");
-            Assert.AreEqual(model.Connections[3].Host, "Y");
-            Assert.AreEqual(model.Connections[3].Database, "z");
-            Assert.AreEqual(model.Connections[4].Host, "Z");
-            Assert.AreEqual(model.Connections[4].Database, "A");
-            Assert.AreEqual(model.Connections[5].Host, "Z");
-            Assert.AreEqual(model.Connections[5].Database, "B");
+            Assert.That(model, Is.Not.Null);
+            Assert.That("a", Is.EqualTo(model.Connections[0].Host));
+            Assert.That("A", Is.EqualTo(model.Connections[0].Database));
+            Assert.That("A", Is.EqualTo(model.Connections[1].Host));
+            Assert.That("b", Is.EqualTo(model.Connections[1].Database));
+            Assert.That("y", Is.EqualTo(model.Connections[2].Host));
+            Assert.That("B", Is.EqualTo(model.Connections[2].Database));
+            Assert.That("Y", Is.EqualTo(model.Connections[3].Host));
+            Assert.That("z", Is.EqualTo(model.Connections[3].Database));
+            Assert.That("Z", Is.EqualTo(model.Connections[4].Host));
+            Assert.That("A", Is.EqualTo(model.Connections[4].Database));
+            Assert.That("Z", Is.EqualTo(model.Connections[5].Host));
+            Assert.That("B", Is.EqualTo(model.Connections[5].Database));
         }
 
         [Test]
@@ -353,7 +353,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
-            Assert.IsTrue(model.CurrentUserCanDeleteConnection);
+            Assert.That(model.CurrentUserCanDeleteConnection, Is.True);
         }
 
         [Test]
@@ -375,7 +375,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
 
             // assert
             ConnectionListViewModel model = result.NegotiationContext.DefaultModel as ConnectionListViewModel;
-            Assert.IsFalse(model.CurrentUserCanDeleteConnection);
+            Assert.That(model.CurrentUserCanDeleteConnection, Is.False);
         }
 
         #endregion
@@ -414,11 +414,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
                 // assert
                 if (claim == Claims.ConnectionAdd)
                 {
-                    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
                 }
                 else
                 {
-                    Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+                    Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
                 }
             }
 
@@ -442,11 +442,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
             _encryptionProvider.DidNotReceive().SimpleEncrypt(Arg.Any<string>(), Arg.Any<byte[]>(), null);
             _userStore.DidNotReceive().Save();
         }
@@ -471,11 +471,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
             _encryptionProvider.DidNotReceive().SimpleEncrypt(Arg.Any<string>(), Arg.Any<byte[]>(), null);
             _userStore.Received(1).Save();
         }
@@ -509,15 +509,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
             _encryptionProvider.Received(1).SimpleEncrypt(password, key, null);
 
-            Assert.AreEqual(1, _userStore.Connections.Count);
-            Assert.AreEqual(encryptedPassword, _userStore.Connections[0].Password);
+            Assert.That(_userStore.Connections.Count, Is.EqualTo(1));
+            Assert.That(_userStore.Connections[0].Password, Is.EqualTo(encryptedPassword));
             _userStore.Received(1).Save();
         }
 
@@ -543,14 +543,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
 
-            Assert.AreEqual(1, _userStore.Connections.Count);
-            Assert.AreNotEqual(Guid.Empty, _userStore.Connections[0].Id);
+            Assert.That(_userStore.Connections.Count, Is.EqualTo(1));
+            Assert.That(_userStore.Connections[0].Id, Is.Not.EqualTo(Guid.Empty));
             _userStore.Received(1).Save();
         }
 
@@ -574,11 +574,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
             _workflowStoreFactory.DidNotReceive().GetWorkflowStore(Arg.Any<ConnectionModel>());
         }
 
@@ -603,11 +603,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
             _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Any<ConnectionModel>());
         }
 
@@ -631,11 +631,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             });
 
             // assert
-            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
             ValidationResult result = JsonConvert.DeserializeObject<ValidationResult>(response.Body.AsString());
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
             _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Any<ConnectionModel>());
             store.Received(1).GetIncompleteCount();
         }

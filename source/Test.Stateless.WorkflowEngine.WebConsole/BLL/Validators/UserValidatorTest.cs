@@ -36,9 +36,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _userValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("User name"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("User name"), Is.True);
         }
 
         [TestCase("")]
@@ -51,9 +51,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _userValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Password"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Password"), Is.True);
         }
 
         [TestCase("")]
@@ -66,9 +66,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _userValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("Role"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("Role"), Is.True);
         }
 
         [Test]
@@ -80,9 +80,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _userValidator.Validate(model);
 
-            Assert.IsFalse(result.Success);
-            Assert.AreEqual(1, result.Messages.Count);
-            Assert.IsTrue(result.Messages[0].Contains("already exists"));
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Messages.Count, Is.EqualTo(1));
+            Assert.That(result.Messages[0].Contains("already exists"), Is.True);
         }
 
         [Test]
@@ -92,8 +92,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Validators
 
             ValidationResult result = _userValidator.Validate(model);
 
-            Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, result.Messages.Count);
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.Messages.Count, Is.EqualTo(0));
         }
 
 
