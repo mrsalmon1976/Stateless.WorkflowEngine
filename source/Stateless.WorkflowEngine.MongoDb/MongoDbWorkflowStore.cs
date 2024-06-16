@@ -232,7 +232,9 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .SingleOrDefault();
             if (doc != null)
             {
-                var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, GuidRepresentation = GuidRepresentation.CSharpLegacy, Indent = true };
+                
+                var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
+                //var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
                 return json;
             }
