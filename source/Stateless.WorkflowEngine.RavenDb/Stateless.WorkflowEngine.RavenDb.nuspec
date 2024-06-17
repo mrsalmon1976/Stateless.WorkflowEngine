@@ -1,15 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
-    <id>Stateless.WorkflowEngine</id>
+    <id>Stateless.WorkflowEngine.RavenDb</id>
     <version>4.0.0</version>
     <authors>Matt Salmon</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>A workflow wrapper for the Stateless library that includes persistence, retries, and workflow suspension.</description>
+    <description>Allows for the persistence of Stateless.WorkflowEngine workflows in RavenDb.</description>
     <dependencies>
-      <group targetFramework=".NETStandard2.0">
-        <dependency id="Newtonsoft.Json" version="13.0.3" />
-        <dependency id="Stateless" version="5.16.0" />
+      <group targetFramework="v4.8">
+        <dependency id="RavenDB.Client" version="5.4.200" />
+        <dependency id="Stateless.WorkflowEngine" version="4.0.0" />
       </group>
     </dependencies>
     <releaseNotes>Visit https://github.com/mrsalmon1976/Stateless.WorkflowEngine/releases for release notes</releaseNotes>

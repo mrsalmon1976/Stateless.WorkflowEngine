@@ -3,15 +3,22 @@ Clear-Host
 
 function GetMSBuildPath()
 {
+	# default to VS2022 Pro
 	$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
 
-	# default to latest version isntalled with VS2019
+	# VS2022 Community
+	if ([System.IO.File]::Exists($msbuild) -eq $false)
+	{
+		$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
+	}
+
+	# VS2019
 	if ([System.IO.File]::Exists($msbuild) -eq $false)
 	{
 		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe"
 	}
 	
-	# try look for MSBuild 15.x in other locations
+	# VS2017
 	if ([System.IO.File]::Exists($msbuild) -eq $false)
 	{
 		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\15.0\Bin\MSBuild.exe"
@@ -101,6 +108,13 @@ function UpdateNuspecVersion
 	param ([string]$filePath, [string]$version)
 	[xml]$xmlDoc = Get-Content $filePath
 	$xmlDoc.package.metadata.version = $version
+
+	foreach ($dep in $xmlDoc.package.metadata.dependencies.group.dependency) {
+		if ($dep.id -eq "Stateless.WorkflowEngine") {
+			$dep.version = $version
+		}
+	}
+
 	$xmlDoc.Save($filePath)
 	
 }
@@ -138,6 +152,8 @@ UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.Workf
 UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.nuspec" -version $version
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version
 UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.nuspec" -version $version
+UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -version $version
+UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.nuspec" -version $version
 
 # run msbuild on the solution
 Write-Host "Building solution $version"
