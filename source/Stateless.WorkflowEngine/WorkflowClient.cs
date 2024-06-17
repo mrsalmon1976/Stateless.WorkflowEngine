@@ -13,6 +13,11 @@ namespace Stateless.WorkflowEngine
     {
 
         /// <summary>
+        /// Gets/sets the workflow store attached to the workflow server.
+        /// </summary>
+        IWorkflowStore WorkflowStore { get; set; }
+
+        /// <summary>
         /// Deletes a workflow from the underlying store.  This checks workflows in the active store 
         /// only, not in the underlying Completed collection.
         /// </summary>
@@ -87,7 +92,6 @@ namespace Stateless.WorkflowEngine
     
     public class WorkflowClient : IWorkflowClient
     {
-        private readonly IWorkflowStore _workflowStore;
         private readonly IWorkflowRegistrationService _workflowRegistrationService;
 
         public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService(), new CommandFactory())
@@ -96,11 +100,16 @@ namespace Stateless.WorkflowEngine
 
         public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService, ICommandFactory commandFactory)
         {
-            _workflowStore = workflowStore;
+            this.WorkflowStore = workflowStore;
             _workflowRegistrationService = workflowRegistrationService;
 
             this.CommandFactory = commandFactory;
         }
+
+        /// <summary>
+        /// Gets/sets the workflow store attached to the workflow server.
+        /// </summary>
+        public IWorkflowStore WorkflowStore { get; set; }
 
         public ICommandFactory CommandFactory { get; set; }
 
@@ -111,7 +120,7 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflowId"></param>
         public void Delete(Guid workflowId)
         {
-            _workflowStore.Delete(workflowId);
+            this.WorkflowStore.Delete(workflowId);
         }
 
         /// <summary>
@@ -121,7 +130,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool Exists(Guid workflowId)
         {
-            Workflow workflow = this._workflowStore.Get(workflowId);
+            Workflow workflow = this.WorkflowStore.Get(workflowId);
             return (workflow != null);
         }
 
@@ -133,7 +142,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public T Get<T>(Guid workflowId) where T : Workflow
         {
-            return _workflowStore.Get<T>(workflowId);
+            return this.WorkflowStore.Get<T>(workflowId);
         }
 
         /// <summary>
@@ -142,7 +151,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public long GetIncompleteCount()
         {
-            return _workflowStore.GetIncompleteCount();
+            return this.WorkflowStore.GetIncompleteCount();
         }
 
         /// <summary>
@@ -151,7 +160,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public long GetCompletedCount()
         {
-            return _workflowStore.GetCompletedCount();
+            return this.WorkflowStore.GetCompletedCount();
         }
 
         /// <summary>
@@ -160,7 +169,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public long GetSuspendedCount()
         {
-            return _workflowStore.GetSuspendedCount();
+            return this.WorkflowStore.GetSuspendedCount();
         }
 
         /// <summary>
@@ -170,7 +179,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            return _workflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+            return _workflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(this.WorkflowStore);
         }
 
         /// <summary>
@@ -181,7 +190,7 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void Register(Workflow workflow)
         {
-            _workflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
+            _workflowRegistrationService.RegisterWorkflow(this.WorkflowStore, workflow);
         }
 
         /// <summary>
@@ -205,7 +214,7 @@ namespace Stateless.WorkflowEngine
         {
             UnsuspendWorkflowCommand cmd = this.CommandFactory.CreateCommand<UnsuspendWorkflowCommand>();
             cmd.WorkflowId = workflowId;
-            cmd.WorkflowStore = this._workflowStore;
+            cmd.WorkflowStore = this.WorkflowStore;
             return cmd.Execute();
         }
 

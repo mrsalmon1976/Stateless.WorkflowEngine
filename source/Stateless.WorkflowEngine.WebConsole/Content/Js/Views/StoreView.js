@@ -28,6 +28,10 @@
         $('#btn-count').html(that.workflowCount).on('click', function () { that.onWorkflowToolbarButtonClick(); });
         $('#btn-workflow-count-update').on('click', function () { that.onWorkflowCountUpdateButtonClick(); });
         this.loadWorkflows();
+
+        console.log(1);
+        hljs.addPlugin(new CopyButtonPlugin());
+        console.log(2);
     };
 
     this.deleteWorkflows = function () {
@@ -271,7 +275,10 @@ var StoreViewWorkflowViewModel = function () {
         that.connectionId = $('#pnl-workflows').data().modelId;
         that.closeDialogCallback = closeDialogCallback;
 
-        var workflowJsonElement = $('#txt-workflow-json').val('').show();
+        var workflowJsonElement = $('#code-workflow-json').show();
+        var workflowCodeElement = workflowJsonElement.children();
+        workflowCodeElement.html('');
+
         $('#dlg-workflow').modal('show');
         $('#spinner-single').show();
         $('#workflow-msg-error').hide();
@@ -287,7 +294,9 @@ var StoreViewWorkflowViewModel = function () {
 
         request.done(function (response) {
             //debugger;
-            workflowJsonElement.val(response.workflowJson);
+            workflowCodeElement.html(response.workflowJson);
+            hljs.highlightAll();
+
             $('#workflow-header-id').html(workflowTypeName + ' :: ' + that.workflowId);
 
             // pull stats we need from the json

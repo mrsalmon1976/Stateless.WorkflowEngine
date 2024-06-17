@@ -103,3 +103,8 @@
         width: 70%; /* either % (e.g. 60%) or px (400px) */
     }
 }
+
+:root {
+    --hljs-theme-background: navy;
+
+}

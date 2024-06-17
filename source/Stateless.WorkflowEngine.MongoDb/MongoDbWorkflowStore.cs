@@ -234,7 +234,6 @@ namespace Stateless.WorkflowEngine.MongoDb
             {
                 
                 var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
-                //var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
                 return json;
             }

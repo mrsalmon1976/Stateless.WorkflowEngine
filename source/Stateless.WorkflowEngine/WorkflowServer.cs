@@ -25,6 +25,11 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         WorkflowServerOptions Options { get; set; }
 
+        /// <summary>
+        /// Gets/sets the workflow store attached to the workflow server.
+        /// </summary>
+        IWorkflowStore WorkflowStore { get; set; }
+
 
         /// <summary>
         /// Executes a workflow.
@@ -80,15 +85,13 @@ namespace Stateless.WorkflowEngine
 
     public class WorkflowServer : IWorkflowServer
     {
-        private readonly IWorkflowStore _workflowStore;
-
         public WorkflowServer(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowServerOptions())
         {
         }
 
         public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options)
         {
-            _workflowStore = workflowStore;
+            this.WorkflowStore = workflowStore;
             this.Options = options ?? new WorkflowServerOptions();
             this.WorkflowRegistrationService = new WorkflowRegistrationService();
             this.WorkflowExceptionHandler = new WorkflowExceptionHandler();
@@ -127,6 +130,11 @@ namespace Stateless.WorkflowEngine
         /// Gets/sets the options applicable to the workflow server.
         /// </summary>
         public WorkflowServerOptions Options { get; set; }
+
+        /// <summary>
+        /// Gets/sets the workflow store attached to the workflow server.
+        /// </summary>
+        public IWorkflowStore WorkflowStore { get; set; }
 
         /// <summary>
         /// Executes a workflow.
@@ -175,13 +183,13 @@ namespace Stateless.WorkflowEngine
             finally
             {
                 // the workflow should always save, no matter what happens
-                _workflowStore.Save(workflow);
+                this.WorkflowStore.Save(workflow);
             }
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
-                _workflowStore.Archive(workflow);
+                this.WorkflowStore.Archive(workflow);
                 workflow.OnComplete();
                 if (this.WorkflowCompleted != null)
                 {
@@ -205,7 +213,7 @@ namespace Stateless.WorkflowEngine
         /// <returns>The number of workflows that were actually executed.</returns>
         public int ExecuteWorkflows(int count)
         {
-            IEnumerable<Workflow> workflows = _workflowStore.GetActive(count);
+            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(count);
             int cnt = workflows.Count();
             Parallel.ForEach(workflows, ExecuteWorkflow);
             return cnt;
@@ -217,7 +225,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public long GetActiveCount()
         {
-            return _workflowStore.GetActiveCount();
+            return this.WorkflowStore.GetActiveCount();
         }
 
         /// <summary>
@@ -227,7 +235,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow
         {
-            return this.WorkflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(_workflowStore);
+            return this.WorkflowRegistrationService.IsSingleInstanceWorkflowRegistered<T>(this.WorkflowStore);
         }
 
         /// <summary>
@@ -238,7 +246,7 @@ namespace Stateless.WorkflowEngine
         /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void RegisterWorkflow(Workflow workflow)
         {
-            this.WorkflowRegistrationService.RegisterWorkflow(_workflowStore, workflow);
+            this.WorkflowRegistrationService.RegisterWorkflow(this.WorkflowStore, workflow);
         }
 
         /// <summary>
@@ -247,7 +255,7 @@ namespace Stateless.WorkflowEngine
         /// <typeparam name="T"></typeparam>
         public void RegisterWorkflowType<T>() where T : Workflow
         {
-            this._workflowStore.RegisterType(typeof(T));
+            this.WorkflowStore.RegisterType(typeof(T));
 
             if (this.Options.PersistWorkflowDefinitions)
             {
@@ -258,7 +266,7 @@ namespace Stateless.WorkflowEngine
                     string graph = workflow.GetGraph();
 
                     // check to see if the definition already exists 
-                    WorkflowDefinition workflowDefinition = this._workflowStore.GetDefinitionByQualifiedName(workflowType.FullName);
+                    WorkflowDefinition workflowDefinition = this.WorkflowStore.GetDefinitionByQualifiedName(workflowType.FullName);
                     if (workflowDefinition == null)
                     {
                         workflowDefinition = new WorkflowDefinition();
@@ -267,7 +275,7 @@ namespace Stateless.WorkflowEngine
                     workflowDefinition.QualifiedName = workflowType.FullName;
                     workflowDefinition.Graph = graph;
                     workflowDefinition.LastUpdatedUtc = DateTime.UtcNow;
-                    this._workflowStore.SaveDefinition(workflowDefinition);
+                    this.WorkflowStore.SaveDefinition(workflowDefinition);
                 }
                 catch (Exception ex)
                 {
