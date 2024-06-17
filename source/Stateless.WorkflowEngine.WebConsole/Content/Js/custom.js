@@ -59,6 +59,16 @@ Utils.handleAjaxError = function (xhr, jqMessagePanel) {
     jqMessagePanel.html('<div class="alert alert-danger" role="alert">' + msg + '</div>');
 };
 
+Utils.isAuthError = function (xhr) {
+    if (xhr.status == 401) {
+        bootbox.alert('You do not have authorisation to perform this action; you will now be redirected to the login page.', function (result) {
+            window.location.href = '/login';
+        });
+        return true;
+    }
+    return false;
+}
+
 Utils.showError = function (selector, error) {
     //debugger;
     var err = error;

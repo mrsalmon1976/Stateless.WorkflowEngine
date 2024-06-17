@@ -29,7 +29,6 @@ var DashboardView = function () {
                 $('#span-version').html(response.latestReleaseVersionNumber);
                 $("#pnl-version").show();
             }
-
         });
     };
 
@@ -62,6 +61,9 @@ var DashboardView = function () {
         });
 
         request.fail(function (xhr, textStatus, errorThrown) {
+            if (Utils.isAuthError(xhr)) {
+                return;
+            }
             alert('error: ' + xhr.responseText);
         });
         request.always(function (xhr, textStatus) {
@@ -136,6 +138,9 @@ var DashboardView = function () {
             });
 
             request.fail(function (xhr, textStatus, errorThrown) {
+                if (Utils.isAuthError(xhr)) {
+                    return;
+                }
                 that.renderConnection(connectionWrapper, xhr.responseText);
             });
             request.always(function (xhr, textStatus) {
@@ -231,6 +236,10 @@ var DashboardView = function () {
         });
 
         request.fail(function (xhr, textStatus) {
+            if (Utils.isAuthError(xhr)) {
+                return;
+            }
+
             try {
                 that.showError(xhr.responseJSON.message);
             }
@@ -262,6 +271,9 @@ var DashboardView = function () {
         });
 
         request.fail(function (xhr, textStatus) {
+            if (Utils.isAuthError(xhr)) {
+                return;
+            }
             try {
                 that.showError(xhr.responseJSON.message);
             }

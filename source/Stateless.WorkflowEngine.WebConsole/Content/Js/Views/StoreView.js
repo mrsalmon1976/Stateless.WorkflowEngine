@@ -191,6 +191,11 @@
         request.done(function (response) {
             that.loadWorkflows();
         });
+
+        request.fail(function (xhr, textStatus, errorThrown) {
+            Utils.handleAjaxError(xhr, $('#pnl-workflows'));
+        });
+
     };
 
     this.suspendWorkflows = function () {
@@ -307,6 +312,9 @@ var StoreViewWorkflowViewModel = function () {
 
         request.fail(function (xhr, textStatus, errorThrown) {
             //debugger;
+            if (Utils.isAuthError(xhr)) {
+                return;
+            }
             if (xhr.status == 404 && xhr.responseJSON != null && xhr.responseJSON.message != null) {
                 $('#workflow-msg-error').html(xhr.responseJSON.message);
                 $('#workflow-header-id').html('Workflow Not Found');
