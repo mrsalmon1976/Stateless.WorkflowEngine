@@ -2,14 +2,14 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>Stateless.WorkflowEngine.RavenDb</id>
-    <version>4.0.0</version>
+    <version>4.0.2</version>
     <authors>Matt Salmon</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Allows for the persistence of Stateless.WorkflowEngine workflows in RavenDb.</description>
     <dependencies>
       <group targetFramework="v4.8">
         <dependency id="RavenDB.Client" version="5.4.200" />
-        <dependency id="Stateless.WorkflowEngine" version="4.0.0" />
+        <dependency id="Stateless.WorkflowEngine" version="4.0.2" />
       </group>
     </dependencies>
     <releaseNotes>Visit https://github.com/mrsalmon1976/Stateless.WorkflowEngine/releases for release notes</releaseNotes>

@@ -19,7 +19,7 @@ cd ..
 # Stateless.WorkflowEngine.MongoDb
 cd Stateless.WorkflowEngine.MongoDb
 dotnet pack
-Invoke-Expression "& nuget push push bin\Release\Stateless.WorkflowEngine.MongoDb.$version.nupkg $apiKey -Source https://www.nuget.org/api/v2/package"
+Invoke-Expression "& nuget push bin\Release\Stateless.WorkflowEngine.MongoDb.$version.nupkg $apiKey -Source https://www.nuget.org/api/v2/package"
 cd ..
 
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White
