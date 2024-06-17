@@ -128,19 +128,6 @@ private class MyResolver : IWorkflowEngineDependencyResolver
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 
 action.
 
-## Single Instance Workflows
-
-The engine supports the concept of a "Single Instance" workflows, which means there can only ever be one workflow of this type.  If you try to register a single instance workflow and one already exists, and exception will be thrown by the engine.
-
-You would usually only register single instance workflows on application start up.  Both `IWorkflowClient` and `IWorkflowServer` expose methods to check if an instance exists already.  Example code would look like this:
-
-```csharp
-if (!_workflowServer.IsSingleInstanceWorkflowRegistered<MyWorkflow>()) 
-{
-  _workflowServer.RegisterWorkflowType<MyWorkflow>();
-}
-```
-
 ### WorkflowServer
 
 The `IWorkflowServer` interface exposes two events:
@@ -157,6 +144,19 @@ When you implement your `Workflow` classes, you can also override the following 
 3. `OnComplete` - Invoked when a workflow completes and is moved into the CompletedWorkflows collection.
 4. `OnError` - Invoked when an error occurs within a workflow action.  Useful for error logging.
 3. `OnSuspend` - Invoked when a workflow has exceeded its configured retries, and moves into a suspended state.
+
+## Single Instance Workflows
+
+The engine supports the concept of a "Single Instance" workflows, which means there can only ever be one workflow of this type.  If you try to register a single instance workflow and one already exists, and exception will be thrown by the engine.
+
+You would usually only register single instance workflows on application start up.  Both `IWorkflowClient` and `IWorkflowServer` expose methods to check if an instance exists already.  Example code would look like this:
+
+```csharp
+if (!_workflowServer.IsSingleInstanceWorkflowRegistered<MyWorkflow>()) 
+{
+  _workflowServer.RegisterWorkflowType<MyWorkflow>();
+}
+```
 
 # Workflow Stores
 
