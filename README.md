@@ -5,7 +5,7 @@ Stateless.Workflow is a basic .NET workflow engine based on the awesome [statele
 
 [![Build status](https://ci.appveyor.com/api/projects/status/vb99b6kidifjl1ir?svg=true)](https://ci.appveyor.com/project/mrsalmon1976/stateless-workflowengine)
 
-## Persistence
+# Persistence
 
 The engine supports multiple data stores: 
 
@@ -15,7 +15,7 @@ The engine supports multiple data stores:
  
 All stores will use two collections: Workflows and CompletedWorkflows.  When a workflow is registered via the server or client, it is persisted in the Workflows collection.  The workflow will then move through various states until completion, in which case it will be moved to the CompletedWorkflows collection.  This store is never read by the workflow engine, it is purely for archiving purposes.
 
-### Version Info
+## Version Info
 
 This table shows the client version and the associated driver/client versions used.
 
@@ -30,15 +30,15 @@ This table shows the client version and the associated driver/client versions us
 |           | 3.1.0     | RavenDB.Client | 5.4.109         |
 |           | 4.0.0     | RavenDB.Client | 5.4.200         |
 
-## Workflow Configuration
+# Workflow Configuration
 
-Workflows are configured in similar fashion to Stateless.  You should make an effort to understand how Stateless works before attempting to use this workflow engine.  All configuration should go into the Initialise override on the Workflow itself.  Extra properties can be added to your custom workflows, and these will be serialized with the workflow when it is persisted to the store. The Stateless concepts of State and Triggers remain the same, and are used by the workflow engine to move between actions in the workflow.
+Workflows are configured in a similar fashion to Stateless.  You should make an effort to understand how Stateless works before attempting to use this workflow engine.  All configuration should go into the `Initialise` override on the Workflow itself.  Extra properties can be added to your custom workflows, and these will be serialized with the workflow when it is persisted to the store. The Stateless concepts of State and Triggers remain the same, and are used by the workflow engine to move between actions in the workflow.
 
-## Example  
+# Example  
 
 There is a full example application in the source code, in the Test.Stateless.WorkflowEngine.Example folder.  This contains a windows service that creates a sample workflow when it runs, which writes 10 files to the "C:\Temp" folder, then deletes all the files.  You can look at this example to see how to set up a windows service that runs the workflow engine.  The WorkerThreadFunc method in the WorkflowEngineExampleService class contains an instantiation of each store type (Memory, MongoDb and RavenDb), if you'd like to run the example just configure what you want.  You can set up your connection properties in the Bootstrapper.
 
-## Code
+# Code and Concepts
 
 ## Creating a WorkflowServer
 
@@ -46,11 +46,20 @@ You will need a WorkflowServer, usually running in the context of a windows serv
 
 Note that this should be implemented in your application as a singleton, to prevent continuous schema checks which will slow down your application.
 
+### Workflow Server Options
+
+The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the following options can be set:
+
+- `AutoCreateTables` - for workflow stores where tables must be explicitly created, if set to `true` this option will result in the server creating the tables if they do not exist.  Defaults to `true`.
+- `AutoCreateIndexes` - if set to `true` this option will result in the server creating basic indexes (see below for more details).  Defaults to `true`.
+- `PersistWorkflowDefinitions` - if set to true, workflow definitions will be inspected and stored if possible.  Defaults to `true`.
+
+
 ## Creating a WorkflowClient
 
 A WorkflowClient is used to register workflows for processing by the WorkflowServer.  
 
-### Workflow Priority
+## Workflow Priority
 
 The workflow engine will process workflows in the order that they come in.  If a workflow fails, it will go to the back of the line, but will still get processed in date order.  In some cases, you may want particular workflows within a single workflow collection to be processed as a higher priority.  
 
@@ -58,7 +67,7 @@ For example, you may have an email handler that processes emails, but when users
 
 To cater for this, workflows have a "Priority" property that can be set.  This defaults to 0, but the higher the value, the more important the workflow is.  Workflows will get processed in order of priority (descending) before date.
 
-### Dependency Injection
+## Dependency Injection
 
 Most of the classes in the code implement an interface, which allows for the inversion of control.  One exception to this is 
 the **_Workflow_** class, which needed to be concrete class.  This class contains the method to create a workflow action, using 
@@ -114,17 +123,42 @@ private class MyResolver : IWorkflowEngineDependencyResolver
   }
 }
 ```
-### Events
+## Events
 
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 
 action.
 
-1. WorkflowSuspended - this event is raised by the WorkflowServer when a workflow suspends.  This means that a workflow has errored repeatedly 
-until the maximum number of retries (RetryCount) defined for the workflow has been exceeded.  The workflow goes into a suspended state and will 
-not be picked up again by the WorkflowEngine until the problems have been resolved.  Note that the Workflow itself has an OnSuspend method that 
-can be overridden at the workflow level. 
-2. WorkflowCompleted - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() 
-method is called.  The workflow.OnComplete() method can also be overridden and actioned at the workflow level instead of using this event.
+## Single Instance Workflows
+
+The engine supports the concept of a "Single Instance" workflows, which means there can only ever be one workflow of this type.  If you try to register a single instance workflow and one already exists, and exception will be thrown by the engine.
+
+You would usually only register single instance workflows on application start up.  Both `IWorkflowClient` and `IWorkflowServer` expose methods to check if an instance exists already.  Example code would look like this:
+
+```csharp
+if (!_workflowServer.IsSingleInstanceWorkflowRegistered<MyWorkflow>()) 
+{
+  _workflowServer.RegisterWorkflowType<MyWorkflow>();
+}
+```
+
+### WorkflowServer
+
+The `IWorkflowServer` interface exposes two events:
+
+1.` WorkflowSuspended` - this event is raised by the WorkflowServer when a workflow suspends.  This means that a workflow has errored repeatedly until the maximum number of retries (RetryCount) defined for the workflow has been exceeded.  The workflow goes into a suspended state and will not be picked up again by the WorkflowEngine until the problems have been resolved.  
+2. `WorkflowCompleted` - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() method is called.  
+
+### Workflow
+
+When you implement your `Workflow` classes, you can also override the following event handlers:
+
+1. `OnActionExecuting` - Invoked before a workflow action is executed by the engine.  Useful for  logging.
+2. `OnActionExecuted` - Invoked after a workflow action is executed by the engine.  Useful for logging.
+3. `OnComplete` - Invoked when a workflow completes and is moved into the CompletedWorkflows collection.
+4. `OnError` - Invoked when an error occurs within a workflow action.  Useful for error logging.
+3. `OnSuspend` - Invoked when a workflow has exceeded its configured retries, and moves into a suspended state.
+
+# Workflow Stores
 
 ## Indexing on data stores
 
@@ -137,7 +171,7 @@ The following indexes are created by default:
 * Workflows: Priority descending, RetryCount descending, CreatedOn ascending
 * CompletedWorkflows: CreatedOn descending
 
-### Manually creating indexes: MongoDb
+## Manually creating indexes: MongoDb
 
 On the CompletedWorkflows collection:
 
@@ -164,3 +198,7 @@ To remove this dependency, you can add the following attribute to your workflow 
 ```
 
 Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
+
+# Workflow Definitions
+
+The `IWorkflowServer` will attempt to persist workflow definitions into a `WorkflowDefinitions` collection or table when types are registered.  These will result in graphs that can be rendered in the console displaying a representation of the workflow.  This option can be turned off using the `WorkflowOptions` property.
