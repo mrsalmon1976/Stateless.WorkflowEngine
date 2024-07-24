@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Stateless;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
+using System.Threading;
 
 namespace Stateless.WorkflowEngine
 {
@@ -41,9 +42,17 @@ namespace Stateless.WorkflowEngine
         /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
         /// by CreationDate.
         /// </summary>
-        /// <param name="count">The number of workflows that can be executed.</param>
+        /// <param name="maxConcurrentTasks">The maximum number of workflows that can be executed in parallel.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        int ExecuteWorkflows(int count);
+        int ExecuteWorkflows(int maxConcurrentTasks);
+
+        /// <summary>
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
+        /// by CreationDate.
+        /// </summary>
+        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
+        /// <returns>The number of workflows that were actually executed.</returns>
+        Task<int> ExecuteWorkflowsAsync(int maxConcurrentTasks);
 
         /// <summary>
         /// Gets the count of active (unsuspended) workflows on the underlying store.
@@ -150,41 +159,46 @@ namespace Stateless.WorkflowEngine
             // set the dependency resolver on the workflow to allow for dependency injection
             workflow.DependencyResolver = this.DependencyResolver;
 
-            string initialState = workflow.CurrentState;
-            try
+            // if the workflow is marked as complete, don't attempt to run it
+            if (!workflow.IsComplete)
             {
-                workflow.LastException = null;
-                workflow.RetryCount += 1;
-                workflow.Fire(workflow.ResumeTrigger);
-
-                workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
-            }
-            catch (Exception ex)
-            {
-                workflow.CurrentState = initialState;
-                this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
-
-                // raise the exception handler
-                workflow.OnError(ex);
-
-                // if the workflow is suspended, raise the events
-                if (workflow.IsSuspended)
+                string initialState = workflow.CurrentState;
+                try
                 {
-                    workflow.OnSuspend();
-                    if (this.WorkflowSuspended != null)
-                    {
-                        this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
-                    }
-                }
+                    workflow.LastException = null;
+                    workflow.RetryCount += 1;
+                    workflow.Fire(workflow.ResumeTrigger);
 
-                // exit out, nothing else to do here
-                return;
+                    workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
+                }
+                catch (Exception ex)
+                {
+                    workflow.CurrentState = initialState;
+                    this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
+
+                    // raise the exception handler
+                    workflow.OnError(ex);
+
+                    // if the workflow is suspended, raise the events
+                    if (workflow.IsSuspended)
+                    {
+                        workflow.OnSuspend();
+                        if (this.WorkflowSuspended != null)
+                        {
+                            this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                        }
+                    }
+
+                    // exit out, nothing else to do here
+                    return;
+                }
+                finally
+                {
+                    // the workflow should always save, no matter what happens
+                    this.WorkflowStore.Save(workflow);
+                }
             }
-            finally
-            {
-                // the workflow should always save, no matter what happens
-                this.WorkflowStore.Save(workflow);
-            }
+
             // if the workflow is complete, finish off
             if (workflow.IsComplete)
             {
@@ -197,26 +211,50 @@ namespace Stateless.WorkflowEngine
                 }
                 return;
             }
-
-            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling
-            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow)
-            {
-                this.ExecuteWorkflow(workflow);
-            }
         }
 
         /// <summary>
         /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
         /// by CreationDate.
         /// </summary>
-        /// <param name="count">The number of workflows that can be executed.</param>
+        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        public int ExecuteWorkflows(int count)
+        public int ExecuteWorkflows(int maxConcurrentTasks)
         {
-            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(count);
-            int cnt = workflows.Count();
-            Parallel.ForEach(workflows, ExecuteWorkflow);
-            return cnt;
+            return this.ExecuteWorkflowsAsync(maxConcurrentTasks).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
+        /// by CreationDate.
+        /// </summary>
+        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
+        /// <returns>The number of workflows that were actually executed.</returns>
+        public async Task<int> ExecuteWorkflowsAsync(int maxConcurrentTasks)
+        {
+            SemaphoreSlim semaphore = new SemaphoreSlim(maxConcurrentTasks);
+            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(this.Options.WorkflowExecutionTaskCount);
+            List<Task> tasks = new List<Task>();
+
+            foreach (Workflow wf in workflows)
+            {
+                Task t = Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        ExecuteWorkflow(wf);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+                tasks.Add(t);
+            }
+
+            await Task.WhenAll(tasks);
+            return tasks.Count;
         }
 
         /// <summary>

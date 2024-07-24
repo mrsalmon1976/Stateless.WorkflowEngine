@@ -4,18 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
-using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.Delayed;
-using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
 using Stateless.WorkflowEngine.Events;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection.Actions;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection;
+using Test.Stateless.WorkflowEngine.Workflows.Broken;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -121,7 +119,34 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
             workflowServer.ExecuteWorkflow(workflow);
 
-            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.Complete.ToString()));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
+
+        }
+
+        [Test]
+        public void ExecuteWorkflow_WorkflowIsComplete_DoesNotInitialiseAndFireTriggers()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BrokenWorkflow.Trigger.DoStuff.ToString();
+            workflow.RetryCount = -1;
+            workflow.IsComplete = true;
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflow(workflow);
+
+            // if this workflow had fired, RetryCOunt would have incremented, and the LastException would have 
+            // a value as the workflow always throws an exception
+            Assert.That(workflow.LastException, Is.Null.Or.Empty);
+            Assert.That(workflow.RetryCount, Is.EqualTo(-1));
+
+            Assert.That(workflowStore.GetOrDefault(workflow.Id), Is.Null);
+            Assert.That(workflowStore.GetCompleted(workflow.Id), Is.Not.Null);
 
         }
 
@@ -300,7 +325,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
 
-            Assert.That(workflow.CurrentState, Is.EqualTo("Complete"));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
 
         }
 
@@ -404,10 +429,11 @@ namespace Test.Stateless.WorkflowEngine
                 workflowStore.Save(workflow);
             }
 
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            WorkflowServerOptions options = new WorkflowServerOptions() { WorkflowExecutionTaskCount = executeCount };
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
 
             // execute
-            int result = workflowServer.ExecuteWorkflows(executeCount);
+            int result = workflowServer.ExecuteWorkflows(5);
             Assert.That(result, Is.EqualTo(expectedResult));
 
         }
@@ -459,6 +485,68 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(10)]
+        [TestCase(50)]
+        public void ExecuteWorkflows_OnExecution_ExecutesConfiguredTaskCount(int workflowExecutionTaskCount)
+        {
+            Random r = new Random();
+            int workflowCount = workflowExecutionTaskCount + r.Next(10, 50);
+
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            for (int i = 0; i < workflowCount; i++)
+            {
+                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-1);
+                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+                workflowStore.Save(workflow);
+            }
+            WorkflowServerOptions options = new WorkflowServerOptions() {  WorkflowExecutionTaskCount = workflowExecutionTaskCount };
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
+
+            // execute
+            int result = workflowServer.ExecuteWorkflows(workflowExecutionTaskCount);
+
+            // assert
+            Assert.That(result, Is.EqualTo(workflowExecutionTaskCount));
+        }
+
+        #endregion
+
+        #region ExecuteWorkflowsAsync Tests
+
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(10)]
+        [TestCase(50)]
+        public void ExecuteWorkflowsAsync_OnExecution_ExecutesConfiguredTaskCount(int workflowExecutionTaskCount)
+        {
+            Random r = new Random();
+            int workflowCount = workflowExecutionTaskCount + r.Next(10, 50);
+
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            for (int i = 0; i < workflowCount; i++)
+            {
+                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-1);
+                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+                workflowStore.Save(workflow);
+            }
+            WorkflowServerOptions options = new WorkflowServerOptions() { WorkflowExecutionTaskCount = workflowExecutionTaskCount };
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
+
+            // execute
+            workflowServer.ExecuteWorkflowsAsync(workflowExecutionTaskCount).GetAwaiter().GetResult();
+
+            // assert - all workflows should still be in the store, but only some of them should have moved to the next state
+            var allWorkflows = workflowStore.GetActive(Int32.MaxValue);
+            Assert.That(allWorkflows.Count(), Is.EqualTo(workflowCount));
+            Assert.That(allWorkflows.Where(x => x.CurrentState == BasicWorkflow.State.DoingStuff.ToString()).Count(), Is.EqualTo(workflowExecutionTaskCount));
+        }
+
         #endregion
 
         #region IsSingleInstanceWorkflowRegistered Tests
@@ -493,8 +581,8 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflows(10);
 
-            // We should have received TWO saves as the workflow moves between the states
-            workflowStore.Received(2).Save(workflow);
+            // assert
+            workflowStore.Received(1).Save(workflow);
 
         }
         #endregion

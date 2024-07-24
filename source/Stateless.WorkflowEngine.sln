@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example", "Example\Example.csproj", "{61307C2A-43B4-46A0-AC6D-53DA3A732450}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.TestHarness", "Stateless.TestHarness\Stateless.TestHarness.csproj", "{44DE4240-0A0F-4F63-AE29-217A2CAF633D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +101,10 @@ Global
 		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61307C2A-43B4-46A0-AC6D-53DA3A732450}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44DE4240-0A0F-4F63-AE29-217A2CAF633D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44DE4240-0A0F-4F63-AE29-217A2CAF633D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44DE4240-0A0F-4F63-AE29-217A2CAF633D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44DE4240-0A0F-4F63-AE29-217A2CAF633D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
