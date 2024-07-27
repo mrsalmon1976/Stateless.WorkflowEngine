@@ -68,8 +68,8 @@
     font-size: 120%;
 }
 .store-info-label {
-    padding:4px 10px 4px 10px;
-    margin-left:8px;
+    padding: 4px 10px 4px 10px;
+    margin-left: 8px;
 }
 .logo-icon {
     width: 75px;
@@ -89,6 +89,11 @@
 .table tbody tr:hover td.conn-workflow-info-warning {
     background-color: #f0ad4e !important;
     filter: brightness(85%);
+}
+#code-workflow-json {
+    height: auto;
+    overflow-y: auto;
+    max-height: 60%;
 }
 #version-header {
     font-size: 70%;
