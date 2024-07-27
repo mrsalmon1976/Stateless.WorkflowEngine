@@ -30,7 +30,7 @@ namespace Stateless.TestHarness.Multithread
                 }
                 else
                 {
-                    ConsoleWriter.WriteLine($"{executed} workflows executed");
+                    ConsoleWriter.Write($"{executed} workflows executed; ");
                 }
 
                 long activeWorkflowCount = this._workflowServer.GetActiveCount();

@@ -18,7 +18,7 @@ namespace Example.Volume
         public static void Run(ExampleDbType dbType)
         {
             _dbType = dbType;
-            const int TestRecordCount = 1000;
+            const int TestRecordCount = 10000;
             var mongoClient = new MongoClient("mongodb://localhost");
             var database = mongoClient.GetDatabase(AppSettings.VolumeExampleMongoDbName);
             IWorkflowStore workflowStore = new MongoDbWorkflowStore(database);

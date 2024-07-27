@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System.Threading.Tasks;
-using Stateless;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
 using System.Threading;
-using System.Drawing;
-using System.Collections;
 
 namespace Stateless.WorkflowEngine
 {
@@ -39,6 +35,12 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         /// <param name="workflow"></param>
         void ExecuteWorkflow(Workflow workflow);
+
+        /// <summary>
+        /// Executes a workflow.
+        /// </summary>
+        /// <param name="workflow"></param>
+        Task ExecuteWorkflowAsync(Workflow workflow);
 
         /// <summary>
         /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
@@ -157,7 +159,7 @@ namespace Stateless.WorkflowEngine
         {
             if (workflow == null)
             {
-                throw new NullReferenceException("Workflow server asked to execute null workflow object");
+                throw new ArgumentNullException("Workflow server cannot execute null workflow object");
             }
 
             // set the dependency resolver on the workflow to allow for dependency injection
@@ -205,7 +207,84 @@ namespace Stateless.WorkflowEngine
 
             }
 
-            // if the workflow is complete, finish off - this is NOT an else (workflow coule have compleed in the fire action)
+            // if the workflow is complete, finish off - this is NOT an else (workflow coule have completed in the fire action)
+            if (workflow.IsComplete)
+            {
+                workflow.CompletedOn = DateTime.UtcNow;
+                this.WorkflowStore.Archive(workflow);
+                workflow.OnComplete();
+                if (this.WorkflowCompleted != null)
+                {
+                    this.WorkflowCompleted(this, new WorkflowEventArgs(workflow));
+                }
+                return;
+            }
+
+            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
+            // hits - but if the priority has changed then rather allow for another poll
+            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
+            {
+                this.ExecuteWorkflow(workflow);
+            }
+        }
+
+        /// <summary>
+        /// Executes a workflow.
+        /// </summary>
+        /// <param name="workflow"></param>
+        public async Task ExecuteWorkflowAsync(Workflow workflow)
+        {
+            if (workflow == null)
+            {
+                throw new ArgumentNullException("Workflow server cannot execute null workflow object");
+            }
+
+            // set the dependency resolver on the workflow to allow for dependency injection
+            workflow.DependencyResolver = this.DependencyResolver;
+            int priorityBeforeFire = workflow.Priority;
+
+            // if the workflow is marked as complete, don't attempt to run it
+            if (!workflow.IsComplete)
+            {
+                string initialState = workflow.CurrentState;
+                try
+                {
+                    workflow.LastException = null;
+                    workflow.RetryCount += 1;
+                    await workflow.FireAsync(workflow.ResumeTrigger);
+
+                    workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
+                }
+                catch (Exception ex)
+                {
+                    workflow.CurrentState = initialState;
+                    this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
+
+                    // raise the exception handler
+                    workflow.OnError(ex);
+
+                    // if the workflow is suspended, raise the events
+                    if (workflow.IsSuspended)
+                    {
+                        workflow.OnSuspend();
+                        if (this.WorkflowSuspended != null)
+                        {
+                            this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                        }
+                    }
+
+                    // exit out, nothing else to do here
+                    return;
+                }
+                finally
+                {
+                    // the workflow should always save, no matter what happens
+                    this.WorkflowStore.Save(workflow);
+                }
+
+            }
+
+            // if the workflow is complete, finish off - this is NOT an else (workflow coule have completed in the fire action)
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
@@ -280,7 +359,7 @@ namespace Stateless.WorkflowEngine
                     await semaphore.WaitAsync();
                     try
                     {
-                        ExecuteWorkflow(wf);
+                        await ExecuteWorkflowAsync(wf);
                     }
                     finally
                     {

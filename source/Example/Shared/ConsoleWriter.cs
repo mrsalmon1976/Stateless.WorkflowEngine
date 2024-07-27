@@ -36,5 +36,31 @@ namespace Example.Shared
             }
         }
 
+        public static void Write(string prefix, string message, ConsoleColor? color = null)
+        {
+            lock (_messageLock)
+            {
+                if (color != null)
+                {
+                    Console.ForegroundColor = color.Value;
+                }
+                Console.Write($"{prefix}{message}");
+                Console.ResetColor();
+            }
+        }
+
+        public static void Write(string message, ConsoleColor? color = null)
+        {
+            lock (_messageLock)
+            {
+                if (color != null)
+                {
+                    Console.ForegroundColor = color.Value;
+                }
+                Console.Write(message);
+                Console.ResetColor();
+            }
+        }
+
     }
 }

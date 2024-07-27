@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 [assembly: InternalsVisibleToAttribute("Test.Stateless.WorkflowEngine")]
 
@@ -174,6 +171,12 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         /// <param name="triggerName"></param>
         public abstract void Fire(string triggerName);
+
+        /// <summary>
+        /// Fires a trigger asynchronously - this needs to be a trigger configured for the current state.
+        /// </summary>
+        /// <param name="triggerName"></param>
+        public abstract Task FireAsync(string triggerName);
 
         /// <summary>
         /// 
