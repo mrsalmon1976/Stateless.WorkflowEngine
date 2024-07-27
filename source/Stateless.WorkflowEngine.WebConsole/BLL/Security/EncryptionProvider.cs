@@ -5,15 +5,15 @@
  * http://creativecommons.org/publicdomain/mark/1.0/ 
  */
 
-using System;
-using System.IO;
-using System.Text;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
+using System;
+using System.IO;
+using System.Text;
 
 namespace Encryption
 {
