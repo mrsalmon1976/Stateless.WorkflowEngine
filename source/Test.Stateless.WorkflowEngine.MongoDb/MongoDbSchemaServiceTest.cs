@@ -7,6 +7,7 @@ using System.IO;
 using MongoDB.Driver;
 using Stateless.WorkflowEngine.MongoDb;
 using MongoDB.Bson;
+using System.Collections;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb
 {
@@ -133,6 +134,37 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             Assert.That(result, Is.True);
         }
 
+        [Test]
+        public void EnsureActiveIndexExists_WhenIndexAlreadyExistsWithDifferentName_IndexIsNotCreated()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var collection = _database.GetCollection<MongoWorkflow>(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var testIndexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Descending(wf => wf.Workflow.Priority)
+                .Descending(wf => wf.Workflow.RetryCount)
+                .Ascending(wf => wf.Workflow.CreatedOn);
+
+            var testIndexOptions = new CreateIndexOptions();
+            testIndexOptions.Name = "test";
+
+            var testIndexModel = new CreateIndexModel<MongoWorkflow>(testIndexKeys, testIndexOptions);
+            collection.Indexes.CreateOne(testIndexModel);
+
+            // execute
+            mongoDbSchemaService.EnsureActiveIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            // assert
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            bool result = IndexExists(indexes, IndexNames.Workflow_Priority_RetryCount_CreatedOn);
+            Assert.That(result, Is.False);
+        }
+
 
         #endregion
 
@@ -167,6 +199,35 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             Assert.That(indexes.Count, Is.EqualTo(2));
             bool result = IndexExists(indexes, IndexNames.CompletedWorkflow_CreatedOn);
             Assert.That(result, Is.True);
+        }
+
+        [Test]
+        public void EnsureCompletedIndexExists_WhenIndexAlreadyExistsWithDifferentName_IndexIsNotCreated()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionCompleted);
+
+            var collection = _database.GetCollection<MongoWorkflow>(MongoDbWorkflowStore.DefaultCollectionCompleted);
+
+            var testIndexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Descending(wf => wf.Workflow.CreatedOn);
+
+            var testIndexOptions = new CreateIndexOptions();
+            testIndexOptions.Name = "test_completed";
+
+            var testIndexModel = new CreateIndexModel<MongoWorkflow>(testIndexKeys, testIndexOptions);
+            collection.Indexes.CreateOne(testIndexModel);
+
+            // execute
+            mongoDbSchemaService.EnsureCompletedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionCompleted);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionCompleted);
+
+            // assert
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            bool result = IndexExists(indexes, IndexNames.CompletedWorkflow_CreatedOn);
+            Assert.That(result, Is.False);
         }
 
 

@@ -2,6 +2,7 @@
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Stateless.WorkflowEngine.MongoDb
@@ -31,7 +32,13 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var collection = database.GetCollection<MongoWorkflow>(collectionName);
 
-            bool indexExists = IndexExists(collection.Indexes.List().ToList(), IndexNames.Workflow_Priority_RetryCount_CreatedOn);
+            var indexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Descending(wf => wf.Workflow.Priority)
+                .Descending(wf => wf.Workflow.RetryCount)
+                .Ascending(wf => wf.Workflow.CreatedOn);
+
+            bool indexExists = IndexExists(collection, IndexNames.Workflow_Priority_RetryCount_CreatedOn, indexKeys);
             if (indexExists)
             {
                 return;
@@ -41,12 +48,6 @@ namespace Stateless.WorkflowEngine.MongoDb
             var indexOptions = new CreateIndexOptions();
             indexOptions.Name = IndexNames.Workflow_Priority_RetryCount_CreatedOn;
 
-            var indexKeys = Builders<MongoWorkflow>
-                .IndexKeys
-                .Descending(wf => wf.Workflow.Priority)
-                .Descending(wf => wf.Workflow.RetryCount)
-                .Ascending(wf => wf.Workflow.CreatedOn);
-
             var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);
         }
@@ -55,7 +56,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var collection = database.GetCollection<MongoWorkflow>(collectionName);
 
-            bool indexExists = IndexExists(collection.Indexes.List().ToList(), IndexNames.CompletedWorkflow_CreatedOn);
+            var indexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Descending(wf => wf.Workflow.CreatedOn);
+
+            bool indexExists = IndexExists(collection, IndexNames.CompletedWorkflow_CreatedOn, indexKeys);
             if (indexExists)
             {
                 return;
@@ -64,20 +69,26 @@ namespace Stateless.WorkflowEngine.MongoDb
             var indexOptions = new CreateIndexOptions();
             indexOptions.Name = IndexNames.CompletedWorkflow_CreatedOn;
 
-            var indexKeys = Builders<MongoWorkflow>
-                .IndexKeys
-                .Descending(wf => wf.Workflow.CreatedOn);
-
             var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);
         }
 
-        private bool IndexExists(IEnumerable<BsonDocument> indexDocuments, string indexName)
+        private bool IndexExists(IMongoCollection<MongoWorkflow> collection, string indexName, IndexKeysDefinition<MongoWorkflow> indexKeys)
         {
+            IEnumerable<BsonDocument> indexDocuments = collection.Indexes.List().ToList();
+            var keysDocument = indexKeys.Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry);
+
             foreach (BsonDocument index in indexDocuments)
             {
                 string currentIndexName = index.GetValue("name").AsString;
                 if (indexName == currentIndexName)
+                {
+                    return true;
+                }
+
+                var indexDocument = index["key"].AsBsonDocument;
+
+                if (indexDocument.Equals(keysDocument))
                 {
                     return true;
                 }
