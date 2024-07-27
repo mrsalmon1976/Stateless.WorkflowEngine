@@ -10,7 +10,7 @@ namespace Example.Shared.Workflows.FileCreation.Actions
         public void Execute(Workflow workflow)
         {
             FileCreationWorkflow fcw = (FileCreationWorkflow)workflow;
-            Console.WriteLine($"WriteFirstFileAction ---> creating primary file and moving to WriteAdditionalFilesAction");
+            ConsoleWriter.WriteLine("WriteFirstFileAction: ", "Creating primary file and moving to WriteAdditionalFilesAction", ConsoleColor.Green);
             string fileName = "PrimaryFile.txt";
             File.WriteAllText(fcw.GetFilePath(Constants.RootPath, fileName), "Example workflow");
             workflow.ResumeTrigger = FileCreationWorkflow.Trigger.WriteAdditionalFiles.ToString();

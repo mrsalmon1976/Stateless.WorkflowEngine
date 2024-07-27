@@ -8,13 +8,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.1" />
     <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
     <PackageReference Include="RavenDB.Client" Version="5.4.200" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" />
     <ProjectReference Include="..\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Volume\RecordProcessorWorker.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Volume\RecordCreatorWorker.cs">
+      <SubType>Component</SubType>
+    </Compile>
   </ItemGroup>
 
 </Project>

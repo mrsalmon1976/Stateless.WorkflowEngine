@@ -21,8 +21,11 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="workflow">The workflow to archive.</param>
         public override void Archive(Workflow workflow)
         {
-            _activeWorkflows.Remove(workflow.Id);
-            _completedWorkflows.Add(workflow.Id, workflow);
+            lock (syncLock)
+            {
+                _activeWorkflows.Remove(workflow.Id);
+                _completedWorkflows.Add(workflow.Id, workflow);
+            }
         }
 
         /// <summary>
@@ -31,7 +34,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id">The workflow id.</param>
         public override void Delete(Guid id)
         {
-            _activeWorkflows.Remove(id);
+            lock (syncLock)
+            {
+                _activeWorkflows.Remove(id);
+            }
         }
 
         /// <summary>
@@ -190,13 +196,16 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="workflow"></param>
         public override void Save(Workflow workflow)
         {
-            if (_activeWorkflows.ContainsKey(workflow.Id))
+            lock (syncLock)
             {
-                _activeWorkflows[workflow.Id] = workflow;
-            }
-            else
-            {
-                _activeWorkflows.Add(workflow.Id, workflow);
+                if (_activeWorkflows.ContainsKey(workflow.Id))
+                {
+                    _activeWorkflows[workflow.Id] = workflow;
+                }
+                else
+                {
+                    _activeWorkflows.Add(workflow.Id, workflow);
+                }
             }
         }
 

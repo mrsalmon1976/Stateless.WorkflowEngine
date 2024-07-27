@@ -90,6 +90,8 @@
     <Compile Include="Workflows\Delayed\DelayedWorkflow.cs" />
     <Compile Include="Workflows\DependencyInjection\Actions\NoDefaultConstructorAction.cs" />
     <Compile Include="Workflows\DependencyInjection\DependencyInjectionWorkflow.cs" />
+    <Compile Include="Workflows\DecreasingPriority\Actions\AlterPriorityAction.cs" />
+    <Compile Include="Workflows\DecreasingPriority\DecreasingPriorityWorkflow.cs" />
     <Compile Include="Workflows\SimpleTwoState\Actions\SendEmailAction.cs" />
     <Compile Include="Workflows\SimpleTwoState\Actions\LoadDataAction.cs" />
     <Compile Include="Workflows\SimpleTwoState\SimpleTwoStateWorkflow.cs" />

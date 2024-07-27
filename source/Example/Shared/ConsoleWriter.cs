@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.TestHarness
+namespace Example.Shared
 {
     internal class ConsoleWriter
     {
@@ -22,5 +22,19 @@ namespace Stateless.TestHarness
                 Console.ResetColor();
             }
         }
+
+        public static void WriteLine(string message, ConsoleColor? color = null)
+        {
+            lock (_messageLock)
+            {
+                if (color != null)
+                {
+                    Console.ForegroundColor = color.Value;
+                }
+                Console.WriteLine(message);
+                Console.ResetColor();
+            }
+        }
+
     }
 }

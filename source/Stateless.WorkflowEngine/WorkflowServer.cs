@@ -9,6 +9,8 @@ using Stateless;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
 using System.Threading;
+using System.Drawing;
+using System.Collections;
 
 namespace Stateless.WorkflowEngine
 {
@@ -39,20 +41,22 @@ namespace Stateless.WorkflowEngine
         void ExecuteWorkflow(Workflow workflow);
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
-        /// by CreationDate.
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
+        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
-        /// <param name="maxConcurrentTasks">The maximum number of workflows that can be executed in parallel.</param>
+        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        int ExecuteWorkflows(int maxConcurrentTasks);
+        int ExecuteWorkflows(int count, int? maxConcurrent = null);
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
-        /// by CreationDate.
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
+        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
-        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
+        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        Task<int> ExecuteWorkflowsAsync(int maxConcurrentTasks);
+        Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null);
 
         /// <summary>
         /// Gets the count of active (unsuspended) workflows on the underlying store.
@@ -158,6 +162,7 @@ namespace Stateless.WorkflowEngine
 
             // set the dependency resolver on the workflow to allow for dependency injection
             workflow.DependencyResolver = this.DependencyResolver;
+            int priorityBeforeFire = workflow.Priority;
 
             // if the workflow is marked as complete, don't attempt to run it
             if (!workflow.IsComplete)
@@ -197,9 +202,10 @@ namespace Stateless.WorkflowEngine
                     // the workflow should always save, no matter what happens
                     this.WorkflowStore.Save(workflow);
                 }
+
             }
 
-            // if the workflow is complete, finish off
+            // if the workflow is complete, finish off - this is NOT an else (workflow coule have compleed in the fire action)
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
@@ -211,29 +217,60 @@ namespace Stateless.WorkflowEngine
                 }
                 return;
             }
+
+            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
+            // hits - but if the priority has changed then rather allow for another poll
+            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
+            {
+                this.ExecuteWorkflow(workflow);
+            }
         }
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
-        /// by CreationDate.
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
+        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
-        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
+        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        public int ExecuteWorkflows(int maxConcurrentTasks)
+        public int ExecuteWorkflows(int count, int? maxConcurrent = null)
         {
-            return this.ExecuteWorkflowsAsync(maxConcurrentTasks).GetAwaiter().GetResult();
+            if (count <= 0)
+            {
+                throw new ArgumentOutOfRangeException("count", "Count parameter must be greater than 0");
+            }
+
+            int concurrent = (maxConcurrent ?? count);
+            List<Workflow> workflows = this.WorkflowStore.GetActive(count).ToList();
+            int workflowCount = workflows.Count;
+
+            for (int i=0; i < workflowCount; i += concurrent)
+            {
+                List<Workflow> workflowsToProcess = workflows.GetRange(i, Math.Min(concurrent, workflowCount - i));
+                Parallel.ForEach(workflowsToProcess, ExecuteWorkflow);
+
+            }
+
+            return workflowCount;
         }
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by RetryCount, and then 
-        /// by CreationDate.
+        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
+        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
-        /// <param name="maxConcurrentTasks">The number of workflows that can be executed in parallel.</param>
+        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        public async Task<int> ExecuteWorkflowsAsync(int maxConcurrentTasks)
+        public async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null)
         {
-            SemaphoreSlim semaphore = new SemaphoreSlim(maxConcurrentTasks);
-            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(this.Options.WorkflowExecutionTaskCount);
+            if (count <= 0)
+            {
+                throw new ArgumentOutOfRangeException("count", "Count parameter must be greater than 0");
+            }
+
+            int concurrent = (maxConcurrent ?? count);
+            SemaphoreSlim semaphore = new SemaphoreSlim(concurrent);
+            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(count);
             List<Task> tasks = new List<Task>();
 
             foreach (Workflow wf in workflows)

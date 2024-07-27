@@ -12,7 +12,7 @@ namespace Example.Client
     internal class ClientExample
     {
 
-        private IWorkflowClient CreateWorkflowClient(string storeType)
+        private static IWorkflowClient CreateWorkflowClient(string storeType)
         {
             IWorkflowStore? workflowStore = null;
             const string DbName = "StatelessWorkflowExample";
@@ -50,7 +50,7 @@ namespace Example.Client
 
         }
 
-        private Workflow CreateWorkflow(int fileCount, string fileNamePrefix)
+        private static Workflow CreateWorkflow(int fileCount, string fileNamePrefix)
         {
             FileCreationWorkflow workflow = new FileCreationWorkflow();
             workflow.FilesToCreateCount = fileCount;
@@ -59,7 +59,7 @@ namespace Example.Client
             return workflow;
         }
 
-        public void Run()
+        public static void Run()
         {
             Console.WriteLine();
 
@@ -71,11 +71,11 @@ namespace Example.Client
             Console.WriteLine("Press enter when you are ready to start");
             Console.ReadLine();
             Console.WriteLine("Registering workflow 1");
-            workflowClient.Register(this.CreateWorkflow(2, "StatelessExample_02Files_"));
+            workflowClient.Register(CreateWorkflow(2, "StatelessExample_02Files_"));
             Console.WriteLine("Registering workflow 2");
-            workflowClient.Register(this.CreateWorkflow(5, "StatelessExample_05Files_"));
+            workflowClient.Register(CreateWorkflow(5, "StatelessExample_05Files_"));
             Console.WriteLine("Registering workflow 3");
-            workflowClient.Register(this.CreateWorkflow(10, "StatelessExample_10Files_"));
+            workflowClient.Register(CreateWorkflow(10, "StatelessExample_10Files_"));
 
             Console.WriteLine("Three workflows have been registed - run the Example.Server project to execute the workflows");
             Console.WriteLine();

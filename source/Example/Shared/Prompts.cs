@@ -12,7 +12,7 @@ namespace Example.Shared
         {
             string storeType = "";
             const string Exit = "X";
-            const string msg = @"What stype type would you like to use?
+            const string msg = @"What store type would you like to use?
             * MongoDb [" + Constants.StoreTypeMongoDb + @"]
             * RavenDb [" + Constants.StoreTypeRavenDb + @"]
             * Exit [" + Exit + "]";

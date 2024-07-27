@@ -17,7 +17,7 @@ namespace Example.Server
     internal class ServerExample
     {
 
-        private IWorkflowServer CreateWorkflowServer(string storeType)
+        private static IWorkflowServer CreateWorkflowServer(string storeType)
         {
             IWorkflowStore? workflowStore = null;
             const string DbName = "StatelessWorkflowExample";
@@ -54,7 +54,7 @@ namespace Example.Server
 
         }
 
-        public void Run()
+        public static void Run()
         {
             string inputStoreType = Prompts.GetInputStoreType();
             Console.WriteLine();

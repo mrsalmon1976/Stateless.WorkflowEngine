@@ -11,11 +11,11 @@ namespace Example.Shared.Workflows.FileCreation.Actions
         {
             // clean up all the created files
             FileCreationWorkflow fcw = (FileCreationWorkflow)workflow;
-            Console.WriteLine($"CleanupAction ---> cleaning up example files");
+            ConsoleWriter.WriteLine("CleanupAction: ", "Cleaning up example files");
             string[] files = Directory.GetFiles(Constants.RootPath, $"{fcw.FileNamePrefix}*.txt");
             foreach (string f in files)
             {
-                Console.WriteLine($"CleanupAction ---> Deleting file {f}");
+                ConsoleWriter.WriteLine("CleanupAction: ", $"Deleting file {f}", ConsoleColor.Red);
                 File.Delete(f);
             }
             fcw.ResumeTrigger = FileCreationWorkflow.Trigger.Complete.ToString();

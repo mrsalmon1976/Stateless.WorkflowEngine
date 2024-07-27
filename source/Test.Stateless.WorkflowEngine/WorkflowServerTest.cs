@@ -14,6 +14,7 @@ using Stateless.WorkflowEngine.Events;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection.Actions;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
+using Test.Stateless.WorkflowEngine.Workflows.DecreasingPriority;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -105,7 +106,7 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void ExecuteWorkflow_OnExecution_InitialisesAndFiresTriggers()
+        public void ExecuteWorkflow_OnExecution_InitialisesAndFiresTriggersToCompletion()
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -119,9 +120,10 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
             workflowServer.ExecuteWorkflow(workflow);
 
-            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.Complete.ToString()));
 
         }
+
 
         [Test]
         public void ExecuteWorkflow_WorkflowIsComplete_DoesNotInitialiseAndFireTriggers()
@@ -311,7 +313,25 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void ExecuteWorkflow_OnStepCompletion_ExecutesNextStep()
+        public void ExecuteWorkflow_OnStepCompletionAndResumeDateInFuture_ExecutesNextStepAndStops()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            DelayedWorkflow workflow = new DelayedWorkflow("Start");
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = DelayedWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            workflowEngine.ExecuteWorkflow(workflow);
+
+            Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
+        }
+
+        [Test]
+        public void ExecuteWorkflow_OnStepCompletionAndResumeDateInPast_ExecutesNextStepToCompletion()
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -325,8 +345,28 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
             workflowEngine.ExecuteWorkflow(workflow);
 
-            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.Complete.ToString()));
+            Assert.That(workflow.IsComplete, Is.True);
+        }
 
+        [Test]
+        public void ExecuteWorkflow_OnStepCompletionAndPriorityChanged_ExecutesNextStepAndStops()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            DecreasingPriorityWorkflow workflow = new DecreasingPriorityWorkflow("Start");
+            workflow.Priority = 5;
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = DecreasingPriorityWorkflow.Trigger.AlterPriority.ToString();
+            workflowStore.Save(workflow);
+
+            // execute
+            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
+            workflowEngine.ExecuteWorkflow(workflow);
+
+            Assert.That(workflow.CurrentState, Is.EqualTo(DecreasingPriorityWorkflow.State.AlteringPriority.ToString()));
+            Assert.That(workflow.IsComplete, Is.False);
         }
 
         [Test]
@@ -375,10 +415,11 @@ namespace Test.Stateless.WorkflowEngine
 
         #endregion
 
-        #region ExecuteWorkflows Tests
+        #region ExecuteWorkflows / ExecuteWorkflowsAsync Tests
 
-        [Test]
-        public void ExecuteWorkflows_OnDelayedAction_ResumesAfterDelay()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_OnDelayedAction_ResumesAfterDelay(bool isAsync)
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -391,36 +432,40 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
 
             // execute
-            workflowServer.ExecuteWorkflows(5);
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
             Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
 
             // execute again - nothing should have changed
-            workflowServer.ExecuteWorkflows(5);
+            result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
             workflow = workflowStore.Get<DelayedWorkflow>(workflow.Id);
-			Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
+            Assert.That(result, Is.EqualTo(0));
+            Assert.That(workflow.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
 			
-            // delay and run - should be now be complete
+            // delay and run - should now be complete
             Thread.Sleep(3100);
-            workflowServer.ExecuteWorkflows(5);
+            result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+            Assert.That(result, Is.EqualTo(1));
             Assert.That(workflowStore.GetOrDefault(workflow.Id), Is.Null);
             Assert.That(workflowStore.GetCompletedOrDefault(workflow.Id), Is.Not.Null);
 
         }
 
-        [TestCase(0)]
-        [TestCase(3)]
-        [TestCase(5)]
-        [TestCase(10)]
-        [TestCase(50)]
-        public void ExecuteWorkflows_OnExecution_ReturnsNumberOfWorkflowsExecuted(int activeWorkflowCount)
+        [TestCase(true, 3)]
+        [TestCase(false, 3)]
+        [TestCase(true, 5)]
+        [TestCase(false, 5)]
+        [TestCase(true, 10)]
+        [TestCase(false, 10)]
+        [TestCase(true, 50)]
+        [TestCase(false, 50)]
+        public void ExecuteWorkflows_NoMaxConcurrencySupplied_ExecutesAllLoadedWorkflows(bool isAsync, int executeCount)
         {
-            const int executeCount = 10;
-            int expectedResult = Math.Min(executeCount, activeWorkflowCount);
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            int totalWorkflowCount = (executeCount * 2) + new Random().Next(1, 10);
 
-            for (int i = 0; i < activeWorkflowCount; i++)
+            for (int i = 0; i < totalWorkflowCount; i++)
             {
                 BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
                 workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
@@ -429,17 +474,63 @@ namespace Test.Stateless.WorkflowEngine
                 workflowStore.Save(workflow);
             }
 
-            WorkflowServerOptions options = new WorkflowServerOptions() { WorkflowExecutionTaskCount = executeCount };
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
 
             // execute
-            int result = workflowServer.ExecuteWorkflows(5);
-            Assert.That(result, Is.EqualTo(expectedResult));
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(executeCount).Result : workflowServer.ExecuteWorkflows(executeCount));
+
+            // assert - only 'executeCount' workflows should have been executed and move out of the Start state
+            Assert.That(result, Is.EqualTo(executeCount));
+
+            int workflowsInStartState = workflowStore.GetActive(Int32.MaxValue).Where(x => x.CurrentState == BasicWorkflow.State.Start.ToString()).Count();
+            int expectedWorkflowsUnexecuted = totalWorkflowCount - executeCount;
+            Assert.That(expectedWorkflowsUnexecuted, Is.EqualTo(workflowsInStartState));
 
         }
 
-        [Test]
-        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndNoDependencyResolver_ThrowsException()
+        [TestCase(true, 3, 1)]
+        [TestCase(false, 3, 1)]
+        [TestCase(true, 5, 2)]
+        [TestCase(false, 5, 2)]
+        [TestCase(true, 10, 3)]
+        [TestCase(false, 10, 3)]
+        [TestCase(true, 50, 10)]
+        [TestCase(false, 50, 10)]
+        [TestCase(true, 100, 10)]
+        [TestCase(false, 100, 10)]
+        public void ExecuteWorkflows_MaxConcurrencySupplied_ExecutesAllLoadedWorkflows(bool isAsync, int executeCount, int maxConcurrency)
+        {
+
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            int totalWorkflowCount = (executeCount * 2) + new Random().Next(1, 10);
+
+            for (int i = 0; i < totalWorkflowCount; i++)
+            {
+                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+                workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-2);
+                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+                workflowStore.Save(workflow);
+            }
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            // execute
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(executeCount, maxConcurrency).Result : workflowServer.ExecuteWorkflows(executeCount, maxConcurrency));
+
+            // assert - only 'executeCount' workflows should have been executed and move out of the Start state
+            Assert.That(result, Is.EqualTo(executeCount));
+
+            int workflowsInStartState = workflowStore.GetActive(Int32.MaxValue).Where(x => x.CurrentState == BasicWorkflow.State.Start.ToString()).Count();
+            int expectedWorkflowsUnexecuted = totalWorkflowCount - executeCount;
+            Assert.That(expectedWorkflowsUnexecuted, Is.EqualTo(workflowsInStartState));
+        }
+
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndNoDependencyResolver_ThrowsException(bool isAsync)
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -454,15 +545,17 @@ namespace Test.Stateless.WorkflowEngine
             Assert.That(workflow.RetryCount, Is.EqualTo(0));
 
             // execute
-            workflowServer.ExecuteWorkflows(10);
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(10).Result : workflowServer.ExecuteWorkflows(10));
 
             // we won't get an error, but check the workflow to see if any error occurred
+            Assert.That(result, Is.EqualTo(1));
             Assert.That(workflow.RetryCount, Is.EqualTo(1));
             Assert.That(workflow.LastException.Contains("MissingMethodException"), Is.True);
         }
 
-        [Test]
-        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndDependencyResolver_ExecutesAction()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndDependencyResolver_ExecutesAction(bool isAsync)
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -480,71 +573,10 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             Assert.That(resolver.RunCount, Is.EqualTo(0));
-            workflowServer.ExecuteWorkflows(10);
-			Assert.That(resolver.RunCount, Is.EqualTo(1));
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(10).Result : workflowServer.ExecuteWorkflows(10));
+            Assert.That(result, Is.EqualTo(1));
+            Assert.That(resolver.RunCount, Is.EqualTo(1));
 
-        }
-
-        [TestCase(3)]
-        [TestCase(5)]
-        [TestCase(10)]
-        [TestCase(50)]
-        public void ExecuteWorkflows_OnExecution_ExecutesConfiguredTaskCount(int workflowExecutionTaskCount)
-        {
-            Random r = new Random();
-            int workflowCount = workflowExecutionTaskCount + r.Next(10, 50);
-
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-            for (int i = 0; i < workflowCount; i++)
-            {
-                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-1);
-                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-                workflowStore.Save(workflow);
-            }
-            WorkflowServerOptions options = new WorkflowServerOptions() {  WorkflowExecutionTaskCount = workflowExecutionTaskCount };
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
-
-            // execute
-            int result = workflowServer.ExecuteWorkflows(workflowExecutionTaskCount);
-
-            // assert
-            Assert.That(result, Is.EqualTo(workflowExecutionTaskCount));
-        }
-
-        #endregion
-
-        #region ExecuteWorkflowsAsync Tests
-
-        [TestCase(3)]
-        [TestCase(5)]
-        [TestCase(10)]
-        [TestCase(50)]
-        public void ExecuteWorkflowsAsync_OnExecution_ExecutesConfiguredTaskCount(int workflowExecutionTaskCount)
-        {
-            Random r = new Random();
-            int workflowCount = workflowExecutionTaskCount + r.Next(10, 50);
-
-            // set up the store and the workflows
-            IWorkflowStore workflowStore = new MemoryWorkflowStore();
-            for (int i = 0; i < workflowCount; i++)
-            {
-                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-                workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-1);
-                workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
-                workflowStore.Save(workflow);
-            }
-            WorkflowServerOptions options = new WorkflowServerOptions() { WorkflowExecutionTaskCount = workflowExecutionTaskCount };
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
-
-            // execute
-            workflowServer.ExecuteWorkflowsAsync(workflowExecutionTaskCount).GetAwaiter().GetResult();
-
-            // assert - all workflows should still be in the store, but only some of them should have moved to the next state
-            var allWorkflows = workflowStore.GetActive(Int32.MaxValue);
-            Assert.That(allWorkflows.Count(), Is.EqualTo(workflowCount));
-            Assert.That(allWorkflows.Where(x => x.CurrentState == BasicWorkflow.State.DoingStuff.ToString()).Count(), Is.EqualTo(workflowExecutionTaskCount));
         }
 
         #endregion
@@ -571,18 +603,30 @@ namespace Test.Stateless.WorkflowEngine
         [Test]
         public void OnWorkflowStateEntry_OnStateChange_Persisted()
         {
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            BasicWorkflow basicWorkflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            basicWorkflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+
+            DecreasingPriorityWorkflow decreasingPriorityWorkflow = new DecreasingPriorityWorkflow(DecreasingPriorityWorkflow.State.Start);
+            decreasingPriorityWorkflow.ResumeTrigger = DecreasingPriorityWorkflow.Trigger.AlterPriority.ToString();
+
+            DelayedWorkflow delayedWorkflow = new DelayedWorkflow(DelayedWorkflow.State.Start);
+            decreasingPriorityWorkflow.ResumeTrigger = DelayedWorkflow.Trigger.DoStuff.ToString();
 
             // set up the workflow store
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetActive(Arg.Any<int>()).Returns(new[] { workflow });
+            workflowStore.GetActive(Arg.Any<int>()).Returns(new Workflow[] { basicWorkflow, decreasingPriorityWorkflow, delayedWorkflow });
 
-            IWorkflowServer workflowEngine = new WorkflowServer(workflowStore);
-            workflowEngine.ExecuteWorkflows(10);
+            // execute
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflows(10);
 
-            // assert
-            workflowStore.Received(1).Save(workflow);
+            // assert - should receive
+            //  2 for the basic workflow as it will execute both steps
+            //  1 for the DecreasingPriorityWorkflow which will change priority and not move on
+            //  1 for the Delayed workflow which will change resume time
+            workflowStore.Received(2).Save(basicWorkflow);
+            workflowStore.Received(1).Save(decreasingPriorityWorkflow);
+            workflowStore.Received(1).Save(delayedWorkflow);
 
         }
         #endregion

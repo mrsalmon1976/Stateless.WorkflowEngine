@@ -14,22 +14,22 @@ namespace Example.Shared.Workflows.FileCreation.Actions
             string fileName = $"AdditionalFile_{DateTime.Now.ToString("HHmmss")}_{fileNumber}.txt";
             string filePath = fcw.GetFilePath(Constants.RootPath, fileName);
 
-            Console.WriteLine($"WriteAdditionalFilesAction ---> Writing file {filePath}");
+            ConsoleWriter.WriteLine("WriteAdditionalFilesAction: ", $"Writing file {filePath}", ConsoleColor.Green);
             File.WriteAllText(filePath, "Example workflow");
 
             if (fileNumber == fcw.FilesToCreateCount)
             {
-                Console.WriteLine($"WriteAdditionalFilesAction ---> All files created moving to cleanup");
+                ConsoleWriter.WriteLine("WriteAdditionalFilesAction: ", $"All files created moving to cleanup");
                 fcw.ResumeTrigger = FileCreationWorkflow.Trigger.CleanUp.ToString();
             }
             else
             {
-                Console.WriteLine($"WriteAdditionalFilesAction ---> {fileNumber} of {fcw.FilesToCreateCount} created, re-entering");
+                ConsoleWriter.WriteLine("WriteAdditionalFilesAction: ", $"{fileNumber} of {fcw.FilesToCreateCount} created, re-entering");
                 // not done yet - trigger a re-entry
                 fcw.ResumeTrigger = FileCreationWorkflow.Trigger.WriteAdditionalFiles.ToString();
             }
 
-            Console.WriteLine($"WriteAdditionalFilesAction ---> sleeping for 5 seconds");
+            ConsoleWriter.WriteLine("WriteAdditionalFilesAction: ", $"Sleeping for 5 seconds");
             fcw.FilesCreatedCount = fileNumber;
             fcw.ResumeOn = DateTime.UtcNow.AddSeconds(5);
         }
