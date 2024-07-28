@@ -86,8 +86,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>md $(SolutionDir)Stateless.WorkflowEngine.WebConsole\bin\$(ConfigurationName)\AutoUpdater
-copy /Y $(TargetDir)*.* $(SolutionDir)Stateless.WorkflowEngine.WebConsole\bin\$(ConfigurationName)\AutoUpdater
+    <PostBuildEvent>
 </PostBuildEvent>
   </PropertyGroup>
 </Project>

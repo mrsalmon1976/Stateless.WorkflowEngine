@@ -1,14 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>4.0.2</Version>
+    <Version>4.1.0</Version>
     <Authors>Matt Salmon</Authors>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    <Title>
+    </Title>
+    <Description>
+    </Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
-    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.9.0" />
+    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
+    <PackageReference Include="MongoDB.Bson" Version="2.26.0" />
+    <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
+    <PackageReference Include="MongoDB.Driver.Core" Version="2.26.0" />
+    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.9.0" />
   </ItemGroup>
 </Project>
