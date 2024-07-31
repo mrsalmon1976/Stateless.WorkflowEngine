@@ -125,7 +125,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             model.Connections.AddRange(connectionViewModels.OrderBy(x => x.Host.ToUpper()).ThenBy(x => x.Database.ToUpper()));
             
             model.CurrentUserCanDeleteConnection = this.Context.CurrentUser.HasClaim(Claims.ConnectionDelete);
-            return this.View[Views.Connection.List, model]; ;
+            return this.View[Views.Connection.List, model];
 
         }
 
