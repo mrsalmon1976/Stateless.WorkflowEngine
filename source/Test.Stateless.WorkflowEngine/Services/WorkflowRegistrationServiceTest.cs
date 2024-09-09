@@ -70,6 +70,21 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [Test]
+        public void IsSingleInstanceWorkflowRegistered_OnExecution_ChecksByQualifiedName()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            // execute
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+
+            // assert
+            workflowStore.Received(1).GetAllByQualifiedName<BasicWorkflow>();
+
+        }
+
         #endregion
 
         #region RegisterWorkflow Tests
