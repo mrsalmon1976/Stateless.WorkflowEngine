@@ -88,26 +88,41 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
-        /// <summary>
-        /// Gets all incomplete workflows of a specified type ordered by create date.
-        /// </summary>
-        /// <returns></returns>
-        public override IEnumerable<Workflow> GetAllByType(string workflowType)
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name ordered by create date.
+		/// </summary>
+		/// <returns></returns>
+		public override IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName)
         {
             using (IDocumentSession session = this.OpenSession())
             {
                 return (from s in session.Query<RavenWorkflow>()
-                    .Where(x => x.WorkflowType == workflowType)
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName)
                     .OrderBy(x => x.Workflow.CreatedOn)
                     select s.Workflow).ToList();
             }
         }
 
-        /// <summary>
-        /// Gets the count of completed workflows in the completed collection.
-        /// </summary>
-        /// <returns></returns>
-        public override long GetCompletedCount()
+		/// <summary>
+		/// Gets all incomplete workflows of a specified type ordered by create date.
+		/// </summary>
+		/// <returns></returns>
+		public override IEnumerable<Workflow> GetAllByType(string workflowType)
+		{
+			using (IDocumentSession session = this.OpenSession())
+			{
+				return (from s in session.Query<RavenWorkflow>()
+					.Where(x => x.WorkflowType == workflowType)
+					.OrderBy(x => x.Workflow.CreatedOn)
+						select s.Workflow).ToList();
+			}
+		}
+
+		/// <summary>
+		/// Gets the count of completed workflows in the completed collection.
+		/// </summary>
+		/// <returns></returns>
+		public override long GetCompletedCount()
         {
             using (IDocumentSession session = this.OpenSession())
             {

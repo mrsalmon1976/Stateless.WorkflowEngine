@@ -62,11 +62,23 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         long GetIncompleteCount();
 
-        /// <summary>
-        /// Gets all workflows of a specified type.
-        /// </summary>
-        /// <returns></returns>
-        IEnumerable<T> GetAllByType<T>() where T : Workflow;
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name.
+		/// </summary>
+		/// <returns></returns>
+		IEnumerable<T> GetAllByQualifiedName<T>() where T : Workflow;
+
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name.
+		/// </summary>
+		/// <returns></returns>
+		IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName);
+
+		/// <summary>
+		/// Gets all workflows of a specified type.
+		/// </summary>
+		/// <returns></returns>
+		IEnumerable<T> GetAllByType<T>() where T : Workflow;
 
         /// <summary>
         /// Gets all workflows of a specified type.
@@ -275,12 +287,28 @@ namespace Stateless.WorkflowEngine.Stores
             return JsonConvert.SerializeObject(doc);
         }
 
+		/// <summary>
+		/// Gets all workflows of a specified full qualified name.
+		/// </summary>
+		/// <returns></returns>
+		public virtual IEnumerable<T> GetAllByQualifiedName<T>() where T : Workflow
+		{
+			IEnumerable<Workflow> workflows = this.GetAllByQualifiedName(typeof(T).FullName);
+			return workflows.Cast<T>();
+		}
 
-        /// <summary>
-        /// Gets all workflows of a specified type.
-        /// </summary>
-        /// <returns></returns>
-        public virtual IEnumerable<T> GetAllByType<T>() where T : Workflow
+		/// <summary>
+		/// Gets all workflows of a specified type.
+		/// </summary>
+		/// <returns></returns>
+		public abstract IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName);
+
+
+		/// <summary>
+		/// Gets all workflows of a specified type.
+		/// </summary>
+		/// <returns></returns>
+		public virtual IEnumerable<T> GetAllByType<T>() where T : Workflow
         {
             IEnumerable<Workflow> workflows = this.GetAllByType(typeof(T).AssemblyQualifiedName);
             return workflows.Cast<T>();

@@ -3,9 +3,14 @@
 source/TestResult.xml
 source/Stateless.Workflow.Tests.VisualState.xml
 /deployment/Output
+/deployment/publish
+/deployment/NuGetTest/NugetPackageTest
+/deployment/NuGetTest/NugetTestApp/.vs/
 /deployment/_apikey.txt
 source/CompiledIndexCache/
 source/.vs/
 deployment/*.zip
 deployment/Archive/*
 InternalTrace.*
+bin/
+obj/

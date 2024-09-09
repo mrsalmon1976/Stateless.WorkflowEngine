@@ -60,7 +60,7 @@ function UpdateAppConfigSetting
 
 function UpdateProjectVersion
 {
-	param([string]$filePath, [string]$version)
+	param([string]$filePath, [string]$version, [string]$versionWithSuffix)
 
 	if (!(Test-Path -Path $filePath)) {
 		throw "$filePath does not exist - unable to update project file"
@@ -68,7 +68,7 @@ function UpdateProjectVersion
 
 	$doc = New-Object System.Xml.XmlDocument
 	$doc.Load($filePath)
-	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/Version" -newValue $version
+	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/Version" -newValue $versionWithSuffix
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/AssemblyVersion" -newValue $version
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/FileVersion" -newValue $version
 	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//package/metadata/version" -newValue $version
@@ -143,46 +143,70 @@ function ZipFile
 }
 
 $root = $PSScriptRoot
-$source = $root.Replace("deployment", "") + "\source"
+$publish = "$root\publish"
+if (Test-Path -Path $publish) { Remove-Item $publish -Recurse -Force }
+$source = [System.IO.Path]::Combine($root.Replace("deployment", ""), "source") 
 $version = Read-Host -Prompt "What version are we building? [e.g. 2.3.0]"
+$preReleaseSuffix = Read-Host -Prompt "Would you like to add a pre-release suffix? [e.g. alpha1]"
+$versionWithSuffix = "$version-$preReleaseSuffix".TrimEnd("-")
+
 
 # make sure the files reflect the correct assembly version
 UpdateAssemblyVersion -assemblyFilePath "$source\SharedAssemblyInfo.cs" -version $version
-UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" -version $version
-UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.nuspec" -version $version
-UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version
-UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.nuspec" -version $version
-UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -version $version
-UpdateNuspecVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.nuspec" -version $version
+UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" -version $version -versionWithSuffix $versionWithSuffix
+UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
+UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
 
 # run msbuild on the solution
 Write-Host "Building solution $version"
-Set-Location "$source"
+# Set-Location "$source"
 $msbuild = GetMSBuildPath
-& $msbuild Stateless.WorkflowEngine.sln /t:Clean,Build /p:Configuration=Release
-Set-Location $root
+# & $msbuild Stateless.WorkflowEngine.sln /t:Clean,Build /p:Configuration=Release /p:OutDir=$publish
+# Set-Location $root
 
 # package mongodb
-$mongodb = "$source\Stateless.WorkflowEngine.MongoDb\bin\Release\netstandard2.0\publish"
-$zip = "$root\Stateless.WorkflowEngine.MongoDb_v$version.zip"
+Write-Host "Building Stateless.Workflow.MongoDb version $versionWithSuffix"
+$mongodbPublishDir = "$publish\Stateless.WorkflowEngine.MongoDb"
+& $msbuild "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$mongodbPublishDir"
+if (!(Test-Path -Path "$mongodbPublishDir\Stateless.WorkflowEngine.MongoDb.dll")) {
+	Write-Host "MongoDb publish location/files not found at $mongodbPublishDir" -ForegroundColor White -BackgroundColor Red
+	Exit
+}
+$zip = "$root\Stateless.WorkflowEngine.MongoDb_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
-ZipFile -sourcefile "$mongodb\*.*" -zipfile $zip 
+ZipFile -sourcefile "$mongodbPublishDir\*.*" -zipfile $zip 
 
 # package raven db 
-Write-Host "Building Stateless.Workflow.RavenDB version $version"
-$ravendb = "$source\Stateless.WorkflowEngine.RavenDb\bin\Release"
-$zip = "$root\Stateless.WorkflowEngine.RavenDb_v$version.zip"
+Write-Host "Building Stateless.Workflow.RavenDB version $versionWithSuffix"
+$ravendbPublishDir = "$publish\Stateless.WorkflowEngine.RavenDb"
+& $msbuild "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$ravendbPublishDir"
+if (!(Test-Path -Path $ravendbPublishDir) -or !(Test-Path -Path "$ravendbPublishDir\Stateless.WorkflowEngine.RavenDb.dll")) {
+	Write-Host "RavenDb publish location/files not found at $ravendbPublishDir" -ForegroundColor White -BackgroundColor Red
+	Exit
+}
+$zip = "$root\Stateless.WorkflowEngine.RavenDb_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
-ZipFile -sourcefile "$ravendb\*.*" -zipfile $zip 
+ZipFile -sourcefile "$ravendbPublishDir\*.*" -zipfile $zip 
 
 # package the workflow console with production settings
-Write-Host "Building Stateless.Workflow.WebConsole version $version"
-$webconsole = "$source\Stateless.WorkflowEngine.WebConsole\bin\Release"
-UpdateAppConfigSetting -filePath "$webConsole\Stateless.WorkflowEngine.WebConsole.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
-UpdateAppConfigSetting -filePath "$webConsole\AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
-$zip = "$root\Stateless.WorkflowEngine.WebConsole_v$version.zip"
+Write-Host "Building Stateless.Workflow.WebConsole version $versionWithSuffix"
+$webconsolePublishDir = "$publish\Stateless.WorkflowEngine.WebConsole"
+& $msbuild "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$webconsolePublishDir"
+if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe")) {
+	Write-Host "WebConsole publish location/files not found at $webconsolePublishDir" -ForegroundColor White -BackgroundColor Red
+	Exit
+}
+UpdateAppConfigSetting -filePath "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
+
+& $msbuild "$source\Stateless.WorkflowEngine.WebConsole.AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$webconsolePublishDir\AutoUpdater"
+if (!(Test-Path -Path "$webconsolePublishDir\AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.exe")) {
+	Write-Host "WebConsole,AutoUpdater publish location/files not found at $webconsolePublishDir\AutoUpdater" -ForegroundColor White -BackgroundColor Red
+	Exit
+}
+UpdateAppConfigSetting -filePath "$webconsolePublishDir\AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
+$zip = "$root\Stateless.WorkflowEngine.WebConsole_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
-ZipFile -sourcefile "$webconsole\*.*" -zipfile $zip 
+ZipFile -sourcefile "$webconsolePublishDir\*.*" -zipfile $zip 
 
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White
 

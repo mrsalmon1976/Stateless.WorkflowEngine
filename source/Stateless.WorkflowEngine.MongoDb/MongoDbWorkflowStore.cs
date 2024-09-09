@@ -137,25 +137,37 @@ namespace Stateless.WorkflowEngine.MongoDb
             return collection.EstimatedDocumentCount();
         }
 
-        /// <summary>
-        /// Gets all incomplete workflows of a specified type ordered by create date.
-        /// </summary>
-        /// <returns></returns>
-        public override IEnumerable<Workflow> GetAllByType(string workflowType)
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name ordered by create date.
+		/// </summary>
+		/// <returns></returns>
+		public override IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName)
         {
             var collection = GetCollection();
-            return collection.Find(x => x.WorkflowType == workflowType)
+            return collection.Find(x => x.Workflow.QualifiedName == qualifiedName)
                 .SortBy(x => x.Workflow.CreatedOn)
                 .Project(y => y.Workflow)
                 .ToEnumerable();
-
         }
 
-        /// <summary>
-        /// Gets the count of completed workflows in the completed collection.
-        /// </summary>
-        /// <returns></returns>
-        public override long GetCompletedCount()
+		/// <summary>
+		/// Gets all incomplete workflows of a specified type ordered by create date.
+		/// </summary>
+		/// <returns></returns>
+		public override IEnumerable<Workflow> GetAllByType(string workflowType)
+		{
+			var collection = GetCollection();
+			return collection.Find(x => x.WorkflowType == workflowType)
+				.SortBy(x => x.Workflow.CreatedOn)
+				.Project(y => y.Workflow)
+				.ToEnumerable();
+		}
+
+		/// <summary>
+		/// Gets the count of completed workflows in the completed collection.
+		/// </summary>
+		/// <returns></returns>
+		public override long GetCompletedCount()
         {
             var collection = GetCompletedCollection();
             // use EstimatedDocumentCount for this, as CountDocuments does an actual scan of the underlying documents and can lead to 

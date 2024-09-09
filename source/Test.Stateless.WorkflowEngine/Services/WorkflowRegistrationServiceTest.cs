@@ -100,9 +100,10 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             regService.RegisterWorkflow(workflowStore, workflow);
 
-            workflowStore.Received(1).GetAllByType(workflow.GetType().AssemblyQualifiedName);
+            workflowStore.Received(1).GetAllByQualifiedName(workflow.GetType().FullName);
+			workflowStore.Received(1).GetAllByQualifiedName(workflow.QualifiedName);
 
-        }
+		}
 
         [Test]
         public void RegisterWorkflow_MultipleInstanceWorkflowRegistered_Registers()
@@ -116,8 +117,9 @@ namespace Test.Stateless.WorkflowEngine
             regService.RegisterWorkflow(workflowStore, workflow);
 
             workflowStore.DidNotReceive().GetAllByType(Arg.Any<string>());
+			workflowStore.DidNotReceive().GetAllByQualifiedName(Arg.Any<string>());
 
-        }
+		}
 
         #endregion
 

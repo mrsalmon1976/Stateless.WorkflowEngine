@@ -51,11 +51,11 @@ namespace Stateless.WorkflowEngine.Services
         {
             if (workflow.IsSingleInstance)
             {
-                string workflowType = workflow.GetType().AssemblyQualifiedName;
-                IEnumerable<Workflow> workflows = workflowStore.GetAllByType(workflowType);
+                string qualifiedName = workflow.QualifiedName;
+                IEnumerable<Workflow> workflows = workflowStore.GetAllByQualifiedName(qualifiedName);
                 if (workflows.Any())
                 {
-                    throw new SingleInstanceWorkflowAlreadyExistsException(String.Format("Workflow of type '{0}' already registered", workflowType));
+                    throw new SingleInstanceWorkflowAlreadyExistsException(String.Format("Workflow of type '{0}' already registered", qualifiedName));
                 }
             }
 

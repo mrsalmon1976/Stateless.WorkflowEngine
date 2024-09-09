@@ -531,12 +531,12 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Assert.That(result, Is.EqualTo(count + 3));
         }
 
-        #endregion
+		#endregion
 
-        #region GetAllByType Tests
+		#region GetAllByQualifiedName Tests
 
-        [Test]
-        public void GetAllByType_OnExecute_ReturnsCorrectWorkflows()
+		[Test]
+        public void GetAllByQualifiedName_OnExecute_ReturnsCorrectWorkflows()
         {
             // Set up a store with some workflows
             IWorkflowStore store = GetStore();
@@ -544,17 +544,38 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.Save(new SingleInstanceWorkflow("Start"));
             store.Save(new SimpleTwoStateWorkflow("Start"));
 
-            IEnumerable<Workflow> result = store.GetAllByType(typeof(SingleInstanceWorkflow).AssemblyQualifiedName);
+            IEnumerable<Workflow> result = store.GetAllByQualifiedName(typeof(SingleInstanceWorkflow).FullName);
             Workflow wf = result.Single();
             Assert.That(wf.GetType().FullName, Is.EqualTo(typeof(SingleInstanceWorkflow).FullName));
             
         }
 
-        #endregion
 
-        #region GetCompletedCount Tests
+		#endregion
 
-        [Test]
+		#region GetAllByType Tests
+
+		[Test]
+		public void GetAllByType_OnExecute_ReturnsCorrectWorkflows()
+		{
+			// Set up a store with some workflows
+			IWorkflowStore store = GetStore();
+			store.Save(new BasicWorkflow("Start"));
+			store.Save(new SingleInstanceWorkflow("Start"));
+			store.Save(new SimpleTwoStateWorkflow("Start"));
+
+			IEnumerable<Workflow> result = store.GetAllByType(typeof(SingleInstanceWorkflow).AssemblyQualifiedName);
+			Workflow wf = result.Single();
+			Assert.That(wf.GetType().AssemblyQualifiedName, Is.EqualTo(typeof(SingleInstanceWorkflow).AssemblyQualifiedName));
+
+		}
+
+
+		#endregion
+
+		#region GetCompletedCount Tests
+
+		[Test]
         public void GetCompletedCount_OnExecute_ReturnsAccurateCount()
         {
             // Set up a store with some basic workflows

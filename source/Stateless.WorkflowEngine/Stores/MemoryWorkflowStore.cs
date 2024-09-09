@@ -71,6 +71,17 @@ namespace Stateless.WorkflowEngine.Stores
             return this._activeWorkflows.Count();
         }
 
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name ordered by create date.
+		/// </summary>
+		/// <returns></returns>
+		public override IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName)
+        {
+            return this._activeWorkflows.Values
+                       .Where(x => x.GetType().FullName == qualifiedName)
+                       .OrderBy(x => x.CreatedOn);
+        }
+
         /// <summary>
         /// Gets all incomplete workflows of a specified type ordered by create date.
         /// </summary>
