@@ -301,7 +301,7 @@ namespace Stateless.WorkflowEngine
             // hits - but if the priority has changed then rather allow for another poll
             if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
             {
-                this.ExecuteWorkflow(workflow);
+                await this.ExecuteWorkflowAsync(workflow);
             }
         }
 
