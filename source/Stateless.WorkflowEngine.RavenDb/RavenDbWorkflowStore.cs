@@ -5,6 +5,7 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb.Index;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.RavenDb
 {
@@ -208,6 +209,26 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
                     select s.Workflow).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetActiveAsync(int count)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return await (from s in session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)
+                    .OrderByDescending(x => x.Workflow.Priority)
+                    .ThenByDescending(x => x.Workflow.RetryCount)
+                    .ThenBy(x => x.Workflow.CreatedOn)
+                    .Take(count)
+                        select s.Workflow).ToListAsync();
             }
         }
 

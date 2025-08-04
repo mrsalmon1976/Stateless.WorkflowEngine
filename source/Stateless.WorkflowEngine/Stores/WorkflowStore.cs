@@ -1,8 +1,9 @@
-﻿using Stateless.WorkflowEngine.Exceptions;
+﻿using Newtonsoft.Json;
+using Stateless.WorkflowEngine.Exceptions;
 using System;
-using System.Linq;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.Stores
 {
@@ -110,6 +111,14 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         IEnumerable<Workflow> GetActive(int count);
+
+        /// <summary>
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        Task<IEnumerable<Workflow>> GetActiveAsync(int count);
 
         /// <summary>
         /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
@@ -352,6 +361,16 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         public abstract IEnumerable<Workflow> GetActive(int count);
+
+
+        /// <summary>
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<Workflow>> GetActiveAsync(int count);
+
 
         /// <summary>
         /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.

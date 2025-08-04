@@ -349,7 +349,7 @@ namespace Stateless.WorkflowEngine
 
             int concurrent = (maxConcurrent ?? count);
             SemaphoreSlim semaphore = new SemaphoreSlim(concurrent);
-            IEnumerable<Workflow> workflows = this.WorkflowStore.GetActive(count);
+            IEnumerable<Workflow> workflows = await this.WorkflowStore.GetActiveAsync(count);
             List<Task> tasks = new List<Task>();
 
             foreach (Workflow wf in workflows)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.Stores
 {
@@ -143,6 +144,17 @@ namespace Stateless.WorkflowEngine.Stores
                 .ThenByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetActiveAsync(int count)
+        {
+            return await Task.FromResult(this.GetActive(count));
         }
 
         /// <summary>

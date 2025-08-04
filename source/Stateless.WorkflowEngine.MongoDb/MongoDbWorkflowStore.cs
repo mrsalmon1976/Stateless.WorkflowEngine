@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.IO;
 using MongoDB.Driver;
 using Stateless.WorkflowEngine.Stores;
-using MongoDB.Bson;
-using MongoDB.Bson.IO;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.MongoDb
 {
@@ -257,7 +258,29 @@ namespace Stateless.WorkflowEngine.MongoDb
                    .ThenByDescending(x => x.Workflow.RetryCount)
                    .ThenBy(x => x.Workflow.CreatedOn)
                    .Project(y => y.Workflow)
-                   .ToEnumerable();
+                   .ToList();
+        }
+
+
+        /// <summary>
+        /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
+        /// Note that is the primary method used by the workflow engine to fetch workflows.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetActiveAsync(int count)
+        {
+            var collection = GetCollection();
+            var cursor = await collection
+                .Find(x => x.Workflow.IsSuspended == false && (x.Workflow.ResumeOn <= DateTime.UtcNow))
+                .Limit(count)
+                .SortByDescending(x => x.Workflow.Priority)
+                .ThenByDescending(x => x.Workflow.RetryCount)
+                .ThenBy(x => x.Workflow.CreatedOn)
+                .Project(y => y.Workflow)
+                .ToCursorAsync();
+
+            return await cursor.ToListAsync();
         }
 
         /// <summary>
