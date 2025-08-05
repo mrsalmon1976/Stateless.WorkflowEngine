@@ -58,7 +58,7 @@ namespace Stateless.WorkflowEngine
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null);
+        Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null);
 
         /// <summary>
         /// Gets the count of active (unsuspended) workflows on the underlying store.
@@ -340,7 +340,7 @@ namespace Stateless.WorkflowEngine
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
-        public async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null)
+        public async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)
         {
             if (count <= 0)
             {
@@ -351,6 +351,11 @@ namespace Stateless.WorkflowEngine
             SemaphoreSlim semaphore = new SemaphoreSlim(concurrent);
             IEnumerable<Workflow> workflows = await this.WorkflowStore.GetActiveAsync(count);
             List<Task> tasks = new List<Task>();
+
+            if (cancellationToken != null && cancellationToken.Value.IsCancellationRequested)
+            {
+                return 0;
+            }
 
             foreach (Workflow wf in workflows)
             {
@@ -367,6 +372,11 @@ namespace Stateless.WorkflowEngine
                     }
                 });
                 tasks.Add(t);
+
+                if (cancellationToken != null && cancellationToken.Value.IsCancellationRequested)
+                {
+                    break;
+                }
             }
 
             await Task.WhenAll(tasks);

@@ -14,6 +14,7 @@ using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.DecreasingPriority;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -825,6 +826,33 @@ namespace Test.Stateless.WorkflowEngine
             int workflowsInStartState = workflowStore.GetActive(Int32.MaxValue).Where(x => x.CurrentState == BasicWorkflow.State.Start.ToString()).Count();
             int expectedWorkflowsUnexecuted = totalWorkflowCount - executeCount;
             Assert.That(expectedWorkflowsUnexecuted, Is.EqualTo(workflowsInStartState));
+
+        }
+
+        [Test]
+        public async Task ExecuteWorkflows_CancellationRequested_NoWorkflowsExecuted()
+        {
+            // set up the store and the workflows
+            int totalWorkflowCount = new Random().Next(5, 10);
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            List<Workflow> workflows = new List<Workflow>();
+            for (int i = 0; i < totalWorkflowCount; i++)
+            {
+                BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+                workflows.Add(workflow);
+            }
+            workflowStore.GetActiveAsync(Arg.Any<int>()).Returns(Task.FromResult(workflows.AsEnumerable()));
+
+            CancellationToken cancellationToken = new CancellationToken(true);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            // execute
+            int result = await workflowServer.ExecuteWorkflowsAsync(10, 100, cancellationToken);
+
+            // assert - only 'executeCount' workflows should have been executed and move out of the Start state
+            Assert.That(result, Is.EqualTo(0));
+            await workflowStore.Received(1).GetActiveAsync(10);
 
         }
 
