@@ -33,6 +33,12 @@ namespace Stateless.WorkflowEngine.RavenDb
             return session;
         }
 
+        private IAsyncDocumentSession OpenAsyncSession()
+        {
+            var session = this._documentStore.OpenAsyncSession();
+            session.Advanced.WaitForIndexesAfterSaveChanges();
+            return session;
+        }
         /// <summary>
         /// Archives a workflow, moving it into the completed store.
         /// </summary>
@@ -220,7 +226,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <returns></returns>
         public override async Task<IEnumerable<Workflow>> GetActiveAsync(int count)
         {
-            using (IDocumentSession session = this.OpenSession())
+            using (var session = this.OpenAsyncSession())
             {
                 return await (from s in session.Query<RavenWorkflow>()
                     .Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= DateTime.UtcNow)

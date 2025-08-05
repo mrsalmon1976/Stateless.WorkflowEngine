@@ -12,6 +12,7 @@ using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Newtonsoft.Json;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.Stores
 {
@@ -256,6 +257,159 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             // fetch the workflows, only two should be returned
             List<Workflow> workflows = store.GetActive(10).ToList();
+
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow2.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow3.Id));
+        }
+
+        #endregion
+
+        #region GetActiveAsync Tests
+
+        [Test]
+        public async Task GetActiveAsync_WorkflowIsSuspended_NotReturned()
+        {
+            // factory method for workflows
+            Func<bool, BasicWorkflow> createWorkflow = (isSuspended) => {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                return wf;
+            };
+
+            Workflow activeWorkflow = createWorkflow(false);
+            Workflow suspendedWorkflow = createWorkflow(true);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(activeWorkflow);
+            store.Save(suspendedWorkflow);
+
+            // fetch the workflows, only one should be returned
+            var workflows = await store.GetActiveAsync(10);
+            Assert.That(workflows.Count, Is.EqualTo(1));
+            Assert.That(workflows.First().Id, Is.EqualTo(activeWorkflow.Id));
+        }
+
+        [Test]
+        public async Task GetActiveAsync_WorkflowResumeDateInFuture_NotReturned()
+        {
+            // factory method for workflows
+            Func<bool, DateTime, BasicWorkflow> createWorkflow = (isSuspended, resumeOn) => {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                wf.ResumeOn = resumeOn;
+                wf.BasicMetaData = Guid.NewGuid().ToString();
+                return wf;
+            };
+
+            Workflow noResumeDateWorkflow = createWorkflow(false, DateTime.MinValue);
+            Workflow resumeDateActiveWorkflow = createWorkflow(false, DateTime.UtcNow.AddMilliseconds(-1));
+            Workflow futureDatedWorkflow = createWorkflow(false, DateTime.UtcNow.AddMinutes(3));
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(noResumeDateWorkflow);
+            store.Save(resumeDateActiveWorkflow);
+            store.Save(futureDatedWorkflow);
+
+            // fetch the workflows, only two should be returned
+            var workflows = await store.GetActiveAsync(10);
+            Assert.That(workflows.Count, Is.EqualTo(2));
+
+            Assert.That(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id), Is.Null);
+        }
+
+        [Test]
+        public async Task GetActiveAsync_MultipleWorkflowsReturned_OrderedByPriorityBeforeRetryCount()
+        {
+            DateTime startTime = DateTime.Now;
+            // factory method for workflows
+            Func<int, int, BasicWorkflow> createWorkflow = (priority, retryCount) => {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.Priority = priority;
+                wf.RetryCount = retryCount;
+                wf.CreatedOn = startTime;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+
+            Workflow workflow1 = createWorkflow(4, 3);
+            Workflow workflow2 = createWorkflow(5, 2);
+            Workflow workflow3 = createWorkflow(5, 3);
+            Workflow workflow4 = createWorkflow(4, 2);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3, workflow4 });
+
+            // fetch the workflows
+            var workflows = (await store.GetActiveAsync(10)).ToList();
+
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow2.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[3].Id, Is.EqualTo(workflow4.Id));
+        }
+
+        [Test]
+        public async Task GetActiveAsync_MultipleWorkflowsReturned_OrderedByRetryCountBeforeCreateDate()
+        {
+            // factory method for workflows
+            Func<DateTime, int, BasicWorkflow> createWorkflow = (createdOn, retryCount) => {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.CreatedOn = createdOn;
+                wf.RetryCount = retryCount;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+
+            Workflow workflow1 = createWorkflow(baseDate.AddMinutes(1), 2);
+            Workflow workflow2 = createWorkflow(baseDate.AddMinutes(-1), 1);
+            Workflow workflow3 = createWorkflow(baseDate.AddMinutes(1), 3);
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3 });
+
+            // fetch the workflows, only two should be returned
+            var workflows = (await store.GetActiveAsync(10)).ToList();
+
+            Assert.That(workflows[0].Id, Is.EqualTo(workflow3.Id));
+            Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
+            Assert.That(workflows[2].Id, Is.EqualTo(workflow2.Id));
+        }
+
+        [Test]
+        public async Task GetActiveAsync_MultipleWorkflowsReturned_OrderedByCreateDateAfterRetryCount()
+        {
+            // factory method for workflows
+            Func<DateTime, BasicWorkflow> createWorkflow = (createdOn) => {
+                BasicWorkflow wf = new BasicWorkflow("Start");
+                wf.CreatedOn = createdOn;
+                wf.RetryCount = 1;
+                return wf;
+            };
+
+            // create the workflows - ensure they are added in an incorrect order
+            DateTime baseDate = DateTime.UtcNow;
+
+            Workflow workflow1 = createWorkflow(baseDate.AddMinutes(1));
+            Workflow workflow2 = createWorkflow(baseDate.AddMinutes(-1));
+            Workflow workflow3 = createWorkflow(baseDate.AddMinutes(2));
+
+            // Set up a store with a basic workflow
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3 });
+
+            // fetch the workflows, only two should be returned
+            var workflows = (await store.GetActiveAsync(10)).ToList();
 
             Assert.That(workflows[0].Id, Is.EqualTo(workflow2.Id));
             Assert.That(workflows[1].Id, Is.EqualTo(workflow1.Id));
