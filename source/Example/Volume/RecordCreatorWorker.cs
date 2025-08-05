@@ -64,9 +64,6 @@ namespace Stateless.TestHarness.Multithread
             StringBuilder sb = new StringBuilder("INSERT INTO VolumeTest (IsProcessed, CreateDate) values (0, @CreateDate);");
             switch (_dbType)
             {
-                case ExampleDbType.SqlServer:
-                    sb.Append("SELECT SCOPE_IDENTITY()");
-                    break;
                 case ExampleDbType.Sqlite:
                     sb.Append("SELECT last_insert_rowid()");
                     break;

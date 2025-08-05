@@ -9,8 +9,6 @@ namespace Example
 {
     internal class AppSettings
     {
-        public const string SqlServerConnectionString = "Server=localhost;Database=StatelessTest;User Id=dev;Password=dev;TrustServerCertificate=True";
-
         public static string SqliteDbFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SqliteDbFileName);
 
         public const string SqliteDbFileName = "StatelessExample.db";

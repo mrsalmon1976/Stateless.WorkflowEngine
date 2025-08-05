@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
     <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
     <PackageReference Include="RavenDB.Client" Version="5.4.210" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
