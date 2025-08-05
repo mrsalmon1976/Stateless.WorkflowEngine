@@ -276,7 +276,6 @@
     <Compile Include="BLL\Validators\ValidationResult.cs" />
     <Compile Include="Configuration\AppSettings.cs" />
     <Compile Include="BLL\Security\UserMapper.cs" />
-    <Compile Include="Jobs\AutoUpdaterCleanupJob.cs" />
     <Compile Include="Modules\UpdateModule.cs" />
     <Compile Include="Modules\ConnectionModule.cs" />
     <Compile Include="Modules\StoreModule.cs" />

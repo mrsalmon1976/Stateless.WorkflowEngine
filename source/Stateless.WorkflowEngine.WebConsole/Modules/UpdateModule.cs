@@ -1,23 +1,8 @@
 ﻿using Nancy;
-using Nancy.Authentication.Forms;
-using Nancy.Security;
-using Nancy.ModelBinding;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using Stateless.WorkflowEngine.WebConsole.BLL.Security;
-using Stateless.WorkflowEngine.WebConsole.Navigation;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
-using Encryption;
-using System.Diagnostics;
-using Stateless.WorkflowEngine.WebConsole.BLL.Services;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard;
 using NLog;
+using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Stateless.WorkflowEngine.WebConsole.Navigation;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {

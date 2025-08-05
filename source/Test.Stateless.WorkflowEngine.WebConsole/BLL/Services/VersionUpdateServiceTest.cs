@@ -44,11 +44,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
         #region InstallUpdate Tests
 
         [Test]
-        public void InstallUpdate_OnExecute_CopiesToShadowAndRunsProcess()
+        public void InstallUpdate_OnExecute_RunsProcess()
         {
             // setup
             string applicationRootFolder = AppContext.BaseDirectory;
-            string autoUpdaterFolder = Path.Combine(applicationRootFolder, UpdateConstants.AutoUpdaterFolderName);
+            string scriptPath = Path.Combine(applicationRootFolder, UpdateConstants.UpdaterFileName);
 
             IProcessWrapper processWrapper = Substitute.For<IProcessWrapper>();
             _processWrapperFactory.GetProcess().Returns(processWrapper);
@@ -61,8 +61,13 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
             _versionUpdateService.InstallUpdate();
 
             // assert
-            Assert.That(processWrapper.StartInfo.WorkingDirectory, Is.EqualTo(autoUpdaterFolder));
-            Assert.That(processWrapper.StartInfo.FileName, Is.EqualTo(UpdateConstants.AutoUpdaterExeFileName));
+            Assert.That(processWrapper.StartInfo.FileName, Is.EqualTo("powershell.exe"));
+            Assert.That(processWrapper.StartInfo.Arguments, Is.EqualTo($"-ExecutionPolicy Bypass -File \"{scriptPath}\""));
+            Assert.That(processWrapper.StartInfo.UseShellExecute, Is.False);
+            Assert.That(processWrapper.StartInfo.RedirectStandardOutput, Is.True);
+            Assert.That(processWrapper.StartInfo.RedirectStandardError, Is.True);
+            Assert.That(processWrapper.StartInfo.CreateNoWindow, Is.True);
+            Assert.That(processWrapper.StartInfo.WorkingDirectory, Is.EqualTo(applicationRootFolder));
             Assert.That(processWrapper.StartInfo.Verb, Is.EqualTo(UpdateConstants.StartInfoVerb));
             processWrapper.Received(1).Start();
         }
