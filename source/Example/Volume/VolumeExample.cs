@@ -15,7 +15,7 @@ namespace Example.Volume
 
         static ExampleDbType _dbType;
 
-        public static void Run(ExampleDbType dbType)
+        public static void Run(ExampleDbType dbType, bool runAsync)
         {
             _dbType = dbType;
             const int TestRecordCount = 10000;
@@ -31,7 +31,7 @@ namespace Example.Volume
             RecordCreatorWorker creatorWorker = new RecordCreatorWorker(workflowClient, dbType, TestRecordCount);
             creatorWorker.RunWorkerAsync();
 
-            RecordProcessorWorker processWorker = new RecordProcessorWorker(workflowServer);
+            RecordProcessorWorker processWorker = new RecordProcessorWorker(workflowServer, runAsync);
             processWorker.RunWorkerAsync();
             processWorker.RunWorkerCompleted += ProcessWorker_RunWorkerCompleted;
 

@@ -35,10 +35,11 @@ namespace Stateless.TestHarness.Multithread
             {
                 string dbPath = AppSettings.SqliteDbFilePath;
 
-                if (!System.IO.File.Exists(dbPath))
+                if (System.IO.File.Exists(dbPath))
                 {
-                    SQLiteConnection.CreateFile(dbPath);
+                    File.Delete(dbPath);
                 }
+                SQLiteConnection.CreateFile(dbPath);
 
                 using (var conn = DbHelper.GetConnection(ExampleDbType.Sqlite))
                 {
