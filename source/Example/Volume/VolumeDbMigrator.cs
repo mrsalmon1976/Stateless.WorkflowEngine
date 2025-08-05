@@ -33,6 +33,8 @@ namespace Stateless.TestHarness.Multithread
                     conn.Execute("DELETE FROM VolumeTest");
                     conn.Close();
                 }
+
+                return;
             }
 
             throw new NotImplementedException($"Unsupported database {dbType.ToString()}");

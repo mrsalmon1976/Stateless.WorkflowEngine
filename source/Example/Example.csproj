@@ -12,6 +12,7 @@
     <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
     <PackageReference Include="RavenDB.Client" Version="5.4.210" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
   </ItemGroup>
 
   <ItemGroup>
