@@ -256,6 +256,7 @@
     <Compile Include="BLL\Diagnostics\ProcessWrapperFactory.cs" />
     <Compile Include="BLL\IO\FileUtility.cs" />
     <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
+    <Compile Include="BLL\Services\VersionComparisonService.cs" />
     <Compile Include="Caching\CacheKeys.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Caching\WebConsoleMemoryCache.cs" />

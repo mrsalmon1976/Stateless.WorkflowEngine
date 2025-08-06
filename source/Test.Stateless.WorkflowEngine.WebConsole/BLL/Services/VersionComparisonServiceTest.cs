@@ -1,14 +1,12 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
+using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.Common.Models;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
+namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
     [TestFixture]
     public class VersionComparisonServiceTest

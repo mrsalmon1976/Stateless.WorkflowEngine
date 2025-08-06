@@ -1,12 +1,9 @@
 ﻿using Stateless.WorkflowEngine.WebConsole.Common.Models;
 using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.Common.Services
+namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
     public interface IVersionComparisonService
     {

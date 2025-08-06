@@ -81,7 +81,6 @@
     <Compile Include="Models\WebConsoleVersionInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\IWebConsoleVersionService.cs" />
-    <Compile Include="Services\VersionComparisonService.cs" />
     <Compile Include="Services\GitHubVersionService.cs" />
     <Compile Include="UpdateConstants.cs" />
     <Compile Include="Web\HttpClientFactory.cs" />
