@@ -1,8 +1,8 @@
 ﻿using NSubstitute;
 using NUnit.Framework;
+using Stateless.WorkflowEngine.WebConsole.BLL.Diagnostics;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.Common;
-using Stateless.WorkflowEngine.WebConsole.Common.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.IO;

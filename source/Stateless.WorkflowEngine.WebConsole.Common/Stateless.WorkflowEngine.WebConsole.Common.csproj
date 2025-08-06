@@ -75,8 +75,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Diagnostics\ProcessWrapperFactory.cs" />
-    <Compile Include="Diagnostics\ProcessWrapper.cs" />
     <Compile Include="Models\GitHubAsset.cs" />
     <Compile Include="Models\GitHubReleaseResponse.cs" />
     <Compile Include="Models\VersionComparisonResult.cs" />

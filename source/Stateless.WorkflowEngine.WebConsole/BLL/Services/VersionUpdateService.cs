@@ -1,6 +1,6 @@
 ﻿using NLog;
 using Stateless.WorkflowEngine.WebConsole.Common;
-using Stateless.WorkflowEngine.WebConsole.Common.Diagnostics;
+using Stateless.WorkflowEngine.WebConsole.BLL.Diagnostics;
 using System;
 using System.IO;
 

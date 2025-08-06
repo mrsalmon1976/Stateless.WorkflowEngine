@@ -252,6 +252,8 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BLL\Diagnostics\ProcessWrapper.cs" />
+    <Compile Include="BLL\Diagnostics\ProcessWrapperFactory.cs" />
     <Compile Include="BLL\IO\FileUtility.cs" />
     <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
     <Compile Include="Caching\CacheKeys.cs" />
