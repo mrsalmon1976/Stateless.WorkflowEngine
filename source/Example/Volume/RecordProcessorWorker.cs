@@ -32,7 +32,7 @@ namespace Stateless.TestHarness.Multithread
             {
                 while (workflowsExist)
                 {
-                    int executed = this._workflowServer.ExecuteWorkflowsAsync(200, 50).GetAwaiter().GetResult();
+                    int executed = await this._workflowServer.ExecuteWorkflowsAsync(200, 50);
 
                     if (executed == 0)
                     {
