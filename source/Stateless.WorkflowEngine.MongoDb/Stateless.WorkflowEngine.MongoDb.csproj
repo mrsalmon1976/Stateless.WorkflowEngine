@@ -17,6 +17,7 @@
     <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
     <PackageReference Include="MongoDB.Driver.Core" Version="2.26.0" />
     <PackageReference Include="MongoDB.Libmongocrypt" Version="1.9.0" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
   </ItemGroup>
 </Project>
