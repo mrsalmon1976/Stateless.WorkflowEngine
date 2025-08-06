@@ -237,6 +237,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BLL\Data\Stores\UserStoreTest.cs" />
+    <Compile Include="BLL\IO\FileUtilityTest.cs" />
     <Compile Include="BLL\Security\UserMapperTest.cs" />
     <Compile Include="BLL\Services\VersionUpdateServiceTest.cs" />
     <Compile Include="BLL\Services\VersionCheckServiceTest.cs" />

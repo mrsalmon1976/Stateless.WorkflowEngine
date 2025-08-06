@@ -86,12 +86,14 @@
     <Compile Include="Services\VersionComparisonService.cs" />
     <Compile Include="Services\GitHubVersionService.cs" />
     <Compile Include="UpdateConstants.cs" />
-    <Compile Include="Utility\FileUtility.cs" />
     <Compile Include="Web\HttpClientFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Utility\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

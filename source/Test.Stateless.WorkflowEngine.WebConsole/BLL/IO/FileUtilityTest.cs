@@ -1,14 +1,12 @@
 ﻿using NUnit.Framework;
-using Stateless.WorkflowEngine.WebConsole.Common.Utility;
+using Stateless.WorkflowEngine.WebConsole.BLL.IO.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Utility
+namespace Test.Stateless.WorkflowEngine.WebConsole.IO.Utility
 {
     [TestFixture]
     public class FileUtilityTest

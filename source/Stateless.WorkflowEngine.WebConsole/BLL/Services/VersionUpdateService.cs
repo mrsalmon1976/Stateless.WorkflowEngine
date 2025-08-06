@@ -1,13 +1,8 @@
 ﻿using NLog;
 using Stateless.WorkflowEngine.WebConsole.Common;
 using Stateless.WorkflowEngine.WebConsole.Common.Diagnostics;
-using Stateless.WorkflowEngine.WebConsole.Common.Utility;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
@@ -21,13 +16,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
     public class VersionUpdateService : IVersionUpdateService
     {
         private readonly IProcessWrapperFactory _processWrapperFactory;
-        private readonly IFileUtility _fileUtility;
         private static Logger _logger = LogManager.GetCurrentClassLogger();
 
-        public VersionUpdateService(IProcessWrapperFactory processWrapper, IFileUtility fileUtility)
+        public VersionUpdateService(IProcessWrapperFactory processWrapper)
         {
             _processWrapperFactory = processWrapper;
-            _fileUtility = fileUtility;
             this.ApplicationRootDirectory = AppContext.BaseDirectory;
         }
 

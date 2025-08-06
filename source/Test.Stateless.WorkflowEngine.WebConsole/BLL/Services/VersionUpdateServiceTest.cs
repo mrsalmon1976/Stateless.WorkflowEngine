@@ -1,26 +1,11 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using NSubstitute;
+﻿using NSubstitute;
 using NUnit.Framework;
-using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.Stores;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.Common;
 using Stateless.WorkflowEngine.WebConsole.Common.Diagnostics;
-using Stateless.WorkflowEngine.WebConsole.Common.Models;
-using Stateless.WorkflowEngine.WebConsole.Common.Services;
-using Stateless.WorkflowEngine.WebConsole.Common.Utility;
-using Stateless.WorkflowEngine.WebConsole.Configuration;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
@@ -28,7 +13,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
     public class VersionUpdateServiceTest
     {
         private IProcessWrapperFactory _processWrapperFactory;
-        private IFileUtility _fileUtility;
 
         private IVersionUpdateService _versionUpdateService;
 
@@ -36,9 +20,8 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
         public void WorkflowStoreInfoServiceTest_SetUp()
         {
             _processWrapperFactory = Substitute.For<IProcessWrapperFactory>();
-            _fileUtility = Substitute.For<IFileUtility>();
 
-            _versionUpdateService = new VersionUpdateService(_processWrapperFactory, _fileUtility);
+            _versionUpdateService = new VersionUpdateService(_processWrapperFactory);
         }
 
         #region InstallUpdate Tests

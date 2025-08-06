@@ -73,7 +73,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\VersionComparisonServiceTest.cs" />
     <Compile Include="Services\WebVersionServiceTest.cs" />
-    <Compile Include="Utility\FileUtilityTest.cs" />
     <Compile Include="Web\HttpClientFactoryTest.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +85,9 @@
       <Project>{751DAF22-51FA-4ED9-9BF4-633121D8F101}</Project>
       <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Utility\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
