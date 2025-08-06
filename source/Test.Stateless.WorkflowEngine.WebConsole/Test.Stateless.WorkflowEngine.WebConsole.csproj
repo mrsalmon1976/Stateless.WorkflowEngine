@@ -269,10 +269,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj">
-      <Project>{751DAF22-51FA-4ED9-9BF4-633121D8F101}</Project>
-      <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj">
       <Project>{38d0b82f-c0ff-46e5-9e5e-ec6c4d37371c}</Project>
       <Name>Stateless.WorkflowEngine.WebConsole</Name>

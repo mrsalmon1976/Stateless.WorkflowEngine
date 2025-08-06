@@ -255,8 +255,14 @@
     <Compile Include="BLL\Diagnostics\ProcessWrapper.cs" />
     <Compile Include="BLL\Diagnostics\ProcessWrapperFactory.cs" />
     <Compile Include="BLL\IO\FileUtility.cs" />
+    <Compile Include="BLL\Models\GitHubAsset.cs" />
+    <Compile Include="BLL\Models\GitHubReleaseResponse.cs" />
     <Compile Include="BLL\Models\UIWorkflowContainer.cs" />
+    <Compile Include="BLL\Models\VersionComparisonResult.cs" />
+    <Compile Include="BLL\Models\WebConsoleVersionInfo.cs" />
     <Compile Include="BLL\Services\VersionComparisonService.cs" />
+    <Compile Include="BLL\UpdateConstants.cs" />
+    <Compile Include="BLL\Web\HttpClientFactory.cs" />
     <Compile Include="Caching\CacheKeys.cs" />
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Caching\WebConsoleMemoryCache.cs" />
@@ -494,10 +500,6 @@
     <ProjectReference Include="..\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj">
       <Project>{61162277-aae8-4189-aa1a-dc8545f87ae7}</Project>
       <Name>Stateless.WorkflowEngine.RavenDb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Stateless.WorkflowEngine.WebConsole.Common\Stateless.WorkflowEngine.WebConsole.Common.csproj">
-      <Project>{751DAF22-51FA-4ED9-9BF4-633121D8F101}</Project>
-      <Name>Stateless.WorkflowEngine.WebConsole.Common</Name>
     </ProjectReference>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj">
       <Project>{eb4615d8-4123-4316-8d92-285680d6100c}</Project>

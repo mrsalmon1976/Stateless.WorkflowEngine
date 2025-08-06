@@ -1,28 +1,25 @@
-﻿using Nancy;
+﻿using AutoMapper;
+using Microsoft.Extensions.Caching.Memory;
+using Nancy;
 using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
-using Nancy.TinyIoc;
-using Nancy.Extensions;
-using System.Collections.Generic;
-using Stateless.WorkflowEngine.WebConsole.Configuration;
-using System.IO;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
-using SystemWrapper.IO;
-using Stateless.WorkflowEngine.WebConsole.BLL.Security;
-using AutoMapper;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
-using System.Diagnostics;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using Nancy.Cryptography;
-using Stateless.WorkflowEngine.WebConsole.Common.Services;
-using Stateless.WorkflowEngine.WebConsole.BLL.Services;
-using Microsoft.Extensions.Caching.Memory;
+using Nancy.Extensions;
+using Nancy.TinyIoc;
 using NLog;
-using System;
+using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
+using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
+using Stateless.WorkflowEngine.WebConsole.BLL.Security;
+using Stateless.WorkflowEngine.WebConsole.BLL.Services;
+using Stateless.WorkflowEngine.WebConsole.BLL.Web;
 using Stateless.WorkflowEngine.WebConsole.Caching;
-using Org.BouncyCastle.Asn1.CryptoPro;
-using Stateless.WorkflowEngine.WebConsole.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.Configuration;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using SystemWrapper.IO;
 
 namespace Stateless.WorkflowEngine.WebConsole
 {
@@ -49,9 +46,7 @@ namespace Stateless.WorkflowEngine.WebConsole
 
             // IO Wrappers
             container.Register<IDirectoryWrap, DirectoryWrap>();
-            //container.Register<IPathWrap, PathWrap>();
             container.Register<IFileWrap, FileWrap>();
-            //container.Register<IPathHelper, PathHelper>();
 
             // caching
             var memoryCache = new WebConsoleMemoryCache(new MemoryCacheOptions());
@@ -64,13 +59,11 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IPasswordProvider, PasswordProvider>();
 
             // services
-            container.Register<IGitHubVersionService, GitHubVersionService>();
+            container.Register<IHttpClientFactory, HttpClientFactory>().AsSingleton();
             container.Register<IWebConsoleVersionService, WebConsoleVersionService>();
             container.Register<IVersionCheckService, VersionCheckService>();
             container.Register<IVersionUpdateService, VersionUpdateService>();
-            container.Register<IVersionComparisonService>((c, o) => { return new VersionComparisonService(settings.LatestVersionUrl, container.Resolve<IWebConsoleVersionService>(), container.Resolve<IGitHubVersionService>()); });
-
-            //container.Register<IBackgroundVersionWorker, BackgroundVersionWorker>();
+            container.Register<IVersionComparisonService, VersionComparisonService>();
 
             // set up mappings
             var config = new MapperConfiguration(cfg => {

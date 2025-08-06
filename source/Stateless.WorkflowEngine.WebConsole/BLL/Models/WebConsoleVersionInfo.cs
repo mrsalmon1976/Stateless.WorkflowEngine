@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.Common.Models
+namespace Stateless.WorkflowEngine.WebConsole.BLL.Models
 {
     public class WebConsoleVersionInfo
     {

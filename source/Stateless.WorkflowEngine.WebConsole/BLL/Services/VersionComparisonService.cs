@@ -1,5 +1,5 @@
-﻿using Stateless.WorkflowEngine.WebConsole.Common.Models;
-using Stateless.WorkflowEngine.WebConsole.Common.Services;
+﻿using Stateless.WorkflowEngine.WebConsole.BLL.Models;
+using Stateless.WorkflowEngine.WebConsole.Configuration;
 using System;
 using System.Threading.Tasks;
 
@@ -12,21 +12,19 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
     public class VersionComparisonService : IVersionComparisonService
     {
-        private readonly string _latestVersionUrl;
+        private readonly IAppSettings _appSettings;
         private readonly IWebConsoleVersionService _webConsoleVersionService;
-        private readonly IGitHubVersionService _gitHubVersionService;
 
-        public VersionComparisonService(string latestVersionUrl, IWebConsoleVersionService webConsoleVersionService, IGitHubVersionService webVersionService)
+        public VersionComparisonService(IAppSettings appSettings, IWebConsoleVersionService webConsoleVersionService)
         {
-            _latestVersionUrl = latestVersionUrl;
+            this._appSettings = appSettings;
             this._webConsoleVersionService = webConsoleVersionService;
-            this._gitHubVersionService = webVersionService;
         }
 
         public async Task<VersionComparisonResult> CheckIfNewVersionAvailable()
         {
             string installedVersion = _webConsoleVersionService.GetWebConsoleVersion();
-            WebConsoleVersionInfo versionInfo = await _gitHubVersionService.GetVersionInfo(_latestVersionUrl);
+            WebConsoleVersionInfo versionInfo = await _webConsoleVersionService.GetLatestVersion(_appSettings.LatestVersionUrl);
             string latestReleaseVersion = versionInfo.VersionNumber;
 
             var vInstalled = Version.Parse(installedVersion);

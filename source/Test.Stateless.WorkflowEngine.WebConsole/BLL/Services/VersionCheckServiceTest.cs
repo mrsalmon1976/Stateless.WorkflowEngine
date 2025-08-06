@@ -1,21 +1,12 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using NSubstitute;
 using NUnit.Framework;
-using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.Stores;
-using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
+using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.Caching;
-using Stateless.WorkflowEngine.WebConsole.Common.Models;
-using Stateless.WorkflowEngine.WebConsole.Common.Services;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
@@ -42,7 +33,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
         #region CheckIfNewVersionAvailable Tests
 
         [Test]
-        public void CheckIfNewVersionAvailable_OnExecute_ReturnsResult()
+        public void CheckIfNewVersionAvailable_OnExecute_VerifyResult()
         {
             // setup
             VersionComparisonResult comparisonResult = new VersionComparisonResult();
@@ -77,11 +68,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             // assert
             _memoryCache.Received(1).Set<VersionCheckResult>(CacheKeys.CheckIfNewVersionAvailable, result, TimeSpan.FromMinutes(cacheMinutes));
-			_versionComparisonService.Received(1).CheckIfNewVersionAvailable();
-		}
+            _versionComparisonService.Received(1).CheckIfNewVersionAvailable();
+        }
 
 
-		[Test]
+        [Test]
         public void CheckIfNewVersionAvailable_ResultIsCached_DoesNotDoANewCheck()
         {
             // setup

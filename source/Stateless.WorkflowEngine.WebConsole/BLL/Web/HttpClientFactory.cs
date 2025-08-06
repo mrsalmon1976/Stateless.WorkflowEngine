@@ -5,13 +5,12 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stateless.WorkflowEngine.WebConsole.Common.Web
+namespace Stateless.WorkflowEngine.WebConsole.BLL.Web
 {
     public interface IHttpClientFactory
     {
         HttpClient GetHttpClient();
     }
-
     public class HttpClientFactory : IHttpClientFactory
     {
         // HttpClient should be static, so this factory should be a singleton
