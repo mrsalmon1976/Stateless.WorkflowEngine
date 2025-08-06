@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 {
+    public interface IWebConsoleVersionService
+    {
+        string GetWebConsoleVersion();
+    }
+
     public class WebConsoleVersionService : IWebConsoleVersionService
     {
         public string GetWebConsoleVersion()

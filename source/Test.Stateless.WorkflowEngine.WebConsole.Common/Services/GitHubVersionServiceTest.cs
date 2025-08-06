@@ -16,7 +16,7 @@ using Test.Stateless.WorkflowEngine.WebConsole.Common.MockUtils.Web;
 namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
 {
     [TestFixture]
-    public class GitHubVersionServiceTest
+    public class WebVersionServiceTest
     {
 
         private const string GitHubLatestReleaseUrl = "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest";
@@ -38,7 +38,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             var result = gitHubVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
 
             // assert
-            Assert.AreEqual("2.2.1", result.VersionNumber);
+            Assert.That(result.VersionNumber, Is.EqualTo("2.2.1"));
         }
 
         [Test]
@@ -48,7 +48,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Common.Services
             var result = gitHubVersionService.GetVersionInfo(GitHubLatestReleaseUrl).GetAwaiter().GetResult();
             string versionNumber = result.VersionNumber;
             System.Version version = System.Version.Parse(versionNumber);
-            Assert.GreaterOrEqual(version.Major, 2);
+            Assert.That(version.Major, Is.GreaterThanOrEqualTo(2));
         }
 
         private string GetSampleGitHubReleaseJson()
