@@ -192,10 +192,12 @@ function GetLatestVersion {
     
     $data = Invoke-RestMethod -Uri $global:latestVersionUrl
 
+    $asset = $data.assets | Where-Object { $_.name -like "*webconsole*" }
+
     $result = [PSCustomObject]@{
         version = $data.tag_name.Trim().TrimStart('v')
-        fileName = $data.assets[0].name
-        downloadUrl = $data.assets[0].browser_download_url
+        fileName = $asset.name
+        downloadUrl = $asset.browser_download_url
     }    
     LogMessage -msg "Latest version available: $($result.version)"
     return $result
@@ -256,11 +258,15 @@ function StartService {
     $exePath = "$global:scriptRoot\$global:serviceExecutableName"
 
     if (!$service) {
-        sc.exe create $global:serviceName binPath= "`"$exePath`"" DisplayName= "`"$global:serviceName`"" start= auto
+        # sc.exe create $global:serviceName binPath= "`"$exePath`"" DisplayName= "`"$global:serviceName`"" start= auto
+        # & $global:serviceExecutableName install
+        Start-Process -FilePath $exePath -ArgumentList "install" -Wait
         LogMessage -msg "Service '$global:serviceName' installed."
     } 
 
-    Start-Service -Name $serviceName
+    # Start-Service -Name $serviceName
+    #& $global:serviceExecutableName start
+    Start-Process -FilePath $exePath -ArgumentList "start" -Wait
     LogMessage -msg "Service '$global:serviceName' started."
 }
 
@@ -271,7 +277,8 @@ function StopService {
         if ($service.Status -ne 'Stopped') {
             LogMessage -msg "Stopping service '$global:serviceName'"
             try {
-                Stop-Service -Name $global:serviceName -Force
+                # Stop-Service -Name $global:serviceName -Force
+                & $global:serviceExecutableName stop
                 LogMessage -msg "Stopped service '$global:serviceName'"
             }
             catch 

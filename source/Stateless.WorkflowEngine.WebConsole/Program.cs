@@ -32,7 +32,7 @@ namespace Stateless.WorkflowEngine.WebConsole
                         configuration.RunAsLocalSystem();
 
                         configuration.SetServiceName("Stateless.WorkflowEngine.Console");
-                        configuration.SetDisplayName("Stateless WorkflowEngine Console");
+                        configuration.SetDisplayName("Stateless.WorkflowEngine Console");
                         configuration.SetDescription("The Stateless.WorkflowEngine Console service.");
                     });
                 _logger.Info("Stateless.WorkflowEngine Console shutting down");
