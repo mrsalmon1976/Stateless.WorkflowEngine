@@ -31,6 +31,8 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Models
         public string Key { get; set; }
 
         public int? Port { get; set; }
+
+        public string ReplicaSet { get; set; }
         
         public string ActiveCollection { get; set; }
         

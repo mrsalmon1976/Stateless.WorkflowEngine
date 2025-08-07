@@ -43,6 +43,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Factories
                     urlBuilder.Password = pwd;
                 }
 
+                if (!String.IsNullOrWhiteSpace(connectionModel.ReplicaSet))
+                {
+                    urlBuilder.ReplicaSetName = connectionModel.ReplicaSet;
+                }
+
                 var url = urlBuilder.ToMongoUrl();
                 var client = new MongoClient(url);
                 var db = client.GetDatabase(connectionModel.Database);

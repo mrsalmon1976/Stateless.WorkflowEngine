@@ -24,6 +24,11 @@ else
     <div id="pnl-connections-panels" style="display: none;">
         @foreach (var conn in Model.Connections)
         {
+            string rs = string.Empty;
+            if (!String.IsNullOrWhiteSpace(conn.ReplicaSet))
+            {
+                rs = " (" + conn.ReplicaSet + ")";
+            }
             <div class="panel connection-wrapper panel-default pull-left dashboard-panel font90" data-model-id="@(conn.Id)">
                 <div class="panel-heading">
                     <div class="row conn-row">
@@ -35,7 +40,7 @@ else
                                 @conn.Database
                             </a>
                             <br>
-                            <small>@(conn.Host):@(conn.Port)</small>
+                            <small>@(conn.Host):@(conn.Port)@(rs)</small>
                         </div>
                         @if (Model.CurrentUserCanDeleteConnection)
                         {

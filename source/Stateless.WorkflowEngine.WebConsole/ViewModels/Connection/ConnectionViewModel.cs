@@ -29,5 +29,7 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Connection
 
         public string CompletedCollection { get; set; }
 
+        public string ReplicaSet { get; set; }
+
     }
 }
