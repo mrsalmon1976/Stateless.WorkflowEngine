@@ -68,7 +68,9 @@ namespace Stateless.WorkflowEngine.WebConsole
             // set up mappings
             var config = new MapperConfiguration(cfg => {
                 cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
-                cfg.CreateMap<ConnectionModel, ConnectionViewModel>();
+                cfg.CreateMap<ConnectionModel, ConnectionViewModel>()
+                    .ForMember(dest => dest.Password, opt => opt.Ignore())
+                    .ForMember(dest => dest.PasswordConfirm, opt => opt.Ignore());
                 cfg.CreateMap<UserViewModel, UserModel>();
                 //cfg.CreateMap<Workflow, UIWorkflow>();
             });
