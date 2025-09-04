@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>4.1.0</Version>
+    <Version>4.1.1</Version>
     <Authors>Matt Salmon</Authors>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <Title>
@@ -17,7 +17,8 @@
     <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
     <PackageReference Include="MongoDB.Driver.Core" Version="2.26.0" />
     <PackageReference Include="MongoDB.Libmongocrypt" Version="1.9.0" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
   </ItemGroup>
 </Project>

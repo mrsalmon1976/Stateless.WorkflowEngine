@@ -70,6 +70,21 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [Test]
+        public void IsSingleInstanceWorkflowRegistered_OnExecution_ChecksByQualifiedName()
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+
+            // execute
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+
+            // assert
+            workflowStore.Received(1).GetAllByQualifiedName<BasicWorkflow>();
+
+        }
+
         #endregion
 
         #region RegisterWorkflow Tests
@@ -100,9 +115,10 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             regService.RegisterWorkflow(workflowStore, workflow);
 
-            workflowStore.Received(1).GetAllByType(workflow.GetType().AssemblyQualifiedName);
+            workflowStore.Received(1).GetAllByQualifiedName(workflow.GetType().FullName);
+			workflowStore.Received(1).GetAllByQualifiedName(workflow.QualifiedName);
 
-        }
+		}
 
         [Test]
         public void RegisterWorkflow_MultipleInstanceWorkflowRegistered_Registers()
@@ -116,8 +132,9 @@ namespace Test.Stateless.WorkflowEngine
             regService.RegisterWorkflow(workflowStore, workflow);
 
             workflowStore.DidNotReceive().GetAllByType(Arg.Any<string>());
+			workflowStore.DidNotReceive().GetAllByQualifiedName(Arg.Any<string>());
 
-        }
+		}
 
         #endregion
 
