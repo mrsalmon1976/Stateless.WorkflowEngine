@@ -84,7 +84,20 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
-        /// Deletes a workflow from the active database store/collection. 
+        /// Archives a workflow, moving it into the completed store.
+        /// </summary>
+        /// <param name="workflow">The workflow to archive.</param>
+        public override async Task ArchiveAsync(Workflow workflow)
+        {
+            var coll = GetCollection();
+            await coll.DeleteOneAsync(x => x.Id == workflow.Id);
+
+            var collCompleted = GetCompletedCollection();
+            await collCompleted.InsertOneAsync(new MongoWorkflow(workflow));
+        }
+
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection.
         /// </summary>
         /// <param name="id">The workflow id.</param>
         public override void Delete(Guid id)

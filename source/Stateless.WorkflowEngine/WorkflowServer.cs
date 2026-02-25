@@ -61,12 +61,6 @@ namespace Stateless.WorkflowEngine
         Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null);
 
         /// <summary>
-        /// Gets the count of active (unsuspended) workflows on the underlying store.
-        /// </summary>
-        /// <returns></returns>
-        long GetActiveCount();
-
-        /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -288,7 +282,7 @@ namespace Stateless.WorkflowEngine
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
-                this.WorkflowStore.Archive(workflow);
+                await this.WorkflowStore.ArchiveAsync(workflow);
                 workflow.OnComplete();
                 if (this.WorkflowCompleted != null)
                 {
@@ -388,15 +382,6 @@ namespace Stateless.WorkflowEngine
                 }
             }
             return tasks.Count;
-        }
-
-        /// <summary>
-        /// Gets the count of active (unsuspended) workflows on the underlying store.
-        /// </summary>
-        /// <returns></returns>
-        public long GetActiveCount()
-        {
-            return this.WorkflowStore.GetActiveCount();
         }
 
         /// <summary>

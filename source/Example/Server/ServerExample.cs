@@ -67,7 +67,7 @@ namespace Example.Server
             Console.ReadLine();
 
 
-            long activeCount = workflowServer.GetActiveCount();
+            long activeCount = workflowServer.WorkflowStore.GetActiveCount();
             Console.WriteLine($"{activeCount} active workflows found");
 
             while (true)
@@ -92,7 +92,7 @@ namespace Example.Server
                     Thread.Sleep(1000);
                 }
 
-                if (workflowServer.GetActiveCount() == 0)
+                if (workflowServer.WorkflowStore.GetActiveCount() == 0)
                 {
                     Console.WriteLine("No more active workflows, exiting worker loop");
                     break;

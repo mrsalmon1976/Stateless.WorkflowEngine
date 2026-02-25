@@ -5,6 +5,10 @@ using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb.Index;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
+using Raven.Client.Exceptions;
+using Raven.Client.Exceptions.Database;
+using Raven.Client.ServerWide;
+using Raven.Client.ServerWide.Operations;
 using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.RavenDb
@@ -58,7 +62,25 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
-        /// Deletes a workflow from the active database store/collection. 
+        /// Archives a workflow, moving it into the completed store.
+        /// </summary>
+        /// <param name="workflow">The workflow to archive.</param>
+        public override async Task ArchiveAsync(Workflow workflow)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+                RavenWorkflow wf = await session.LoadAsync<RavenWorkflow>(fid);
+                session.Delete(wf);
+
+                await session.StoreAsync(new RavenCompletedWorkflow(wf.Workflow));
+
+                await session.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection.
         /// </summary>
         /// <param name="id">The workflow id.</param>
         public override void Delete(Guid id)
@@ -292,9 +314,22 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="autoCreateIndexes"></param>
         public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
+            if (autoCreateTables)
+            {
+                try
+                {
+                    _documentStore.Maintenance.Server.Send(
+                        new CreateDatabaseOperation(new DatabaseRecord(_documentStore.Database)));
+                }
+                catch (ConcurrencyException)
+                {
+                    // database already exists
+                }
+            }
+
             if (autoCreateIndexes)
             {
-                // ravdendb indexes are safe by default, so we can just fire this off every time
+                // ravendb indexes are safe by default, so we can just fire this off every time
                 // https://ravendb.net/docs/article-page/4.2/csharp/indexes/creating-and-deploying
                 new WorkflowIndex_Priority_RetryCount_CreatedOn().Execute(_documentStore);
                 new CompletedWorkflowIndex_CreatedOn().Execute(_documentStore);

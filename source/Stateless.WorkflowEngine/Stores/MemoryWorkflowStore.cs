@@ -30,7 +30,17 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
-        /// Deletes a workflow from the active database store/collection. 
+        /// Archives a workflow, moving it into the completed store.
+        /// </summary>
+        /// <param name="workflow">The workflow to archive.</param>
+        public override async Task ArchiveAsync(Workflow workflow)
+        {
+            await Task.FromResult(0);
+            Archive(workflow);
+        }
+
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection.
         /// </summary>
         /// <param name="id">The workflow id.</param>
         public override void Delete(Guid id)

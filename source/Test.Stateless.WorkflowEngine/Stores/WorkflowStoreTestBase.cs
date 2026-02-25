@@ -60,6 +60,22 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region ArchiveAsync Tests
+
+        [Test]
+        public async Task ArchiveAsync_WorkflowIsMoved()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+
+            await store.ArchiveAsync(wf);
+            Assert.That(store.GetOrDefault(wf.Id), Is.Null);
+            Assert.That(store.GetCompletedOrDefault(wf.Id), Is.Not.Null);
+        }
+
+        #endregion
+
         #region Delete Tests
 
         [Test]

@@ -32,7 +32,7 @@ namespace Example.Client
                 IDocumentStore store = new DocumentStore
                 {
                     Urls = new String[] { "http://localhost:8080" },
-                    Database = DbName
+                    Database = DbName,
                 };
                 store.Initialize();
                 workflowStore = new RavenDbWorkflowStore(store);
@@ -77,7 +77,7 @@ namespace Example.Client
             Console.WriteLine("Registering workflow 3");
             workflowClient.Register(CreateWorkflow(10, "StatelessExample_10Files_"));
 
-            Console.WriteLine("Three workflows have been registed - run the Example.Server project to execute the workflows");
+            Console.WriteLine("Three workflows have been registered - run the Example.Server project to execute the workflows");
             Console.WriteLine();
             Console.WriteLine("Hit enter to exit");
             Console.WriteLine();
