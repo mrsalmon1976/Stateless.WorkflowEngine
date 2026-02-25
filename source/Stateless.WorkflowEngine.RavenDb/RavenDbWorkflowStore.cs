@@ -314,7 +314,8 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="autoCreateIndexes"></param>
         public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
-            if (autoCreateTables)
+            // ensure the database exists
+            if (autoCreateTables || autoCreateIndexes)
             {
                 try
                 {
