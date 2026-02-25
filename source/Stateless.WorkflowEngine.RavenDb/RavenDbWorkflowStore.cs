@@ -326,6 +326,20 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Stores a new workflow.
+        /// </summary>
+        /// <param name="workflow"></param>
+        public override async Task SaveAsync(Workflow workflow)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                RavenWorkflow wc = new RavenWorkflow(workflow);
+                await session.StoreAsync(wc);
+                await session.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
         /// Stores a collection of new workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
@@ -338,6 +352,22 @@ namespace Stateless.WorkflowEngine.RavenDb
                     session.Store(new RavenWorkflow(w));
                 }
                 session.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Stores a collection of new workflows.
+        /// </summary>
+        /// <param name="workflows">The workflows.</param>
+        public override async Task SaveAsync(IEnumerable<Workflow> workflows)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                foreach (Workflow w in workflows)
+                {
+                    await session.StoreAsync(new RavenWorkflow(w));
+                }
+                await session.SaveChangesAsync();
             }
         }
 

@@ -376,6 +376,17 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Updates the specified workflow.
+        /// </summary>
+        /// <param name="workflow">The workflow.</param>
+        public override async Task SaveAsync(Workflow workflow)
+        {
+            var coll = GetCollection();
+            MongoWorkflow wc = new MongoWorkflow(workflow);
+            await coll.ReplaceOneAsync(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
         /// Saves a collection of existing workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
@@ -387,6 +398,20 @@ namespace Stateless.WorkflowEngine.MongoDb
             {
                 MongoWorkflow wc = new MongoWorkflow(wf);
                 coll.ReplaceOne(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
+            }
+        }
+
+        /// <summary>
+        /// Saves a collection of existing workflows.
+        /// </summary>
+        /// <param name="workflows">The workflows.</param>
+        public override async Task SaveAsync(IEnumerable<Workflow> workflows)
+        {
+            var coll = GetCollection();
+            foreach (Workflow wf in workflows)
+            {
+                MongoWorkflow wc = new MongoWorkflow(wf);
+                await coll.ReplaceOneAsync(x => x.Id == wc.Id, wc, new ReplaceOptions() { IsUpsert = true });
             }
         }
 

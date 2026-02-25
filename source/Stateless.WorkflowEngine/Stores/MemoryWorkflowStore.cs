@@ -233,6 +233,16 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Stores a new workflow.
+        /// </summary>
+        /// <param name="workflow"></param>
+        public override async Task SaveAsync(Workflow workflow)
+        {
+            await Task.FromResult(0);
+            Save(workflow);
+        }
+
+        /// <summary>
         /// Stores a collection of new workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
@@ -242,6 +252,16 @@ namespace Stateless.WorkflowEngine.Stores
             {
                 Save(w);
             }
+        }
+
+        /// <summary>
+        /// Stores a collection of new workflows.
+        /// </summary>
+        /// <param name="workflows">The workflows.</param>
+        public override async Task SaveAsync(IEnumerable<Workflow> workflows)
+        {
+            await Task.FromResult(0);
+            Save(workflows);
         }
 
         /// <summary>

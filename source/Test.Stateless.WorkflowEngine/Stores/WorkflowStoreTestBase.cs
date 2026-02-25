@@ -832,6 +832,102 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region Save Tests
+
+        [Test]
+        public void Save_NewWorkflow_WorkflowIsSaved()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        [Test]
+        public void Save_ExistingWorkflow_WorkflowIsUpdated()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            wf.BasicMetaData = "Initial";
+            store.Save(wf);
+
+            wf.BasicMetaData = "Updated";
+            wf.RetryCount = 3;
+            store.Save(wf);
+
+            BasicWorkflow result = store.Get<BasicWorkflow>(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.RetryCount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Save_MultipleWorkflows_AllWorkflowsSaved()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf1 = new BasicWorkflow(BasicWorkflow.State.Start);
+            BasicWorkflow wf2 = new BasicWorkflow(BasicWorkflow.State.Start);
+            BasicWorkflow wf3 = new BasicWorkflow(BasicWorkflow.State.Start);
+
+            store.Save(new[] { wf1, wf2, wf3 });
+
+            Assert.That(store.GetOrDefault(wf1.Id), Is.Not.Null);
+            Assert.That(store.GetOrDefault(wf2.Id), Is.Not.Null);
+            Assert.That(store.GetOrDefault(wf3.Id), Is.Not.Null);
+        }
+
+        #endregion
+
+        #region SaveAsync Tests
+
+        [Test]
+        public async Task SaveAsync_NewWorkflow_WorkflowIsSaved()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            await store.SaveAsync(wf);
+
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        [Test]
+        public async Task SaveAsync_ExistingWorkflow_WorkflowIsUpdated()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            wf.BasicMetaData = "Initial";
+            await store.SaveAsync(wf);
+
+            wf.BasicMetaData = "Updated";
+            wf.RetryCount = 3;
+            await store.SaveAsync(wf);
+
+            BasicWorkflow result = store.Get<BasicWorkflow>(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.RetryCount, Is.EqualTo(3));
+        }
+
+        [Test]
+        public async Task SaveAsync_MultipleWorkflows_AllWorkflowsSaved()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf1 = new BasicWorkflow(BasicWorkflow.State.Start);
+            BasicWorkflow wf2 = new BasicWorkflow(BasicWorkflow.State.Start);
+            BasicWorkflow wf3 = new BasicWorkflow(BasicWorkflow.State.Start);
+
+            await store.SaveAsync(new[] { wf1, wf2, wf3 });
+
+            Assert.That(store.GetOrDefault(wf1.Id), Is.Not.Null);
+            Assert.That(store.GetOrDefault(wf2.Id), Is.Not.Null);
+            Assert.That(store.GetOrDefault(wf3.Id), Is.Not.Null);
+        }
+
+        #endregion
+
         #region SaveDefinition Tests
 
         [Test]

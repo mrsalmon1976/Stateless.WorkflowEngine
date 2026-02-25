@@ -178,13 +178,25 @@ namespace Stateless.WorkflowEngine.Stores
         /// Saves an existing workflow to the persistence store.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
-        void Save(Workflow workflowInfo);
+        void Save(Workflow workflow);
+
+        /// <summary>
+        /// Saves an existing workflow to the persistence store.
+        /// </summary>
+        /// <param name="workflow">The workflow.</param>
+        Task SaveAsync(Workflow workflow);
 
         /// <summary>
         /// Saves a collection of existing workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Saves a collection of existing workflows.
+        /// </summary>
+        /// <param name="workflows">The workflows.</param>
+        Task SaveAsync(IEnumerable<Workflow> workflows);
 
         /// <summary>
         /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
@@ -435,10 +447,22 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract void Save(Workflow workflowInfo);
 
         /// <summary>
+        /// Saves an existing workflow to the persistence store.
+        /// </summary>
+        /// <param name="workflow"></param>
+        public abstract Task SaveAsync(Workflow workflow);
+
+        /// <summary>
         /// Saves a collection of existing workflows.
         /// </summary>
         /// <param name="workflows">The workflows.</param>
         public abstract void Save(IEnumerable<Workflow> workflows);
+
+        /// <summary>
+        /// Saves a collection of existing workflows.
+        /// </summary>
+        /// <param name="workflows">The workflows.</param>
+        public abstract Task SaveAsync(IEnumerable<Workflow> workflows);
 
         /// <summary>
         /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).

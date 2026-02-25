@@ -279,7 +279,7 @@ namespace Stateless.WorkflowEngine
                 finally
                 {
                     // the workflow should always save, no matter what happens
-                    this.WorkflowStore.Save(workflow);
+                    await this.WorkflowStore.SaveAsync(workflow);
                 }
 
             }
