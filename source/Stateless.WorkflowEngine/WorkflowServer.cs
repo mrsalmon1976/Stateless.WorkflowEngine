@@ -348,38 +348,45 @@ namespace Stateless.WorkflowEngine
             }
 
             int concurrent = (maxConcurrent ?? count);
-            SemaphoreSlim semaphore = new SemaphoreSlim(concurrent);
-            IEnumerable<Workflow> workflows = await this.WorkflowStore.GetActiveAsync(count);
             List<Task> tasks = new List<Task>();
+            CancellationToken ct = cancellationToken ?? CancellationToken.None;
 
-            if (cancellationToken != null && cancellationToken.Value.IsCancellationRequested)
+            using (SemaphoreSlim semaphore = new SemaphoreSlim(concurrent))
             {
-                return 0;
-            }
+                IEnumerable<Workflow> workflows = await this.WorkflowStore.GetActiveAsync(count);
 
-            foreach (Workflow wf in workflows)
-            {
-                Task t = Task.Run(async () =>
+                foreach (Workflow wf in workflows)
                 {
-                    await semaphore.WaitAsync();
-                    try
+                    if (ct.IsCancellationRequested)
                     {
-                        await ExecuteWorkflowAsync(wf);
+                        tasks.Clear();
+                        break;
                     }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
-                tasks.Add(t);
 
-                if (cancellationToken != null && cancellationToken.Value.IsCancellationRequested)
+                    await semaphore.WaitAsync(ct);
+                    Task t = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await ExecuteWorkflowAsync(wf);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
+                    tasks.Add(t);
+                }
+
+                try
                 {
-                    break;
+                    await Task.WhenAll(tasks);
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected when cancellation is requested
                 }
             }
-
-            await Task.WhenAll(tasks);
             return tasks.Count;
         }
 

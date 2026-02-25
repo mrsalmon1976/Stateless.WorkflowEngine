@@ -16,3 +16,4 @@ InternalTrace.*
 bin/
 obj/
 
+/.claude/*
