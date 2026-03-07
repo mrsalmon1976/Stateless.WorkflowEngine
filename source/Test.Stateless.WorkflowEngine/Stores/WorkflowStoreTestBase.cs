@@ -493,6 +493,43 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetActiveCountAsync Tests
+
+        [Test]
+        public async Task GetActiveCountAsync_NoSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+
+            long result = await store.GetActiveCountAsync();
+            Assert.That(result, Is.EqualTo(count));
+        }
+
+        [Test]
+        public async Task GetActiveCountAsync_WithSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+
+            long result = await store.GetActiveCountAsync();
+            Assert.That(result, Is.EqualTo(count));
+        }
+
+        #endregion
+
         #region GetDefinitions Tests
 
         [Test]

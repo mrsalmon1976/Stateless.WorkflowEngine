@@ -120,6 +120,18 @@ namespace Stateless.WorkflowEngine.RavenDb
                 return session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == false).Count();
             }
         }
+
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetActiveCountAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == false).CountAsync();
+            }
+        }
         /// <summary>
         /// Gets the count of active workflows in the active collection (including suspended workflows).
         /// </summary>

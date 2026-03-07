@@ -129,6 +129,18 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetActiveCountAsync()
+        {
+            var collection = GetCollection();
+            return await collection
+                .Find(x => x.Workflow.IsSuspended == false)
+                .CountDocumentsAsync();
+        }
+
+        /// <summary>
         /// Gets a workflow by a qualified definition name.
         /// </summary>
         /// <param name="qualifiedName"></param>

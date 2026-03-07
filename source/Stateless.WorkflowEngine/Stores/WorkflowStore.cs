@@ -57,6 +57,12 @@ namespace Stateless.WorkflowEngine.Stores
         long GetActiveCount();
 
         /// <summary>
+        /// Gets the count of unsuspended workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        Task<long> GetActiveCountAsync();
+
+        /// <summary>
         /// Gets a workflow by a qualified definition name.
         /// </summary>
         /// <param name="qualifiedName"></param>
@@ -287,6 +293,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <returns></returns>
         public abstract long GetActiveCount();
+
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (excluding suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<long> GetActiveCountAsync();
 
         /// <summary>
         /// Gets a workflow by a qualified definition name.
