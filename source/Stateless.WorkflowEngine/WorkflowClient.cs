@@ -1,11 +1,7 @@
-using Stateless.WorkflowEngine.Commands;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine
@@ -14,24 +10,20 @@ namespace Stateless.WorkflowEngine
     {
         private readonly IWorkflowRegistrationService _workflowRegistrationService;
 
-        public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService(), new CommandFactory())
+        public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService())
         {
         }
 
-        public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService, ICommandFactory commandFactory)
+        public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService)
         {
             this.WorkflowStore = workflowStore;
             _workflowRegistrationService = workflowRegistrationService;
-
-            this.CommandFactory = commandFactory;
         }
 
         /// <summary>
         /// Gets/sets the workflow store attached to the workflow server.
         /// </summary>
         public IWorkflowStore WorkflowStore { get; set; }
-
-        public ICommandFactory CommandFactory { get; set; }
 
         /// <summary>
         /// Deletes a workflow from the underlying store.  This checks workflows in the active store
@@ -203,10 +195,18 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public Workflow Unsuspend(Guid workflowId)
         {
-            UnsuspendWorkflowCommand cmd = this.CommandFactory.CreateCommand<UnsuspendWorkflowCommand>();
-            cmd.WorkflowId = workflowId;
-            cmd.WorkflowStore = this.WorkflowStore;
-            return cmd.Execute();
+            Workflow workflow = this.WorkflowStore.GetOrDefault(workflowId);
+
+            if (workflow == null)
+            {
+                throw new WorkflowNotFoundException($"Workflow not found matching id {workflowId}");
+            }
+
+            workflow.IsSuspended = false;
+            workflow.ResumeOn = DateTime.UtcNow;
+            this.WorkflowStore.Save(workflow);
+
+            return workflow;
         }
 
         /// <summary>
@@ -216,8 +216,18 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public async Task<Workflow> UnsuspendAsync(Guid workflowId)
         {
-            await this.WorkflowStore.UnsuspendWorkflowAsync(workflowId);
-            return await this.WorkflowStore.GetOrDefaultAsync(workflowId);
+            Workflow workflow = await this.WorkflowStore.GetOrDefaultAsync(workflowId);
+
+            if (workflow == null)
+            {
+                throw new WorkflowNotFoundException($"Workflow not found matching id {workflowId}");
+            }
+
+            workflow.IsSuspended = false;
+            workflow.ResumeOn = DateTime.UtcNow;
+            await this.WorkflowStore.SaveAsync(workflow);
+
+            return workflow;
         }
 
     }

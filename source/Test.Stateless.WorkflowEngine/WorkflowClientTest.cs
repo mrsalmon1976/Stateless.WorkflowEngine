@@ -1,15 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using NSubstitute;
 using NUnit.Framework;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Stateless.WorkflowEngine.Services;
-using Stateless.WorkflowEngine.Commands;
 using Stateless.WorkflowEngine.Exceptions;
 using System.Threading.Tasks;
 
@@ -26,7 +21,7 @@ namespace Test.Stateless.WorkflowEngine
             Guid workflowId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             workflowClient.Delete(workflowId);
 
             workflowStore.Received(1).Delete(workflowId);
@@ -46,7 +41,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefault(workflowId).Returns(workflow);
             
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             bool result = workflowClient.Exists(workflowId);
 
             workflowStore.Received(1).GetOrDefault(workflowId);
@@ -62,7 +57,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefault(workflowId).Returns(workflow);
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             bool result = workflowClient.Exists(workflowId);
 
             workflowStore.Received(1).GetOrDefault(workflowId);
@@ -78,7 +73,7 @@ namespace Test.Stateless.WorkflowEngine
         {
             Guid workflowId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
 
             BasicWorkflow workflow = workflowClient.Get<BasicWorkflow>(workflowId);
             workflowStore.Received(1).Get<BasicWorkflow>(workflowId);
@@ -95,7 +90,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService, Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService);
             workflowClient.IsSingleInstanceWorkflowRegistered<BasicWorkflow>();
             regService.Received(1).IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
         }
@@ -112,7 +107,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
 
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService, Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService);
             workflowClient.Register(workflow);
 
             regService.Received(1).RegisterWorkflow(workflowStore, workflow);
@@ -130,7 +125,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.DeleteAsync(workflowId).Returns(Task.CompletedTask);
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             await workflowClient.DeleteAsync(workflowId);
 
             await workflowStore.Received(1).DeleteAsync(workflowId);
@@ -150,7 +145,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(workflow));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             bool result = await workflowClient.ExistsAsync(workflowId);
 
             await workflowStore.Received(1).GetOrDefaultAsync(workflowId);
@@ -165,7 +160,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(null));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             bool result = await workflowClient.ExistsAsync(workflowId);
 
             await workflowStore.Received(1).GetOrDefaultAsync(workflowId);
@@ -186,7 +181,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(workflow));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             BasicWorkflow result = await workflowClient.GetAsync<BasicWorkflow>(workflowId);
 
             await workflowStore.Received(1).GetOrDefaultAsync(workflowId);
@@ -201,7 +196,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(null));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             Assert.ThrowsAsync<WorkflowNotFoundException>(async () => await workflowClient.GetAsync<BasicWorkflow>(workflowId));
         }
 
@@ -215,7 +210,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetIncompleteCountAsync().Returns(Task.FromResult(7L));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             long result = await workflowClient.GetIncompleteCountAsync();
 
             await workflowStore.Received(1).GetIncompleteCountAsync();
@@ -232,7 +227,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetCompletedCountAsync().Returns(Task.FromResult(3L));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             long result = await workflowClient.GetCompletedCountAsync();
 
             await workflowStore.Received(1).GetCompletedCountAsync();
@@ -249,7 +244,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             workflowStore.GetSuspendedCountAsync().Returns(Task.FromResult(2L));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             long result = await workflowClient.GetSuspendedCountAsync();
 
             await workflowStore.Received(1).GetSuspendedCountAsync();
@@ -267,7 +262,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
             regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore).Returns(Task.FromResult(false));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService, Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService);
             await workflowClient.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>();
 
             await regService.Received(1).IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
@@ -285,7 +280,7 @@ namespace Test.Stateless.WorkflowEngine
             regService.RegisterWorkflowAsync(workflowStore, Arg.Any<Workflow>()).Returns(Task.CompletedTask);
 
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService, Substitute.For<ICommandFactory>());
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, regService);
             await workflowClient.RegisterAsync(workflow);
 
             await regService.Received(1).RegisterWorkflowAsync(workflowStore, workflow);
@@ -298,78 +293,88 @@ namespace Test.Stateless.WorkflowEngine
         [Test]
         public void Unsuspend_OnExecute_SetsProperties()
         {
-            Guid workflowId = Guid.NewGuid();
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            UnsuspendWorkflowCommand cmd = Substitute.For<UnsuspendWorkflowCommand>();
 
-            ICommandFactory commandFactory = Substitute.For<ICommandFactory>();
-            commandFactory.CreateCommand<UnsuspendWorkflowCommand>().Returns(cmd);
-            
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), commandFactory);
-            workflowClient.Unsuspend(workflowId);
+            Workflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSuspended = true;
+            workflow.ResumeOn = DateTime.MinValue;
+            workflowStore.GetOrDefault(workflow.Id).Returns(workflow);
 
-            cmd.Received(1).WorkflowId = workflowId;
-            cmd.Received(1).WorkflowStore = workflowStore;
-            cmd.Received(1).Execute();
+            DateTime dt = DateTime.UtcNow;
+
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Workflow workflowResult = workflowClient.Unsuspend(workflow.Id);
+
+            Assert.That(workflowResult, Is.Not.Null);
+            Assert.That(workflowResult.Id, Is.EqualTo(workflow.Id));
+            Assert.That(workflowResult.IsSuspended, Is.False);
+            Assert.That(workflowResult.ResumeOn, Is.GreaterThanOrEqualTo(dt));
+
+            workflowStore.Received(1).GetOrDefault(workflow.Id);
         }
 
         [Test]
-        public void Unsuspend_OnExecute_ReturnsWorkflow()
+        public void Unsuspend_OnExecute_SavesWorkflow()
         {
-            Guid workflowId = Guid.NewGuid();
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.Id = workflowId;
-
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
 
-            UnsuspendWorkflowCommand cmd = Substitute.For<UnsuspendWorkflowCommand>();
-            cmd.Execute().Returns(workflow);
+            Workflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSuspended = true;
+            workflow.ResumeOn = DateTime.MinValue;
+            workflowStore.GetOrDefault(workflow.Id).Returns(workflow);
 
-            ICommandFactory commandFactory = Substitute.For<ICommandFactory>();
-            commandFactory.CreateCommand<UnsuspendWorkflowCommand>().Returns(cmd);
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Workflow workflowResult = workflowClient.Unsuspend(workflow.Id);
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), commandFactory);
-            BasicWorkflow result = (BasicWorkflow)workflowClient.Unsuspend(workflowId);
-            Assert.That(result.Id, Is.EqualTo(workflowId));
-
+            workflowStore.Received(1).GetOrDefault(workflow.Id);
+            workflowStore.Received(1).Save(workflow);
         }
 
         #endregion
 
         #region UnsuspendAsync Tests
 
+
         [Test]
-        public async Task UnsuspendAsync_OnExecute_CallsStore()
+        public async Task UnsuspendAsync_OnExecute_SetsProperties()
         {
-            Guid workflowId = Guid.NewGuid();
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.Id = workflowId;
-
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.UnsuspendWorkflowAsync(workflowId).Returns(Task.CompletedTask);
-            workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(workflow));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
-            await workflowClient.UnsuspendAsync(workflowId);
+            Workflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSuspended = true;
+            workflow.ResumeOn = DateTime.MinValue;
+            workflowStore.GetOrDefaultAsync(workflow.Id).Returns(Task.FromResult(workflow));
 
-            await workflowStore.Received(1).UnsuspendWorkflowAsync(workflowId);
+            DateTime dt = DateTime.UtcNow;
+
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Workflow workflowResult = await workflowClient.UnsuspendAsync(workflow.Id);
+
+            Assert.That(workflowResult, Is.Not.Null);
+            Assert.That(workflowResult.Id, Is.EqualTo(workflow.Id));
+            Assert.That(workflowResult.IsSuspended, Is.False);
+            Assert.That(workflowResult.ResumeOn, Is.GreaterThanOrEqualTo(dt));
+
+            await workflowStore.Received(1).GetOrDefaultAsync(workflow.Id);
         }
 
         [Test]
-        public async Task UnsuspendAsync_OnExecute_ReturnsWorkflow()
+        public async Task UnsuspendAsync_OnExecute_SavesWorkflow()
         {
-            Guid workflowId = Guid.NewGuid();
-            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
-            workflow.Id = workflowId;
-
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.UnsuspendWorkflowAsync(workflowId).Returns(Task.CompletedTask);
-            workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(workflow));
 
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<ICommandFactory>());
-            Workflow result = await workflowClient.UnsuspendAsync(workflowId);
+            Workflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSuspended = true;
+            workflow.ResumeOn = DateTime.MinValue;
+            workflowStore.GetOrDefaultAsync(workflow.Id).Returns(Task.FromResult(workflow));
 
-            Assert.That(result.Id, Is.EqualTo(workflowId));
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Workflow workflowResult = await workflowClient.UnsuspendAsync(workflow.Id);
+
+            await workflowStore.Received(1).GetOrDefaultAsync(workflow.Id);
+            await workflowStore.Received(1).SaveAsync(workflow);
         }
 
         #endregion
