@@ -159,6 +159,21 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
+        /// <summary>
+        /// Gets all workflows of a specified fully qualified name ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByQualifiedNameAsync(string qualifiedName)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await (from s in session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName)
+                    .OrderBy(x => x.Workflow.CreatedOn)
+                    select s.Workflow).ToListAsync();
+            }
+        }
+
 		/// <summary>
 		/// Gets all incomplete workflows of a specified type ordered by create date.
 		/// </summary>

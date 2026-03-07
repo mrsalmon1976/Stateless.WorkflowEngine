@@ -119,6 +119,15 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets all workflows of a specified fully qualified name ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetAllByQualifiedName(qualifiedName));
+        }
+
+        /// <summary>
         /// Gets all incomplete workflows of a specified type ordered by create date.
         /// </summary>
         /// <returns></returns>

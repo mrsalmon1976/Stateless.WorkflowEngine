@@ -94,6 +94,18 @@ namespace Stateless.WorkflowEngine.Stores
 		IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName);
 
 		/// <summary>
+		/// Gets all workflows of a specified fully qualified name.
+		/// </summary>
+		/// <returns></returns>
+		Task<IEnumerable<T>> GetAllByQualifiedNameAsync<T>() where T : Workflow;
+
+		/// <summary>
+		/// Gets all workflows of a specified fully qualified name.
+		/// </summary>
+		/// <returns></returns>
+		Task<IEnumerable<Workflow>> GetAllByQualifiedNameAsync(string qualifiedName);
+
+		/// <summary>
 		/// Gets all workflows of a specified type.
 		/// </summary>
 		/// <returns></returns>
@@ -359,6 +371,22 @@ namespace Stateless.WorkflowEngine.Stores
 		/// </summary>
 		/// <returns></returns>
 		public abstract IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName);
+
+		/// <summary>
+		/// Gets all workflows of a specified full qualified name.
+		/// </summary>
+		/// <returns></returns>
+		public virtual async Task<IEnumerable<T>> GetAllByQualifiedNameAsync<T>() where T : Workflow
+		{
+			IEnumerable<Workflow> workflows = await this.GetAllByQualifiedNameAsync(typeof(T).FullName);
+			return workflows.Cast<T>();
+		}
+
+		/// <summary>
+		/// Gets all workflows of a specified type.
+		/// </summary>
+		/// <returns></returns>
+		public abstract Task<IEnumerable<Workflow>> GetAllByQualifiedNameAsync(string qualifiedName);
 
 
 		/// <summary>

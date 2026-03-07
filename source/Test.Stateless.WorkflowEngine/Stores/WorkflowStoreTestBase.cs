@@ -782,6 +782,25 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
 		#endregion
 
+		#region GetAllByQualifiedNameAsync Tests
+
+		[Test]
+        public async Task GetAllByQualifiedNameAsync_OnExecute_ReturnsCorrectWorkflows()
+        {
+            // Set up a store with some workflows
+            IWorkflowStore store = GetStore();
+            store.Save(new BasicWorkflow("Start"));
+            store.Save(new SingleInstanceWorkflow("Start"));
+            store.Save(new SimpleTwoStateWorkflow("Start"));
+
+            IEnumerable<Workflow> result = await store.GetAllByQualifiedNameAsync(typeof(SingleInstanceWorkflow).FullName);
+            Workflow wf = result.Single();
+            Assert.That(wf.GetType().FullName, Is.EqualTo(typeof(SingleInstanceWorkflow).FullName));
+        }
+
+
+		#endregion
+
 		#region GetAllByType Tests
 
 		[Test]

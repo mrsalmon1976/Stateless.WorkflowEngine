@@ -186,6 +186,20 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .ToEnumerable();
         }
 
+        /// <summary>
+        /// Gets all workflows of a specified fully qualified name ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByQualifiedNameAsync(string qualifiedName)
+        {
+            var collection = GetCollection();
+            var cursor = await collection.Find(x => x.Workflow.QualifiedName == qualifiedName)
+                .SortBy(x => x.Workflow.CreatedOn)
+                .Project(y => y.Workflow)
+                .ToCursorAsync();
+            return await cursor.ToListAsync();
+        }
+
 		/// <summary>
 		/// Gets all incomplete workflows of a specified type ordered by create date.
 		/// </summary>
