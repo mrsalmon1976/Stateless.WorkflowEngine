@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="DnsClient" Version="1.8.0" />
     <PackageReference Include="MongoDB.Bson" Version="2.30.0" />
     <PackageReference Include="MongoDB.Driver" Version="2.30.0" />
     <PackageReference Include="MongoDB.Driver.Core" Version="2.30.0" />
