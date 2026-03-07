@@ -280,6 +280,15 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetSuspendedCountAsync()
+        {
+            return await Task.FromResult(GetSuspendedCount());
+        }
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>
@@ -368,6 +377,16 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override async Task SaveDefinitionAsync(WorkflowDefinition workflowDefinition)
+        {
+            await Task.FromResult(0);
+            SaveDefinition(workflowDefinition);
+        }
+
+        /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>
         /// <param name="id"></param>
@@ -378,7 +397,17 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
-        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task SuspendWorkflowAsync(Guid id)
+        {
+            await Task.FromResult(0);
+            SuspendWorkflow(id);
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
         /// resetting the Resume Date and Retry Count.
         /// </summary>
         /// <param name="id"></param>
@@ -388,6 +417,17 @@ namespace Stateless.WorkflowEngine.Stores
             w.IsSuspended = false;
             w.RetryCount = 0;
             w.ResumeOn = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task UnsuspendWorkflowAsync(Guid id)
+        {
+            await Task.FromResult(0);
+            UnsuspendWorkflow(id);
         }
 
     }

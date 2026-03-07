@@ -1015,6 +1015,33 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetSuspendedCountAsync Tests
+
+        [Test]
+        public async Task GetSuspendedCountAsync_OnExecute_ReturnsAccurateCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            int suspendedCount = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                store.Save(wf);
+            }
+            for (int i = 0; i < suspendedCount; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = true;
+                store.Save(wf);
+            }
+
+            long result = await store.GetSuspendedCountAsync();
+            Assert.That(result, Is.EqualTo(suspendedCount));
+        }
+
+        #endregion
+
         #region GetIncompleteWorkflowsAsJson Tests
 
         [Test]
@@ -1168,6 +1195,27 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region SaveDefinitionAsync Tests
+
+        [Test]
+        public async Task SaveDefinitionAsync_NewDefinitions_DefinitionsAdded()
+        {
+            IWorkflowStore store = GetStore();
+            WorkflowDefinition basicWorkflowDefinition = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            await store.SaveDefinitionAsync(basicWorkflowDefinition);
+            await store.SaveDefinitionAsync(brokenWorkflowDefinition);
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = store.GetDefinitions();
+
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(2));
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName), Is.Not.Null);
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName), Is.Not.Null);
+        }
+
+        #endregion
+
         #region SaveDefinition Tests
 
         [Test]
@@ -1234,6 +1282,31 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region SuspendAsync Tests
+
+        [Test]
+        public async Task SuspendAsync_OnSuspension_UpdatesWorkflowAndSaves()
+        {
+            IWorkflowStore store = GetStore();
+
+            // setup a new workflow
+            BasicWorkflow wf = new BasicWorkflow("Start");
+            wf.CreatedOn = DateTime.UtcNow.AddMinutes(-1);
+            wf.RetryCount = 0;
+            wf.IsSuspended = false;
+            store.Save(wf);
+
+            // execute
+            await store.SuspendWorkflowAsync(wf.Id);
+
+            // assert: fetch the workflow - it should be available and suspended
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsSuspended, Is.True);
+        }
+
+        #endregion
+
         #region Unsuspend Tests
 
         [Test]
@@ -1261,6 +1334,37 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Assert.That(result.RetryCount, Is.EqualTo(0));
             Assert.That(result.ResumeOn, Is.GreaterThan(beforeSuspend.AddMilliseconds(-1)));
 			Assert.That(result.ResumeOn, Is.LessThan(afterSuspend.AddMilliseconds(1)));
+        }
+
+        #endregion
+
+        #region UnsuspendAsync Tests
+
+        [Test]
+        public async Task UnsuspendAsync_OnUnsuspension_UpdatesWorkflowAndSaves()
+        {
+            IWorkflowStore store = GetStore();
+
+            // setup a new workflow
+            BasicWorkflow wf = new BasicWorkflow("Start");
+            wf.CreatedOn = DateTime.UtcNow.AddMinutes(-1);
+            wf.RetryCount = 3;
+            wf.ResumeOn = DateTime.UtcNow.AddDays(1);
+            wf.IsSuspended = true;
+            store.Save(wf);
+
+            // execute
+            DateTime beforeUnsuspend = DateTime.UtcNow;
+            await store.UnsuspendWorkflowAsync(wf.Id);
+            DateTime afterUnsuspend = DateTime.UtcNow;
+
+            // assert: fetch the workflow - it should be available and unsuspended
+            Workflow result = store.GetOrDefault(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsSuspended, Is.False);
+            Assert.That(result.RetryCount, Is.EqualTo(0));
+            Assert.That(result.ResumeOn, Is.GreaterThan(beforeUnsuspend.AddMilliseconds(-1)));
+            Assert.That(result.ResumeOn, Is.LessThan(afterUnsuspend.AddMilliseconds(1)));
         }
 
         #endregion

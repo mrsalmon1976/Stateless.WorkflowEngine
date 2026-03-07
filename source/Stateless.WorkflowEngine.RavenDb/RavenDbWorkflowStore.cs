@@ -424,6 +424,18 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
+        /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetSuspendedCountAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenWorkflow>().Where(x => x.Workflow.IsSuspended == true).CountAsync();
+            }
+        }
+
 
         /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
@@ -537,6 +549,20 @@ namespace Stateless.WorkflowEngine.RavenDb
                 session.SaveChanges();
             }
         }
+
+        /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override async Task SaveDefinitionAsync(WorkflowDefinition workflowDefinition)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                await session.StoreAsync(new RavenWorkflowDefinition(workflowDefinition));
+                await session.SaveChangesAsync();
+            }
+        }
+
         /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>
@@ -549,7 +575,18 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
-        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task SuspendWorkflowAsync(Guid id)
+        {
+            Workflow w = await this.GetOrDefaultAsync(id);
+            w.IsSuspended = true;
+            await this.SaveAsync(w);
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
         /// resetting the Resume Date and Retry Count.
         /// </summary>
         /// <param name="id"></param>
@@ -560,6 +597,20 @@ namespace Stateless.WorkflowEngine.RavenDb
             w.RetryCount = 0;
             w.ResumeOn = DateTime.UtcNow;
             this.Save(w);
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task UnsuspendWorkflowAsync(Guid id)
+        {
+            Workflow w = await this.GetOrDefaultAsync(id);
+            w.IsSuspended = false;
+            w.RetryCount = 0;
+            w.ResumeOn = DateTime.UtcNow;
+            await this.SaveAsync(w);
         }
 
 

@@ -444,6 +444,18 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetSuspendedCountAsync()
+        {
+            var collection = GetCollection();
+            return await collection
+                .Find(x => x.Workflow.IsSuspended == true)
+                .CountDocumentsAsync();
+        }
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>
@@ -542,6 +554,16 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public override async Task SaveDefinitionAsync(WorkflowDefinition workflowDefinition)
+        {
+            var coll = GetDefinitionCollection();
+            await coll.ReplaceOneAsync(x => x.Id == workflowDefinition.Id, workflowDefinition, new ReplaceOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>
         /// <param name="id"></param>
@@ -564,7 +586,25 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
-        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task SuspendWorkflowAsync(Guid id)
+        {
+            var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var doc = await coll.Find(filter).SingleOrDefaultAsync();
+
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(true);
+                await coll.ReplaceOneAsync(filter, doc, new ReplaceOptions() { IsUpsert = false });
+            }
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
         /// resetting the Resume Date and Retry Count.
         /// </summary>
         /// <param name="id"></param>
@@ -585,6 +625,27 @@ namespace Stateless.WorkflowEngine.MongoDb
                 workflowElement["RetryCount"] = BsonValue.Create(0);
                 workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
                 coll.ReplaceOne(filter, doc, new ReplaceOptions() { IsUpsert = false });
+            }
+        }
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task UnsuspendWorkflowAsync(Guid id)
+        {
+            var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var doc = await coll.Find(filter).SingleOrDefaultAsync();
+
+            if (doc != null)
+            {
+                BsonValue workflowElement = doc["Workflow"];
+                workflowElement["IsSuspended"] = BsonValue.Create(false);
+                workflowElement["RetryCount"] = BsonValue.Create(0);
+                workflowElement["ResumeOn"] = BsonValue.Create(DateTime.UtcNow);
+                await coll.ReplaceOneAsync(filter, doc, new ReplaceOptions() { IsUpsert = false });
             }
         }
 

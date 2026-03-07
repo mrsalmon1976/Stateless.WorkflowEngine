@@ -230,6 +230,12 @@ namespace Stateless.WorkflowEngine.Stores
         long GetSuspendedCount();
 
         /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        Task<long> GetSuspendedCountAsync();
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>
@@ -274,17 +280,36 @@ namespace Stateless.WorkflowEngine.Stores
         void SaveDefinition(WorkflowDefinition workflowDefinition);
 
         /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        Task SaveDefinitionAsync(WorkflowDefinition workflowDefinition);
+
+        /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>
         /// <param name="id"></param>
         void SuspendWorkflow(Guid id);
 
         /// <summary>
-        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        Task SuspendWorkflowAsync(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
         /// resetting the Resume Date and Retry Count.
         /// </summary>
         /// <param name="id"></param>
         void UnsuspendWorkflow(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        Task UnsuspendWorkflowAsync(Guid id);
     }
 
     public abstract class WorkflowStore : IWorkflowStore
@@ -588,6 +613,12 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract long GetSuspendedCount();
 
         /// <summary>
+        /// Gets the count of suspended workflows in the active collection.
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<long> GetSuspendedCountAsync();
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>
@@ -632,17 +663,36 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract void SaveDefinition(WorkflowDefinition workflowDefinition);
 
         /// <summary>
+        /// Saves a workflow definition, based on its qualified name (Id will not be considered for the upsert).
+        /// </summary>
+        /// <param name="workflowDefinition"></param>
+        public abstract Task SaveDefinitionAsync(WorkflowDefinition workflowDefinition);
+
+        /// <summary>
         /// Moves an active workflow into a suspended state.
         /// </summary>
         /// <param name="id"></param>
         public abstract void SuspendWorkflow(Guid id);
 
         /// <summary>
-        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and 
+        /// Moves an active workflow into a suspended state.
+        /// </summary>
+        /// <param name="id"></param>
+        public abstract Task SuspendWorkflowAsync(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
         /// resetting the Resume Date and Retry Count.
         /// </summary>
         /// <param name="id"></param>
         public abstract void UnsuspendWorkflow(Guid id);
+
+        /// <summary>
+        /// Moves a suspended workflow into an unsuspended state, but setting IsSuspended to false, and
+        /// resetting the Resume Date and Retry Count.
+        /// </summary>
+        /// <param name="id"></param>
+        public abstract Task UnsuspendWorkflowAsync(Guid id);
 
 
     }
