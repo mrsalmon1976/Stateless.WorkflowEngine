@@ -78,6 +78,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         long GetIncompleteCount();
 
+        /// <summary>
+        /// Gets the count of workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        Task<long> GetIncompleteCountAsync();
+
 		/// <summary>
 		/// Gets all workflows of a specified fully qualified name.
 		/// </summary>

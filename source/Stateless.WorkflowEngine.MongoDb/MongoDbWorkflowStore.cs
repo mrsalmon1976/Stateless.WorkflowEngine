@@ -173,6 +173,16 @@ namespace Stateless.WorkflowEngine.MongoDb
             return collection.EstimatedDocumentCount();
         }
 
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetIncompleteCountAsync()
+        {
+            var collection = GetCollection();
+            return await collection.EstimatedDocumentCountAsync();
+        }
+
 		/// <summary>
 		/// Gets all workflows of a specified fully qualified name ordered by create date.
 		/// </summary>

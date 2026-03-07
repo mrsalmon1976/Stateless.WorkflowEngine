@@ -144,6 +144,18 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetIncompleteCountAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenWorkflow>().CountAsync();
+            }
+        }
+
 		/// <summary>
 		/// Gets all workflows of a specified fully qualified name ordered by create date.
 		/// </summary>

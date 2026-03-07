@@ -13,6 +13,7 @@ using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
+using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -135,6 +136,106 @@ namespace Test.Stateless.WorkflowEngine
 			workflowStore.DidNotReceive().GetAllByQualifiedName(Arg.Any<string>());
 
 		}
+
+        #endregion
+
+        #region IsSingleInstanceWorkflowRegisteredAsync Tests
+
+        [Test]
+        public async Task IsSingleInstanceWorkflowRegisteredAsync_WorkflowNotRegistered_ReturnsFalse()
+        {
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = await regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
+            Assert.That(result, Is.False);
+        }
+
+        [Test]
+        public void IsSingleInstanceWorkflowRegisteredAsync_WorkflowRegisteredNotSingleInstance_ThrowsException()
+        {
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSingleInstance = false;
+            workflowStore.Save(workflow);
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            Assert.ThrowsAsync<WorkflowException>(async () => await regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore));
+        }
+
+        [Test]
+        public async Task IsSingleInstanceWorkflowRegisteredAsync_WorkflowRegistered_ReturnsTrue()
+        {
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.IsSingleInstance = true;
+            workflowStore.Save(workflow);
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = await regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
+            Assert.That(result, Is.True);
+        }
+
+        [Test]
+        public async Task IsSingleInstanceWorkflowRegisteredAsync_OnExecution_ChecksByQualifiedName()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.GetAllByQualifiedNameAsync<BasicWorkflow>().Returns(Task.FromResult<IEnumerable<BasicWorkflow>>(new List<BasicWorkflow>()));
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            bool result = await regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
+
+            workflowStore.Received(1).GetAllByQualifiedNameAsync<BasicWorkflow>();
+        }
+
+        #endregion
+
+        #region RegisterWorkflowAsync Tests
+
+        [Test]
+        public void RegisterWorkflowAsync_SingleInstanceWorkflowRegistered_ThrowsExceptionIfAlreadyExists()
+        {
+            IWorkflowStore workflowStore = new MemoryWorkflowStore();
+            workflowStore.Save(new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start));
+
+            SingleInstanceWorkflow workflow = new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start);
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            Assert.ThrowsAsync<SingleInstanceWorkflowAlreadyExistsException>(async () => await regService.RegisterWorkflowAsync(workflowStore, workflow));
+        }
+
+        [Test]
+        public async Task RegisterWorkflowAsync_SingleInstanceWorkflowRegistered_RegistersIfDoesNotAlreadyExist()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.GetAllByQualifiedNameAsync(Arg.Any<string>()).Returns(Task.FromResult<IEnumerable<Workflow>>(new List<Workflow>()));
+            workflowStore.SaveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            SingleInstanceWorkflow workflow = new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start);
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            await regService.RegisterWorkflowAsync(workflowStore, workflow);
+
+            workflowStore.Received(1).GetAllByQualifiedNameAsync(workflow.QualifiedName);
+            await workflowStore.Received(1).SaveAsync(workflow);
+        }
+
+        [Test]
+        public async Task RegisterWorkflowAsync_MultipleInstanceWorkflowRegistered_Registers()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.SaveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+
+            IWorkflowRegistrationService regService = new WorkflowRegistrationService();
+            await regService.RegisterWorkflowAsync(workflowStore, workflow);
+
+            workflowStore.DidNotReceive().GetAllByQualifiedNameAsync(Arg.Any<string>());
+            await workflowStore.Received(1).SaveAsync(workflow);
+        }
 
         #endregion
 

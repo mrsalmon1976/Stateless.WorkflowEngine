@@ -38,7 +38,6 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        /// <exception cref="System.NotImplementedException"></exception>
         public Workflow Get(Guid id)
         {
             Workflow workflow = this.GetOrDefault(id);
@@ -89,6 +88,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <returns></returns>
         public abstract long GetIncompleteCount();
+
+        /// <summary>
+        /// Gets the count of active workflows in the active collection (including suspended workflows).
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<long> GetIncompleteCountAsync();
 
         /// <summary>
         /// Gets all incomplete workflows as JSON documents.

@@ -1,4 +1,4 @@
-﻿using Stateless.WorkflowEngine.Commands;
+using Stateless.WorkflowEngine.Commands;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine
 {
@@ -33,7 +34,7 @@ namespace Stateless.WorkflowEngine
         public ICommandFactory CommandFactory { get; set; }
 
         /// <summary>
-        /// Deletes a workflow from the underlying store.  This checks workflows in the active store 
+        /// Deletes a workflow from the underlying store.  This checks workflows in the active store
         /// only, not in the underlying Completed collection.
         /// </summary>
         /// <param name="workflowId"></param>
@@ -43,18 +44,39 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Deletes a workflow from the underlying store.  This checks workflows in the active store
+        /// only, not in the underlying Completed collection.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        public async Task DeleteAsync(Guid workflowId)
+        {
+            await this.WorkflowStore.DeleteAsync(workflowId);
+        }
+
+        /// <summary>
         /// Gets whether a workflow still exists or not.
         /// </summary>
         /// <param name="workflowId"></param>
         /// <returns></returns>
         public bool Exists(Guid workflowId)
         {
-            Workflow workflow = this.WorkflowStore.Get(workflowId);
+            Workflow workflow = this.WorkflowStore.GetOrDefault(workflowId);
             return (workflow != null);
         }
 
         /// <summary>
-        /// Gets a workflow from the back-end store.  Returns null if the workflow does not exist.
+        /// Gets whether a workflow still exists or not.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public async Task<bool> ExistsAsync(Guid workflowId)
+        {
+            Workflow workflow = await this.WorkflowStore.GetOrDefaultAsync(workflowId);
+            return (workflow != null);
+        }
+
+        /// <summary>
+        /// Gets a workflow from the back-end store.  Throws a WorkflowNotFoundException if the workflow does not exist.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="workflowId"></param>
@@ -62,6 +84,22 @@ namespace Stateless.WorkflowEngine
         public T Get<T>(Guid workflowId) where T : Workflow
         {
             return this.WorkflowStore.Get<T>(workflowId);
+        }
+
+        /// <summary>
+        /// Gets a workflow from the back-end store.  Throws a WorkflowNotFoundException if the workflow does not exist.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public async Task<T> GetAsync<T>(Guid workflowId) where T : Workflow
+        {
+            Workflow workflow = await this.WorkflowStore.GetOrDefaultAsync(workflowId);
+            if (workflow == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", workflowId));
+            }
+            return (T)workflow;
         }
 
         /// <summary>
@@ -74,6 +112,15 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Gets the count of workflows on the underlying store (including suspended).
+        /// </summary>
+        /// <returns></returns>
+        public async Task<long> GetIncompleteCountAsync()
+        {
+            return await this.WorkflowStore.GetIncompleteCountAsync();
+        }
+
+        /// <summary>
         /// Gets the count of completed workflows on the underlying store.
         /// </summary>
         /// <returns></returns>
@@ -83,12 +130,30 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Gets the count of completed workflows on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<long> GetCompletedCountAsync()
+        {
+            return await this.WorkflowStore.GetCompletedCountAsync();
+        }
+
+        /// <summary>
         /// Gets the count of suspended workflows that have not completed on the underlying store.
         /// </summary>
         /// <returns></returns>
         public long GetSuspendedCount()
         {
             return this.WorkflowStore.GetSuspendedCount();
+        }
+
+        /// <summary>
+        /// Gets the count of suspended workflows that have not completed on the underlying store.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<long> GetSuspendedCountAsync()
+        {
+            return await this.WorkflowStore.GetSuspendedCountAsync();
         }
 
         /// <summary>
@@ -102,26 +167,33 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in 
+        /// Checks to see if a single-instance workflow has already been registered.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public async Task<bool> IsSingleInstanceWorkflowRegisteredAsync<T>() where T : Workflow
+        {
+            return await _workflowRegistrationService.IsSingleInstanceWorkflowRegisteredAsync<T>(this.WorkflowStore);
+        }
+
+        /// <summary>
+        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
         /// an exception being raised.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
-        /// <returns>True if a new workflow was started, otherwise false.</returns>
         public void Register(Workflow workflow)
         {
             _workflowRegistrationService.RegisterWorkflow(this.WorkflowStore, workflow);
         }
 
         /// <summary>
-        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in 
+        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
         /// an exception being raised.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
-        /// <returns>True if a new workflow was started, otherwise false.</returns>
-        [Obsolete("Use Register instead")]
-        public void RegisterWorkflow(Workflow workflow)
+        public async Task RegisterAsync(Workflow workflow)
         {
-            this.Register(workflow);
+            await _workflowRegistrationService.RegisterWorkflowAsync(this.WorkflowStore, workflow);
         }
 
         /// <summary>
@@ -135,6 +207,17 @@ namespace Stateless.WorkflowEngine
             cmd.WorkflowId = workflowId;
             cmd.WorkflowStore = this.WorkflowStore;
             return cmd.Execute();
+        }
+
+        /// <summary>
+        /// Unsuspends a workflow.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <returns></returns>
+        public async Task<Workflow> UnsuspendAsync(Guid workflowId)
+        {
+            await this.WorkflowStore.UnsuspendWorkflowAsync(workflowId);
+            return await this.WorkflowStore.GetOrDefaultAsync(workflowId);
         }
 
     }

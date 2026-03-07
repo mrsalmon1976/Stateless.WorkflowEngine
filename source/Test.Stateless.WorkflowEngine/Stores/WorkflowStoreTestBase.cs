@@ -842,6 +842,41 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
 		#endregion
 
+        #region GetIncompleteCountAsync Tests
+
+        [Test]
+        public async Task GetIncompleteCountAsync_NoSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+
+            long result = await store.GetIncompleteCountAsync();
+            Assert.That(result, Is.EqualTo(count));
+        }
+
+        [Test]
+        public async Task GetIncompleteCountAsync_WithSuspendedWorkflows_ReturnsCorrectCount()
+        {
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            }
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start) { IsSuspended = true });
+
+            long result = await store.GetIncompleteCountAsync();
+            Assert.That(result, Is.EqualTo(count + 3));
+        }
+
+        #endregion
+
 		#region GetAllByQualifiedName Tests
 
 		[Test]
