@@ -13,7 +13,7 @@ namespace Example
 
         public const string SqliteDbFileName = "StatelessExample.db";
 
-        public static string SqliteConnectionString = String.Format("Data Source={0};Version=3;", SqliteDbFilePath);
+        public static string SqliteConnectionString = String.Format("Data Source={0};Version=3;Journal Mode=WAL;BusyTimeout=5000;", SqliteDbFilePath);
 
 
         public const string VolumeExampleMongoDbName = "StatelessVolumeExample";
