@@ -150,6 +150,31 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetOrDefaultAsync Tests
+
+        [Test]
+        public async Task GetOrDefaultAsync_ExistingId_ReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+
+            Workflow result = await store.GetOrDefaultAsync(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        [Test]
+        public async Task GetOrDefaultAsync_InvalidId_ReturnsNull()
+        {
+            IWorkflowStore store = GetStore();
+
+            Workflow result = await store.GetOrDefaultAsync(Guid.NewGuid());
+            Assert.That(result, Is.Null);
+        }
+
+        #endregion
+
         #region GetActive Tests
 
         [Test]
@@ -725,6 +750,61 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetIncompleteAsync Tests
+
+        [Test]
+        public async Task GetIncompleteAsync_WorkflowIsSuspended_IsReturned()
+        {
+            Func<bool, BasicWorkflow> createWorkflow = (isSuspended) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                return wf;
+            };
+
+            Workflow activeWorkflow = createWorkflow(false);
+            Workflow suspendedWorkflow = createWorkflow(true);
+
+            IWorkflowStore store = GetStore();
+            store.Save(activeWorkflow);
+            store.Save(suspendedWorkflow);
+
+            var workflows = (await store.GetIncompleteAsync(10)).ToList();
+            Assert.That(workflows.Count, Is.EqualTo(2));
+            Assert.That(workflows.SingleOrDefault(x => x.Id == activeWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.SingleOrDefault(x => x.Id == suspendedWorkflow.Id), Is.Not.Null);
+        }
+
+        [Test]
+        public async Task GetIncompleteAsync_WorkflowResumeDateInFuture_NotReturned()
+        {
+            Func<bool, DateTime, BasicWorkflow> createWorkflow = (isSuspended, resumeOn) =>
+            {
+                BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                wf.IsSuspended = isSuspended;
+                wf.ResumeOn = resumeOn;
+                wf.BasicMetaData = Guid.NewGuid().ToString();
+                return wf;
+            };
+
+            Workflow noResumeDateWorkflow = createWorkflow(false, DateTime.MinValue);
+            Workflow resumeDateActiveWorkflow = createWorkflow(true, DateTime.UtcNow.AddMilliseconds(-1));
+            Workflow futureDatedWorkflow = createWorkflow(false, DateTime.UtcNow.AddMinutes(3));
+
+            IWorkflowStore store = GetStore();
+            store.Save(noResumeDateWorkflow);
+            store.Save(resumeDateActiveWorkflow);
+            store.Save(futureDatedWorkflow);
+
+            var workflows = (await store.GetIncompleteAsync(10)).ToList();
+            Assert.That(workflows.Count, Is.EqualTo(2));
+            Assert.That(workflows.FirstOrDefault(x => x.Id == noResumeDateWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == resumeDateActiveWorkflow.Id), Is.Not.Null);
+            Assert.That(workflows.FirstOrDefault(x => x.Id == futureDatedWorkflow.Id), Is.Null);
+        }
+
+        #endregion
+
         #region GetIncompleteCount Tests
 
         [Test]
@@ -821,6 +901,25 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
 		#endregion
 
+		#region GetAllByTypeAsync Tests
+
+		[Test]
+        public async Task GetAllByTypeAsync_OnExecute_ReturnsCorrectWorkflows()
+        {
+            // Set up a store with some workflows
+            IWorkflowStore store = GetStore();
+            store.Save(new BasicWorkflow("Start"));
+            store.Save(new SingleInstanceWorkflow("Start"));
+            store.Save(new SimpleTwoStateWorkflow("Start"));
+
+            IEnumerable<Workflow> result = await store.GetAllByTypeAsync(typeof(SingleInstanceWorkflow).AssemblyQualifiedName);
+            Workflow wf = result.Single();
+            Assert.That(wf.GetType().AssemblyQualifiedName, Is.EqualTo(typeof(SingleInstanceWorkflow).AssemblyQualifiedName));
+        }
+
+
+		#endregion
+
 		#region GetCompletedCount Tests
 
 		[Test]
@@ -838,6 +937,53 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
             long result = store.GetCompletedCount();
             Assert.That(result, Is.EqualTo(count));
+        }
+
+        #endregion
+
+        #region GetCompletedCountAsync Tests
+
+        [Test]
+        public async Task GetCompletedCountAsync_OnExecute_ReturnsAccurateCount()
+        {
+            // Set up a store with some basic workflows
+            IWorkflowStore store = GetStore();
+            int count = new Random().Next(2, 10);
+            for (int i = 0; i < count; i++)
+            {
+                Workflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+                store.Save(wf);
+                store.Archive(wf);
+            }
+
+            long result = await store.GetCompletedCountAsync();
+            Assert.That(result, Is.EqualTo(count));
+        }
+
+        #endregion
+
+        #region GetCompletedOrDefaultAsync Tests
+
+        [Test]
+        public async Task GetCompletedOrDefaultAsync_ExistingId_ReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+            store.Archive(wf);
+
+            Workflow result = await store.GetCompletedOrDefaultAsync(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        [Test]
+        public async Task GetCompletedOrDefaultAsync_InvalidId_ReturnsNull()
+        {
+            IWorkflowStore store = GetStore();
+
+            Workflow result = await store.GetCompletedOrDefaultAsync(Guid.NewGuid());
+            Assert.That(result, Is.Null);
         }
 
         #endregion

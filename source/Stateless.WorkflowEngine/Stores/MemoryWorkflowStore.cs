@@ -139,12 +139,30 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets all incomplete workflows of a specified type ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByTypeAsync(string workflowType)
+        {
+            return await Task.FromResult(GetAllByType(workflowType));
+        }
+
+        /// <summary>
         /// Gets the count of completed workflows in the completed collection.
         /// </summary>
         /// <returns></returns>
         public override long GetCompletedCount()
         {
             return this._completedWorkflows.Count;
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetCompletedCountAsync()
+        {
+            return await Task.FromResult(GetCompletedCount());
         }
 
         /// <summary>
@@ -164,6 +182,16 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets a completed workflow by it's unique identifier, or null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetCompletedOrDefaultAsync(Guid id)
+        {
+            return await Task.FromResult(GetCompletedOrDefault(id));
+        }
+
+        /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
         /// </summary>
         /// <param name="id"></param>
@@ -177,6 +205,16 @@ namespace Stateless.WorkflowEngine.Stores
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetOrDefaultAsync(Guid id)
+        {
+            return await Task.FromResult(GetOrDefault(id));
         }
 
         /// <summary>
@@ -219,6 +257,16 @@ namespace Stateless.WorkflowEngine.Stores
                 .ThenByDescending(x => x.RetryCount)
                 .ThenBy(x => x.CreatedOn)
                 .Take(count);
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetIncompleteAsync(int count)
+        {
+            return await Task.FromResult(GetIncomplete(count));
         }
 
 

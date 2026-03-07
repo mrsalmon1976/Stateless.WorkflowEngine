@@ -118,6 +118,18 @@ namespace Stateless.WorkflowEngine.Stores
         IEnumerable<Workflow> GetAllByType(string workflowType);
 
         /// <summary>
+        /// Gets all workflows of a specified type.
+        /// </summary>
+        /// <returns></returns>
+        Task<IEnumerable<T>> GetAllByTypeAsync<T>() where T : Workflow;
+
+        /// <summary>
+        /// Gets all workflows of a specified type.
+        /// </summary>
+        /// <returns></returns>
+        Task<IEnumerable<Workflow>> GetAllByTypeAsync(string workflowType);
+
+        /// <summary>
         /// Gets a completed workflow by it's unique identifier.
         /// </summary>
         /// <param name="id"></param>
@@ -131,11 +143,24 @@ namespace Stateless.WorkflowEngine.Stores
         long GetCompletedCount();
 
         /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        Task<long> GetCompletedCountAsync();
+
+        /// <summary>
         /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         Workflow GetCompletedOrDefault(Guid id);
+
+        /// <summary>
+        /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<Workflow> GetCompletedOrDefaultAsync(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
@@ -144,6 +169,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
         Workflow GetOrDefault(Guid id);
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<Workflow> GetOrDefaultAsync(Guid id);
 
 
         /// <summary>
@@ -168,6 +200,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         IEnumerable<Workflow> GetIncomplete(int count);
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        Task<IEnumerable<Workflow>> GetIncompleteAsync(int count);
 
         /// <summary>
         /// Gets all incomplete workflows as JSON documents.
@@ -406,6 +445,22 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract IEnumerable<Workflow> GetAllByType(string workflowType);
 
         /// <summary>
+        /// Gets all workflows of a specified type.
+        /// </summary>
+        /// <returns></returns>
+        public virtual async Task<IEnumerable<T>> GetAllByTypeAsync<T>() where T : Workflow
+        {
+            IEnumerable<Workflow> workflows = await this.GetAllByTypeAsync(typeof(T).AssemblyQualifiedName);
+            return workflows.Cast<T>();
+        }
+
+        /// <summary>
+        /// Gets all workflows of a specified type.
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<Workflow>> GetAllByTypeAsync(string workflowType);
+
+        /// <summary>
         /// Gets a completed workflow by it's unique identifier.
         /// </summary>
         /// <param name="id"></param>
@@ -427,6 +482,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public abstract long GetCompletedCount();
 
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<long> GetCompletedCountAsync();
+
 
         /// <summary>
         /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
@@ -436,12 +497,41 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract Workflow GetCompletedOrDefault(Guid id);
 
         /// <summary>
+        /// Gets a completed workflow by it's unique identifier, or returns null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public abstract Task<Workflow> GetCompletedOrDefaultAsync(Guid id);
+
+        /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
         public abstract Workflow GetOrDefault(Guid id);
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public abstract Task<Workflow> GetOrDefaultAsync(Guid id);
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<T> GetOrDefaultAsync<T>(Guid id) where T : Workflow
+        {
+            Workflow workflow = await this.GetOrDefaultAsync(id);
+            if (workflow == null)
+            {
+                return default(T);
+            }
+            return (T)workflow;
+        }
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier.
@@ -482,6 +572,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="count"></param>
         /// <returns></returns>
         public abstract IEnumerable<Workflow> GetIncomplete(int count);
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<Workflow>> GetIncompleteAsync(int count);
 
 
         /// <summary>

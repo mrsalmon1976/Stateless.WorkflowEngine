@@ -189,6 +189,21 @@ namespace Stateless.WorkflowEngine.RavenDb
 			}
 		}
 
+        /// <summary>
+        /// Gets all incomplete workflows of a specified type ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByTypeAsync(string workflowType)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await (from s in session.Query<RavenWorkflow>()
+                    .Where(x => x.WorkflowType == workflowType)
+                    .OrderBy(x => x.Workflow.CreatedOn)
+                    select s.Workflow).ToListAsync();
+            }
+        }
+
 		/// <summary>
 		/// Gets the count of completed workflows in the completed collection.
 		/// </summary>
@@ -198,6 +213,18 @@ namespace Stateless.WorkflowEngine.RavenDb
             using (IDocumentSession session = this.OpenSession())
             {
                 return session.Query<RavenCompletedWorkflow>().Count();
+            }
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetCompletedCountAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenCompletedWorkflow>().CountAsync();
             }
         }
 
@@ -220,6 +247,21 @@ namespace Stateless.WorkflowEngine.RavenDb
                 }
             }
             return w;
+        }
+
+        /// <summary>
+        /// Gets a completed workflow by it's unique identifier, or null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetCompletedOrDefaultAsync(Guid id)
+        {
+            string cid = RavenDbIdUtility.FormatCompletedWorkflowId(id);
+            using (var session = this.OpenAsyncSession())
+            {
+                var rcw = await session.LoadAsync<RavenCompletedWorkflow>(cid);
+                return rcw?.Workflow;
+            }
         }
 
         /// <summary>
@@ -278,6 +320,21 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetOrDefaultAsync(Guid id)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            using (var session = this.OpenAsyncSession())
+            {
+                RavenWorkflow wc = await session.LoadAsync<RavenWorkflow>(fid);
+                return wc?.Workflow;
+            }
+        }
+
+        /// <summary>
         /// Gets the first <c>count</c> active workflows, ordered by Priority, RetryCount, and then CreationDate.
         /// Note that is the primary method used by the workflow engine to fetch workflows.
         /// </summary>
@@ -333,6 +390,25 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .ThenBy(x => x.Workflow.CreatedOn)
                     .Take(count)
                        select s.Workflow).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetIncompleteAsync(int count)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await (from s in session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.ResumeOn <= DateTime.UtcNow)
+                    .OrderByDescending(x => x.Workflow.Priority)
+                    .ThenByDescending(x => x.Workflow.RetryCount)
+                    .ThenBy(x => x.Workflow.CreatedOn)
+                    .Take(count)
+                    select s.Workflow).ToListAsync();
             }
         }
 

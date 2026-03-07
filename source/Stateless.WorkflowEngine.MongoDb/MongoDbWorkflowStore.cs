@@ -213,6 +213,20 @@ namespace Stateless.WorkflowEngine.MongoDb
 				.ToEnumerable();
 		}
 
+        /// <summary>
+        /// Gets all incomplete workflows of a specified type ordered by create date.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetAllByTypeAsync(string workflowType)
+        {
+            var collection = GetCollection();
+            var cursor = await collection.Find(x => x.WorkflowType == workflowType)
+                .SortBy(x => x.Workflow.CreatedOn)
+                .Project(y => y.Workflow)
+                .ToCursorAsync();
+            return await cursor.ToListAsync();
+        }
+
 		/// <summary>
 		/// Gets the count of completed workflows in the completed collection.
 		/// </summary>
@@ -220,9 +234,19 @@ namespace Stateless.WorkflowEngine.MongoDb
 		public override long GetCompletedCount()
         {
             var collection = GetCompletedCollection();
-            // use EstimatedDocumentCount for this, as CountDocuments does an actual scan of the underlying documents and can lead to 
+            // use EstimatedDocumentCount for this, as CountDocuments does an actual scan of the underlying documents and can lead to
             // performance issues on very large collections
             return collection.EstimatedDocumentCount();
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows in the completed collection.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<long> GetCompletedCountAsync()
+        {
+            var collection = GetCompletedCollection();
+            return await collection.EstimatedDocumentCountAsync();
         }
 
 
@@ -242,6 +266,18 @@ namespace Stateless.WorkflowEngine.MongoDb
                 workflow = mongoWorkflow.Workflow;
             }
             return workflow;
+        }
+
+        /// <summary>
+        /// Gets a completed workflow by it's unique identifier, or null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetCompletedOrDefaultAsync(Guid id)
+        {
+            var collection = GetCompletedCollection();
+            var mongoWorkflow = await collection.Find(x => x.Id == id).SingleOrDefaultAsync();
+            return mongoWorkflow?.Workflow;
         }
 
         public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
@@ -277,6 +313,18 @@ namespace Stateless.WorkflowEngine.MongoDb
                 workflow = wc.Workflow;
             }
             return workflow;
+        }
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<Workflow> GetOrDefaultAsync(Guid id)
+        {
+            var collection = GetCollection();
+            MongoWorkflow wc = await collection.Find(x => x.Id == id).SingleOrDefaultAsync();
+            return wc?.Workflow;
         }
 
         /// <summary>
@@ -361,6 +409,25 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .ThenBy(x => x.Workflow.CreatedOn)
                 .Project(x => x.Workflow)
                 .ToEnumerable();
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows (including suspended), ordered by Priority, then RetryCount, and then CreationDate.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<Workflow>> GetIncompleteAsync(int count)
+        {
+            var collection = GetCollection();
+            var cursor = await collection
+                .Find(x => (x.Workflow.ResumeOn <= DateTime.UtcNow))
+                .Limit(count)
+                .SortByDescending(x => x.Workflow.Priority)
+                .ThenByDescending(x => x.Workflow.RetryCount)
+                .ThenBy(x => x.Workflow.CreatedOn)
+                .Project(x => x.Workflow)
+                .ToCursorAsync();
+            return await cursor.ToListAsync();
         }
 
 
