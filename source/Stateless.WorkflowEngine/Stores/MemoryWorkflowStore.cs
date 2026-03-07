@@ -14,7 +14,7 @@ namespace Stateless.WorkflowEngine.Stores
         private readonly Dictionary<Guid, Workflow> _activeWorkflows = new Dictionary<Guid, Workflow>();
         private readonly Dictionary<Guid, Workflow> _completedWorkflows = new Dictionary<Guid, Workflow>();
         private readonly List<WorkflowDefinition> _workflowDefinitions = new List<WorkflowDefinition>();
-        private static object syncLock = new object();
+        private readonly object syncLock = new object();
 
         /// <summary>
         /// Archives a workflow, moving it into the completed store.
@@ -67,7 +67,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override long GetActiveCount()
         {
-            return this._activeWorkflows.Where(x => x.Value.IsSuspended == false).Count();
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values.Count(x => !x.IsSuspended);
+            }
         }
 
         /// <summary>
@@ -86,7 +89,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName)
         {
-            return this._workflowDefinitions.Where(x => x.QualifiedName == qualifiedName).SingleOrDefault();
+            lock (syncLock)
+            {
+                return _workflowDefinitions.SingleOrDefault(x => x.QualifiedName == qualifiedName);
+            }
         }
 
         /// <summary>
@@ -95,7 +101,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<WorkflowDefinition> GetDefinitions()
         {
-            return _workflowDefinitions;
+            lock (syncLock)
+            {
+                return _workflowDefinitions.ToList();
+            }
         }
 
         /// <summary>
@@ -104,7 +113,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override long GetIncompleteCount()
         {
-            return this._activeWorkflows.Count();
+            lock (syncLock)
+            {
+                return _activeWorkflows.Count;
+            }
         }
 
         /// <summary>
@@ -122,9 +134,13 @@ namespace Stateless.WorkflowEngine.Stores
 		/// <returns></returns>
 		public override IEnumerable<Workflow> GetAllByQualifiedName(string qualifiedName)
         {
-            return this._activeWorkflows.Values
-                       .Where(x => x.GetType().FullName == qualifiedName)
-                       .OrderBy(x => x.CreatedOn);
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values
+                    .Where(x => x.GetType().FullName == qualifiedName)
+                    .OrderBy(x => x.CreatedOn)
+                    .ToList();
+            }
         }
 
         /// <summary>
@@ -142,9 +158,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<Workflow> GetAllByType(string workflowType)
         {
-            return this._activeWorkflows.Values
-                       .Where(x => x.GetType().AssemblyQualifiedName == workflowType)
-                       .OrderBy(x => x.CreatedOn);
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values
+                    .Where(x => x.GetType().AssemblyQualifiedName == workflowType)
+                    .OrderBy(x => x.CreatedOn)
+                    .ToList();
+            }
         }
 
         /// <summary>
@@ -162,7 +182,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override long GetCompletedCount()
         {
-            return this._completedWorkflows.Count;
+            lock (syncLock)
+            {
+                return _completedWorkflows.Count;
+            }
         }
 
         /// <summary>
@@ -182,12 +205,11 @@ namespace Stateless.WorkflowEngine.Stores
         /// <exception cref="System.NotImplementedException"></exception>
         public override Workflow GetCompletedOrDefault(Guid id)
         {
-            if (_completedWorkflows.ContainsKey(id))
+            lock (syncLock)
             {
-                return _completedWorkflows[id];
+                _completedWorkflows.TryGetValue(id, out Workflow workflow);
+                return workflow;
             }
-
-            return null;
         }
 
         /// <summary>
@@ -208,12 +230,11 @@ namespace Stateless.WorkflowEngine.Stores
         /// <exception cref="System.NotImplementedException"></exception>
         public override Workflow GetOrDefault(Guid id)
         {
-            if (_activeWorkflows.ContainsKey(id))
+            lock (syncLock)
             {
-                return _activeWorkflows[id];
+                _activeWorkflows.TryGetValue(id, out Workflow workflow);
+                return workflow;
             }
-
-            return null;
         }
 
         /// <summary>
@@ -234,12 +255,16 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<Workflow> GetActive(int count)
         {
-            return _activeWorkflows.Values
-                .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow)
-                .OrderByDescending(x => x.Priority)
-                .ThenByDescending(x => x.RetryCount)
-                .ThenBy(x => x.CreatedOn)
-                .Take(count);
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values
+                    .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow)
+                    .OrderByDescending(x => x.Priority)
+                    .ThenByDescending(x => x.RetryCount)
+                    .ThenBy(x => x.CreatedOn)
+                    .Take(count)
+                    .ToList();
+            }
         }
 
         /// <summary>
@@ -260,12 +285,16 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override IEnumerable<Workflow> GetIncomplete(int count)
         {
-            return _activeWorkflows.Values
-                .Where(x => x.ResumeOn <= DateTime.UtcNow)
-                .OrderByDescending(x => x.Priority)
-                .ThenByDescending(x => x.RetryCount)
-                .ThenBy(x => x.CreatedOn)
-                .Take(count);
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values
+                    .Where(x => x.ResumeOn <= DateTime.UtcNow)
+                    .OrderByDescending(x => x.Priority)
+                    .ThenByDescending(x => x.RetryCount)
+                    .ThenBy(x => x.CreatedOn)
+                    .Take(count)
+                    .ToList();
+            }
         }
 
         /// <summary>
@@ -285,7 +314,10 @@ namespace Stateless.WorkflowEngine.Stores
         /// <returns></returns>
         public override long GetSuspendedCount()
         {
-            return this._activeWorkflows.Values.Where(x => x.IsSuspended == true).Count();
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values.Count(x => x.IsSuspended);
+            }
         }
 
         /// <summary>
@@ -401,8 +433,11 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         public override void SuspendWorkflow(Guid id)
         {
-            Workflow w = this.Get(id);
-            w.IsSuspended = true;
+            lock (syncLock)
+            {
+                Workflow w = this.Get(id);
+                w.IsSuspended = true;
+            }
         }
 
         /// <summary>
@@ -422,10 +457,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         public override void UnsuspendWorkflow(Guid id)
         {
-            Workflow w = this.Get(id);
-            w.IsSuspended = false;
-            w.RetryCount = 0;
-            w.ResumeOn = DateTime.UtcNow;
+            lock (syncLock)
+            {
+                Workflow w = this.Get(id);
+                w.IsSuspended = false;
+                w.RetryCount = 0;
+                w.ResumeOn = DateTime.UtcNow;
+            }
         }
 
         /// <summary>
