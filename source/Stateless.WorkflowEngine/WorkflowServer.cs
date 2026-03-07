@@ -313,7 +313,17 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in 
+        /// Checks to see if a single-instance workflow has already been registered.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public async Task<bool> IsSingleInstanceWorkflowRegisteredAsync<T>() where T : Workflow
+        {
+            return await this.WorkflowRegistrationService.IsSingleInstanceWorkflowRegisteredAsync<T>(this.WorkflowStore);
+        }
+
+        /// <summary>
+        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
         /// an exception being raised.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
@@ -321,6 +331,16 @@ namespace Stateless.WorkflowEngine
         public void RegisterWorkflow(Workflow workflow)
         {
             this.WorkflowRegistrationService.RegisterWorkflow(this.WorkflowStore, workflow);
+        }
+
+        /// <summary>
+        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
+        /// an exception being raised.
+        /// </summary>
+        /// <param name="workflow">The workflow.</param>
+        public async Task RegisterWorkflowAsync(Workflow workflow)
+        {
+            await this.WorkflowRegistrationService.RegisterWorkflowAsync(this.WorkflowStore, workflow);
         }
 
         /// <summary>

@@ -64,11 +64,25 @@ namespace Stateless.WorkflowEngine
         bool IsSingleInstanceWorkflowRegistered<T>() where T : Workflow;
 
         /// <summary>
+        /// Checks to see if a single-instance workflow has already been registered.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        Task<bool> IsSingleInstanceWorkflowRegisteredAsync<T>() where T : Workflow;
+
+        /// <summary>
         /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
         /// an exception being raised.
         /// </summary>
         /// <param name="workflow">The workflow.</param>
         void RegisterWorkflow(Workflow workflow);
+
+        /// <summary>
+        /// Registers a new workflow with the engine.  Single instance workflows that already exist will result in
+        /// an exception being raised.
+        /// </summary>
+        /// <param name="workflow">The workflow.</param>
+        Task RegisterWorkflowAsync(Workflow workflow);
 
         /// <summary>
         /// Registers a workflow type for processing.

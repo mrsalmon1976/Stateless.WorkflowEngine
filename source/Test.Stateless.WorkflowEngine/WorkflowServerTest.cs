@@ -965,6 +965,23 @@ namespace Test.Stateless.WorkflowEngine
 
         #endregion
 
+        #region IsSingleInstanceWorkflowRegisteredAsync Tests
+
+        [Test]
+        public async Task IsSingleInstanceWorkflowRegisteredAsync_OnExecute_UsesService()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
+            regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore).Returns(Task.FromResult(false));
+
+            IWorkflowServer workflowServer = CreateWorkflowServer(workflowStore, null, regService, Substitute.For<IWorkflowExceptionHandler>());
+            await workflowServer.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>();
+
+            await regService.Received(1).IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
+        }
+
+        #endregion
+
 
         #region OnWorkflowStateEntry Tests
 
@@ -1014,6 +1031,24 @@ namespace Test.Stateless.WorkflowEngine
 
             regService.Received(1).RegisterWorkflow(workflowStore, workflow);
 
+        }
+
+        #endregion
+
+        #region RegisterWorkflowAsync Tests
+
+        [Test]
+        public async Task RegisterWorkflowAsync_OnRegister_UsesService()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            IWorkflowRegistrationService regService = Substitute.For<IWorkflowRegistrationService>();
+            regService.RegisterWorkflowAsync(workflowStore, Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            IWorkflowServer workflowServer = CreateWorkflowServer(workflowStore, null, regService, Substitute.For<IWorkflowExceptionHandler>());
+            await workflowServer.RegisterWorkflowAsync(workflow);
+
+            await regService.Received(1).RegisterWorkflowAsync(workflowStore, workflow);
         }
 
         #endregion
