@@ -95,6 +95,21 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection.
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override async Task DeleteAsync(Guid id)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                string fid = RavenDbIdUtility.FormatWorkflowId(id);
+                RavenWorkflow wf = await session.LoadAsync<RavenWorkflow>(fid);
+                session.Delete(wf);
+                await session.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>

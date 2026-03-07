@@ -107,6 +107,16 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection.
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override async Task DeleteAsync(Guid id)
+        {
+            var coll = GetCollection();
+            await coll.DeleteOneAsync(x => x.Id == id);
+        }
+
+        /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>

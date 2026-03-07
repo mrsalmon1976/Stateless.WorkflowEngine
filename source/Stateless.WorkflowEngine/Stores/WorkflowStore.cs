@@ -31,6 +31,12 @@ namespace Stateless.WorkflowEngine.Stores
         void Delete(Guid id);
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection.
+        /// </summary>
+        /// <param name="id"></param>
+        Task DeleteAsync(Guid id);
+
+        /// <summary>
         /// Gets an active workflow by it's unique identifier.
         /// </summary>
         /// <param name="id"></param>
@@ -243,6 +249,12 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id">The workflow id.</param>
         public abstract void Delete(Guid id);
+
+        /// <summary>
+        /// Deletes a workflow from the active database store/collection.
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public abstract Task DeleteAsync(Guid id);
 
         /// <summary>
         /// Gets an active workflow by it's unique identifier.

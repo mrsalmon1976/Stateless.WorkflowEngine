@@ -52,6 +52,16 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Deletes a workflow from the active database store/collection.
+        /// </summary>
+        /// <param name="id">The workflow id.</param>
+        public override async Task DeleteAsync(Guid id)
+        {
+            await Task.FromResult(0);
+            Delete(id);
+        }
+
+        /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>

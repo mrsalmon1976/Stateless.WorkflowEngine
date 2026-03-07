@@ -98,6 +98,28 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region DeleteAsync Tests
+
+        [Test]
+        public async Task DeleteAsync_OnExecute_RemovesWorkflow()
+        {
+            Guid workflowId = Guid.NewGuid();
+            IWorkflowStore store = GetStore();
+
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.Id = workflowId;
+            store.Save(workflow);
+
+            Workflow result1 = store.GetOrDefault(workflowId);
+            Assert.That(result1, Is.Not.Null);
+
+            await store.DeleteAsync(workflowId);
+            Workflow result2 = store.GetOrDefault(workflowId);
+            Assert.That(result2, Is.Null);
+        }
+
+        #endregion
+
         #region Get Tests
 
         [Test]
