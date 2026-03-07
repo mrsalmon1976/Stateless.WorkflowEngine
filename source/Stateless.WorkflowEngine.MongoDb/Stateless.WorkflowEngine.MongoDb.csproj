@@ -13,10 +13,10 @@
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="MongoDB.Bson" Version="2.26.0" />
-    <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
-    <PackageReference Include="MongoDB.Driver.Core" Version="2.26.0" />
-    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.9.0" />
+    <PackageReference Include="MongoDB.Bson" Version="2.30.0" />
+    <PackageReference Include="MongoDB.Driver" Version="2.30.0" />
+    <PackageReference Include="MongoDB.Driver.Core" Version="2.30.0" />
+    <PackageReference Include="MongoDB.Libmongocrypt" Version="1.12.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
