@@ -531,7 +531,6 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void Save(IEnumerable<Workflow> workflows)
         {
             var coll = GetCollection();
-            var containers = workflows.Select(x => new MongoWorkflow(x));
             foreach (Workflow wf in workflows)
             {
                 MongoWorkflow wc = new MongoWorkflow(wf);

@@ -856,6 +856,48 @@ namespace Test.Stateless.WorkflowEngine
 
         }
 
+        [Test]
+        public async Task ExecuteWorkflowsAsync_TokenCancelledWhileWaitingForSemaphore_InFlightTaskCompletesAndSemaphoreIsNotDisposedEarly()
+        {
+            // This test verifies the fix for a use-after-dispose bug:
+            // With the old code, tasks.Clear() would abandon in-flight tasks that still held a reference
+            // to the SemaphoreSlim. Those tasks would call semaphore.Release() after the using block
+            // disposed it, causing ObjectDisposedException.
+            //
+            // Scenario: maxConcurrent=1 means the second workflow blocks on semaphore.WaitAsync(ct).
+            // The first workflow's SaveAsync cancels the token (triggering WaitAsync to throw) but
+            // takes 100ms to complete — so the task is still in-flight when cancellation is observed.
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            CancellationTokenSource cts = new CancellationTokenSource();
+
+            List<Workflow> workflows = new List<Workflow>
+            {
+                CreateBasicWorkflow(),
+                CreateBasicWorkflow()
+            };
+            workflowStore.GetActiveAsync(Arg.Any<int>()).Returns(Task.FromResult(workflows.AsEnumerable()));
+
+            // SaveAsync cancels the token synchronously then delays, keeping the task in-flight
+            // long enough that it would hit semaphore.Release() on a disposed semaphore under the old code
+            workflowStore.SaveAsync(Arg.Any<Workflow>()).Returns(async (callInfo) =>
+            {
+                cts.Cancel();
+                await Task.Delay(100);
+            });
+            workflowStore.ArchiveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+
+            // Act: must not throw ObjectDisposedException
+            int result = await workflowServer.ExecuteWorkflowsAsync(2, 1, cts.Token);
+
+            // Only the first workflow was dispatched before cancellation stopped the loop
+            Assert.That(result, Is.EqualTo(1));
+            // SaveAsync was called, proving the in-flight task ran to completion inside WhenAll
+            await workflowStore.Received().SaveAsync(Arg.Any<Workflow>());
+        }
+
         [TestCase(true, 3, 1)]
         [TestCase(false, 3, 1)]
         [TestCase(true, 5, 2)]
@@ -1053,6 +1095,15 @@ namespace Test.Stateless.WorkflowEngine
 
         #endregion
 
+
+        private BasicWorkflow CreateBasicWorkflow()
+        {
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.CreatedOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-2);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            return workflow;
+        }
 
         private IWorkflowServer CreateWorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions workflowServerOptions, IWorkflowRegistrationService workflowRegistrationService, IWorkflowExceptionHandler workflowExceptionHandler)
         {

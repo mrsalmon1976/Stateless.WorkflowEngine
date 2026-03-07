@@ -1,8 +1,5 @@
 ﻿using Stateless.WorkflowEngine.Exceptions;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Stateless.WorkflowEngine
 {
@@ -28,13 +25,13 @@ namespace Stateless.WorkflowEngine
             if (workflow.RetryIntervals.Length > workflow.RetryCount)
             {
                 workflow.ResumeOn = DateTime.UtcNow.AddSeconds(workflow.RetryIntervals[workflow.RetryCount]);
+                workflow.RetryCount += 1;
             }
             else
             {
                 // we're out of tries - suspend
                 workflow.IsSuspended = true;
             }
-
         }
 
 

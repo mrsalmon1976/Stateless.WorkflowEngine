@@ -73,6 +73,29 @@ namespace Test.Stateless.WorkflowEngine
             Assert.That(workflow.LastException, Is.EqualTo(ex.ToString()));
             Assert.That(workflow.ResumeOn, Is.EqualTo(DateTime.MinValue));
             Assert.That(workflow.IsSuspended, Is.True);
+            Assert.That(workflow.RetryCount, Is.EqualTo(workflow.RetryIntervals.Length));
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void HandleWorkflowException_RetryIntervals_CorrectlyApplied(int initialRetryCount)
+        {
+            BrokenWorkflow workflow = new BrokenWorkflow(BrokenWorkflow.State.Start);
+            workflow.RetryIntervals = new int[] { 1, 10, 30 };
+            workflow.RetryCount = initialRetryCount;
+
+            Exception ex = new Exception("Dummy exception");
+
+            DateTime dt = DateTime.UtcNow;
+
+            // execute
+            IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
+            exceptionHandler.HandleWorkflowException(workflow, ex);
+
+            Assert.That(workflow.RetryCount, Is.EqualTo(initialRetryCount + 1));
+            Assert.That(workflow.ResumeOn, Is.GreaterThan(dt));
+            Assert.That(workflow.ResumeOn, Is.GreaterThanOrEqualTo(dt.AddSeconds(workflow.RetryIntervals[initialRetryCount])));
         }
     }
 }

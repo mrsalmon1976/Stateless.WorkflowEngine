@@ -85,7 +85,6 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     workflow.LastException = null;
-                    workflow.RetryCount += 1;
                     workflow.Fire(workflow.ResumeTrigger);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
@@ -162,7 +161,6 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     workflow.LastException = null;
-                    workflow.RetryCount += 1;
                     await workflow.FireAsync(workflow.ResumeTrigger);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
@@ -269,13 +267,20 @@ namespace Stateless.WorkflowEngine
 
                 foreach (Workflow wf in workflows)
                 {
-                    if (ct.IsCancellationRequested)
+                    try
                     {
-                        tasks.Clear();
+                        await semaphore.WaitAsync(ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
                         break;
                     }
 
-                    await semaphore.WaitAsync(ct);
+                    if (ct.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
                     Task t = Task.Run(async () =>
                     {
                         try
@@ -290,14 +295,7 @@ namespace Stateless.WorkflowEngine
                     tasks.Add(t);
                 }
 
-                try
-                {
-                    await Task.WhenAll(tasks);
-                }
-                catch (OperationCanceledException)
-                {
-                    // expected when cancellation is requested
-                }
+                await Task.WhenAll(tasks);
             }
             return tasks.Count;
         }
