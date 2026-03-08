@@ -1295,6 +1295,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
         #region Suspend Tests
 
         [Test]
+        public void Suspend_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.Throws<WorkflowNotFoundException>(() => store.SuspendWorkflow(Guid.NewGuid()));
+        }
+
+        [Test]
         public void Suspend_OnSuspension_UpdatesWorkflowAndSaves()
         {
             IWorkflowStore store = GetStore();
@@ -1320,6 +1327,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
         #region SuspendAsync Tests
 
         [Test]
+        public void SuspendAsync_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.ThrowsAsync<WorkflowNotFoundException>(() => store.SuspendWorkflowAsync(Guid.NewGuid()));
+        }
+
+        [Test]
         public async Task SuspendAsync_OnSuspension_UpdatesWorkflowAndSaves()
         {
             IWorkflowStore store = GetStore();
@@ -1343,6 +1357,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
         #endregion
 
         #region Unsuspend Tests
+
+        [Test]
+        public void Unsuspend_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.Throws<WorkflowNotFoundException>(() => store.UnsuspendWorkflow(Guid.NewGuid()));
+        }
 
         [Test]
         public void Ususpend_OnUnsuspension_UpdatesWorkflowAndSaves()
@@ -1374,6 +1395,13 @@ namespace Test.Stateless.WorkflowEngine.Stores
         #endregion
 
         #region UnsuspendAsync Tests
+
+        [Test]
+        public void UnsuspendAsync_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.ThrowsAsync<WorkflowNotFoundException>(() => store.UnsuspendWorkflowAsync(Guid.NewGuid()));
+        }
 
         [Test]
         public async Task UnsuspendAsync_OnUnsuspension_UpdatesWorkflowAndSaves()
