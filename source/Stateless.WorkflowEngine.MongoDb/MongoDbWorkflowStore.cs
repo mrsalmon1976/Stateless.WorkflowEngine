@@ -1,6 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Driver;
+using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 namespace Stateless.WorkflowEngine.MongoDb
 {
     /// <summary>
-    /// Stores workflows in Raven Db.
+    /// Stores workflows in MongoDb.
     /// </summary>
     public class MongoDbWorkflowStore : WorkflowStore
     {
@@ -579,14 +580,17 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void SuspendWorkflow(Guid id)
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
-            BsonValue val = BsonValue.Create(id);
 
             var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
             var doc = coll
                 .Find(filter)
                 .SingleOrDefault();
 
-            if (doc != null)
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+            else 
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(true);
@@ -604,7 +608,11 @@ namespace Stateless.WorkflowEngine.MongoDb
             var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
             var doc = await coll.Find(filter).SingleOrDefaultAsync();
 
-            if (doc != null)
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+            else 
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(true);
@@ -620,14 +628,17 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override void UnsuspendWorkflow(Guid id)
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
-            BsonValue val = BsonValue.Create(id);
 
             var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
             var doc = coll
                 .Find(filter)
                 .SingleOrDefault();
 
-            if (doc != null)
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+            else
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(false);
@@ -648,7 +659,11 @@ namespace Stateless.WorkflowEngine.MongoDb
             var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
             var doc = await coll.Find(filter).SingleOrDefaultAsync();
 
-            if (doc != null)
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+            else
             {
                 BsonValue workflowElement = doc["Workflow"];
                 workflowElement["IsSuspended"] = BsonValue.Create(false);

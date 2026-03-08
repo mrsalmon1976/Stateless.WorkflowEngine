@@ -291,6 +291,16 @@ namespace Test.Stateless.WorkflowEngine
         #region Unsuspend Tests
 
         [Test]
+        public void Unsuspend_WorkflowDoesNotExist_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.GetOrDefault(Arg.Any<Guid>()).Returns((Workflow)null);
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Assert.Throws<WorkflowNotFoundException>(() => workflowClient.Unsuspend(Guid.NewGuid()));
+        }
+
+        [Test]
         public void Unsuspend_OnExecute_SetsProperties()
         {
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
@@ -335,6 +345,15 @@ namespace Test.Stateless.WorkflowEngine
 
         #region UnsuspendAsync Tests
 
+        [Test]
+        public void UnsuspendAsync_WorkflowDoesNotExist_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.GetOrDefaultAsync(Arg.Any<Guid>()).Returns(Task.FromResult<Workflow>(null));
+
+            IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
+            Assert.ThrowsAsync<WorkflowNotFoundException>(() => workflowClient.UnsuspendAsync(Guid.NewGuid()));
+        }
 
         [Test]
         public async Task UnsuspendAsync_OnExecute_SetsProperties()

@@ -28,8 +28,6 @@ namespace Stateless.WorkflowEngine
 
         public StateWorkflow(string initialState, string initialTrigger) : base(initialState)
         {
-            this.Initialise(initialState);
-
             if (!String.IsNullOrEmpty(initialTrigger))
             {
                 this.ConvertStringTrigger(initialTrigger);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.RavenDb.Index;
 using Raven.Client.Documents;
@@ -593,6 +594,10 @@ namespace Stateless.WorkflowEngine.RavenDb
         public override async Task SuspendWorkflowAsync(Guid id)
         {
             Workflow w = await this.GetOrDefaultAsync(id);
+            if (w == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
             w.IsSuspended = true;
             await this.SaveAsync(w);
         }
@@ -619,6 +624,10 @@ namespace Stateless.WorkflowEngine.RavenDb
         public override async Task UnsuspendWorkflowAsync(Guid id)
         {
             Workflow w = await this.GetOrDefaultAsync(id);
+            if (w == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
             w.IsSuspended = false;
             w.RetryCount = 0;
             w.ResumeOn = DateTime.UtcNow;
