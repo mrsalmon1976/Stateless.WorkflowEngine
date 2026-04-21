@@ -32,6 +32,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // assert
             Assert.Throws<WorkflowException>(del);
+            Assert.That(workflow.IsSuspended, Is.True);
         }
 
         [Test]

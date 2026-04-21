@@ -101,9 +101,10 @@ namespace Stateless.WorkflowEngine
                     if (workflow.IsSuspended)
                     {
                         workflow.OnSuspend();
-                        if (this.WorkflowSuspended != null)
+                        var suspendedHandler = this.WorkflowSuspended;
+                        if (suspendedHandler != null)
                         {
-                            this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                            suspendedHandler(this, new WorkflowEventArgs(workflow));
                         }
                     }
 
@@ -124,9 +125,10 @@ namespace Stateless.WorkflowEngine
                 workflow.CompletedOn = DateTime.UtcNow;
                 this.WorkflowStore.Archive(workflow);
                 workflow.OnComplete();
-                if (this.WorkflowCompleted != null)
+                var completedHandler = this.WorkflowCompleted;
+                if (completedHandler != null)
                 {
-                    this.WorkflowCompleted(this, new WorkflowEventArgs(workflow));
+                    completedHandler(this, new WorkflowEventArgs(workflow));
                 }
                 return;
             }
@@ -177,9 +179,10 @@ namespace Stateless.WorkflowEngine
                     if (workflow.IsSuspended)
                     {
                         workflow.OnSuspend();
-                        if (this.WorkflowSuspended != null)
+                        var suspendedHandler = this.WorkflowSuspended;
+                        if (suspendedHandler != null)
                         {
-                            this.WorkflowSuspended(this, new WorkflowEventArgs(workflow));
+                            suspendedHandler(this, new WorkflowEventArgs(workflow));
                         }
                     }
 
@@ -200,9 +203,10 @@ namespace Stateless.WorkflowEngine
                 workflow.CompletedOn = DateTime.UtcNow;
                 await this.WorkflowStore.ArchiveAsync(workflow);
                 workflow.OnComplete();
-                if (this.WorkflowCompleted != null)
+                var completedHandler = this.WorkflowCompleted;
+                if (completedHandler != null)
                 {
-                    this.WorkflowCompleted(this, new WorkflowEventArgs(workflow));
+                    completedHandler(this, new WorkflowEventArgs(workflow));
                 }
                 return;
             }

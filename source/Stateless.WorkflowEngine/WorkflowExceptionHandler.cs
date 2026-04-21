@@ -18,7 +18,8 @@ namespace Stateless.WorkflowEngine
 
             if (workflow.RetryIntervals.Length == 0)
             {
-                throw new WorkflowException("RetryInterval property of workflow contains no values");
+                workflow.IsSuspended = true;
+                throw new WorkflowException("RetryInterval property of workflow contains no values - unable to handle exception (see inner exception for details)", exception);
             }
 
             // if an error occurred running the workflow, we need to set a resume trigger

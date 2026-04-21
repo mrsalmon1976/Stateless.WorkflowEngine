@@ -408,7 +408,7 @@ namespace Stateless.WorkflowEngine.Stores
         {
             lock (syncLock)
             {
-                WorkflowDefinition existingDefinition = this.GetDefinitionByQualifiedName(workflowDefinition.QualifiedName);
+                var existingDefinition = _workflowDefinitions.SingleOrDefault(x => x.QualifiedName == workflowDefinition.QualifiedName);
                 if (existingDefinition != null)
                 {
                     this._workflowDefinitions.Remove(existingDefinition);
