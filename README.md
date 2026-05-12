@@ -191,14 +191,23 @@ db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1,
 
 By default, when a class is deserialised, an exception will be thrown if a property exists on the document that is not declared on a workflow.  This can cause dependency issues in a distributed system - if one service registers a workflow and another service executes that workflow, if the definition changes you will need to deploy both services.  This gets particularly problematic when a workflow uses a class as a property that is used in multiple places.
 
-To remove this dependency, you can add the following attribute to your workflow class definition:
+To remove this dependency, you can add the following attribute to your workflow class definition to fix it on only your worklow.  Note that child classes will also need this attribute.
 
 ```csharp
 [MongoDB.Bson.Serialization.Attributes.BsonIgnoreExtraElements]
 ```
 
+Alternatively, you can fix it globally in application start-up:
+
+```csharp
+ConventionRegistry.Register(
+    "IgnoreExtraElements",
+    new ConventionPack { new IgnoreExtraElementsConvention(true) },
+    type => true);
+```
 Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
 
 # Workflow Definitions
+
 
 The `IWorkflowServer` will attempt to persist workflow definitions into a `WorkflowDefinitions` collection or table when types are registered.  These will result in graphs that can be rendered in the console displaying a representation of the workflow.  This option can be turned off using the `WorkflowOptions` property.
