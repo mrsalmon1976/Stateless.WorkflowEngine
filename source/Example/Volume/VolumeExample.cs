@@ -28,7 +28,7 @@ namespace Example.Volume
 
             VolumeDbMigrator.Run(dbType);
 
-            RecordCreatorWorker creatorWorker = new RecordCreatorWorker(workflowClient, dbType, TestRecordCount);
+            RecordCreatorWorker creatorWorker = new RecordCreatorWorker(workflowClient, dbType, TestRecordCount, runAsync);
             creatorWorker.RunWorkerAsync();
 
             RecordProcessorWorker processWorker = new RecordProcessorWorker(workflowServer, runAsync);

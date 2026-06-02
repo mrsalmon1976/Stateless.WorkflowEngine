@@ -44,7 +44,7 @@ namespace Stateless.TestHarness.Multithread
                         ConsoleWriter.Write($"{executed} workflows executed; ");
                     }
 
-                    long activeWorkflowCount = this._workflowServer.WorkflowStore.GetActiveCount();
+                    long activeWorkflowCount = await this._workflowServer.WorkflowStore.GetActiveCountAsync();
                     ConsoleWriter.WriteLine($"{activeWorkflowCount} active workflows remain in the store", ConsoleColor.Yellow);
                     if (activeWorkflowCount == 0)
                     {
@@ -64,7 +64,7 @@ namespace Stateless.TestHarness.Multithread
 
             while (workflowsExist)
             {
-                int executed = this._workflowServer.ExecuteWorkflowsAsync(200, 50).GetAwaiter().GetResult();
+                int executed = this._workflowServer.ExecuteWorkflows(200, 50);
 
                 if (executed == 0)
                 {

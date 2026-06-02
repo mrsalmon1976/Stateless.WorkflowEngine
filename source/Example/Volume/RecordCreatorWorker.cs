@@ -2,6 +2,7 @@
 using Example;
 using Example.Shared;
 using Example.Shared.Workflows.Volume;
+using Example.Shared.Workflows.VolumeAsync;
 using Stateless.WorkflowEngine;
 using System.ComponentModel;
 using System.Data;
@@ -15,15 +16,17 @@ namespace Stateless.TestHarness.Multithread
         private readonly IWorkflowClient _workflowClient;
         private readonly ExampleDbType _dbType;
         private int _recordCount = 0;
+        private bool _runAsync = false;
         private static object _messageLock = new object();
 
         private string _sqlInsert = String.Empty;
 
-        public RecordCreatorWorker(IWorkflowClient workflowClient, ExampleDbType dbType, int recordCount)
+        public RecordCreatorWorker(IWorkflowClient workflowClient, ExampleDbType dbType, int recordCount, bool runAsync)
         {
             this._workflowClient = workflowClient;
             this._dbType = dbType;
             this._recordCount = recordCount;
+            this._runAsync = runAsync;
             this.DoWork += MultithreadRecordCreatorWorker_DoWork;
 
             _sqlInsert = BuildInsertSql();
@@ -40,9 +43,21 @@ namespace Stateless.TestHarness.Multithread
                 for (int i = 0; i < _recordCount; i++)
                 {
                     int recordId = conn.ExecuteScalar<int>(_sqlInsert, new { CreateDate = DateTime.Now }, tran, 30);
-                    VolumeWorkflow workflow = new VolumeWorkflow();
-                    workflow.RecordId = recordId;
-                    workflow.DbType = _dbType;
+                    Workflow workflow = null;
+                    if (this._runAsync)
+                    {
+                        VolumeAsyncWorkflow vwa = new VolumeAsyncWorkflow();
+                        vwa.RecordId = recordId;
+                        vwa.DbType = _dbType;
+                        workflow = vwa;
+                    }
+                    else
+                    {
+                        VolumeWorkflow vw = new VolumeWorkflow();
+                        vw.RecordId = recordId;
+                        vw.DbType = _dbType;
+                        workflow = vw;
+                    }
                     _workflowClient.Register(workflow);
                     if (i > 0 && i % ProgressIncrement == 0)
                     {

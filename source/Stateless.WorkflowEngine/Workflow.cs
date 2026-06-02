@@ -155,6 +155,16 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
+        /// own DI framework to create the actions.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        protected virtual IWorkflowActionAsync CreateWorkflowActionAsyncInstance<T>() where T : IWorkflowActionAsync
+        {
+            return Activator.CreateInstance<T>();
+        }
+
+        /// <summary>
         /// Gets a graph representation of the workflow in the DOT graph language.
         /// </summary>
         /// <returns></returns>
@@ -201,7 +211,30 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        protected async virtual Task ExecuteWorkflowActionAsync<T>() where T : class, IWorkflowActionAsync
+        {
+            IWorkflowActionAsync workflowAction;
+
+            if (this.DependencyResolver == null)
+            {
+                workflowAction = this.CreateWorkflowActionAsyncInstance<T>();
+            }
+            else
+            {
+                workflowAction = this.DependencyResolver.GetInstance<T>();
+            }
+
+            await this.OnActionExecutingAsync(workflowAction);
+            await workflowAction.ExecuteAsync(this);
+            await this.OnActionExecutedAsync(workflowAction);
+        }
+
+        /// <summary>
         /// Fires before a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// Only fires on ExecuteWorkflowAction method call.
         /// </summary>
         /// <param name="action"></param>
         public virtual void OnActionExecuting(IWorkflowAction action)
@@ -210,12 +243,34 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
+        /// Fires before a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// Only fires on ExecuteWorkflowActionAsync method call.
+        /// </summary>
+        /// <param name="action"></param>
+        public virtual Task OnActionExecutingAsync(IWorkflowActionAsync action)
+        {
+            return Task.CompletedTask;
+        }
+
+
+        /// <summary>
         /// Fires after a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// Only fires on ExecuteWorkflowAction method.
         /// </summary>
         /// <param name="action"></param>
         public virtual void OnActionExecuted(IWorkflowAction action)
         {
 
+        }
+
+        /// <summary>
+        /// Fires after a workflow action is executed by the engine.  Useful for inserting logging to your workflow.
+        /// Only fires on ExecuteWorkflowActionAsync method.
+        /// </summary>
+        /// <param name="action"></param>
+        public virtual Task OnActionExecutedAsync(IWorkflowActionAsync action)
+        {
+            return Task.CompletedTask;
         }
 
         /// <summary>
