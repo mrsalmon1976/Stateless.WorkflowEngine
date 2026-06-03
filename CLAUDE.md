@@ -72,7 +72,7 @@ Test projects:
 ### Other Projects
 
 - **`Stateless.WorkflowEngine.WebConsole`** (net4.8) — Nancy-based web console for monitoring workflows, managing connections, user auth
-- **`Example`** (net6.0) — interactive console app demonstrating all features and stores
+- **`Example`** (net10.0) — interactive console app demonstrating all features and stores
 
 ## Key Patterns
 
