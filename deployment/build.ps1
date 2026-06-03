@@ -147,7 +147,7 @@ $publish = "$root\publish"
 if (Test-Path -Path $publish) { Remove-Item $publish -Recurse -Force }
 $source = [System.IO.Path]::Combine($root.Replace("deployment", ""), "source") 
 $version = Read-Host -Prompt "What version are we building? [e.g. 2.3.0]"
-$preReleaseSuffix = Read-Host -Prompt "Would you like to add a pre-release suffix? [e.g. alpha1]"
+$preReleaseSuffix = Read-Host -Prompt "Enter a pre-release suffix (e.g. alpha1) if you would like one, or just hit ENTER for no release suffix"
 $versionWithSuffix = "$version-$preReleaseSuffix".TrimEnd("-")
 
 
@@ -198,12 +198,6 @@ if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole
 }
 UpdateAppConfigSetting -filePath "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
 
-& $msbuild "$source\Stateless.WorkflowEngine.WebConsole.AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$webconsolePublishDir\AutoUpdater"
-if (!(Test-Path -Path "$webconsolePublishDir\AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.exe")) {
-	Write-Host "WebConsole,AutoUpdater publish location/files not found at $webconsolePublishDir\AutoUpdater" -ForegroundColor White -BackgroundColor Red
-	Exit
-}
-UpdateAppConfigSetting -filePath "$webconsolePublishDir\AutoUpdater\Stateless.WorkflowEngine.WebConsole.AutoUpdater.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
 $zip = "$root\Stateless.WorkflowEngine.WebConsole_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
 ZipFile -sourcefile "$webconsolePublishDir\*.*" -zipfile $zip 

@@ -33,14 +33,14 @@ if (!(Test-Path -Path $statelessWorkflowMongoDbNupkg)) {
 
 # now we push!
 if ($isProduction) {
-    & nuget push "$statelessWorkflowNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
-    & nuget push "$statelessWorkflowMongoDbNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
+    & $sourceFolder\.nuget\nuget push "$statelessWorkflowNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
+    & $sourceFolder\.nuget\nuget push "$statelessWorkflowMongoDbNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
 }
 else {
-    & nuget add "$statelessWorkflowNupkg" -source "$root\NugetTest\NugetPackageTest"
-    & nuget add "$statelessWorkflowMongoDbNupkg" -source "$root\NugetTest\NugetPackageTest"
+    & $sourceFolder\.nuget\nuget add "$statelessWorkflowNupkg" -source "$root\NugetTest\NugetPackageTest"
+    & $sourceFolder\.nuget\nuget add "$statelessWorkflowMongoDbNupkg" -source "$root\NugetTest\NugetPackageTest"
 }
 
-
+cd $root
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White
 

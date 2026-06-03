@@ -25,10 +25,12 @@ This table shows the client version and the associated driver/client versions us
 |           | 3.0.0     | MongoDB.Driver | 2.19.0          |
 |           | 3.1.0     | MongoDB.Driver | 2.21.0          |
 |           | 4.0.0     | MongoDB.Driver | 2.26.0          |
+|           | 5.0.0     | MongoDB.Driver | 2.30.0          |
 | RavenDb   | 2.6.0     | RavenDB.Client | 3.5.7           |
 |           | 3.0.0     | RavenDB.Client | 5.4.4           |
 |           | 3.1.0     | RavenDB.Client | 5.4.109         |
 |           | 4.0.0     | RavenDB.Client | 5.4.200         |
+|           | 5.0.0     | RavenDB.Client | 7.2.1           |
 
 # Workflow Configuration
 
@@ -54,6 +56,20 @@ The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the
 - `AutoCreateIndexes` - if set to `true` this option will result in the server creating basic indexes (see below for more details).  Defaults to `true`.
 - `PersistWorkflowDefinitions` - if set to true, workflow definitions will be inspected and stored if possible.  Defaults to `true`.
 
+### Executing Workflows
+
+The `IWorkflowServer` contains two execution methods:
+
+- `int ExecuteWorkflows(int count, int? maxConcurrent = null)` - Synchronous option - will load and execute `count` workflows using `Parallel.Invoke` - executing `maxConcurrent` workflows in parallel
+- `async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` - Asynchronous option that will load and execute `count` workflows using a semaphore to control concurrency, with no more than `maxConcurrent` workflows executed in parallel
+
+For example, this code will load 100 workflows, executing them 10 at a time.  
+
+```csharp
+ int workflowsExecuted = await _workflowServer.ExecuteWorkflowsAsync(100, 10);
+```
+
+The `workflowsExecuted` result will be the number of workflows actually executed.  If there were only 20 active workflows in the workflow store available for execution, this would return 20.  If there were more than 100 workflows available, this would max out at 100 and return 100.  This value can be used to determine if you want your service to go to sleep for a while, or continue executing workflows immediately.
 
 ## Creating a WorkflowClient
 
@@ -191,14 +207,23 @@ db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1,
 
 By default, when a class is deserialised, an exception will be thrown if a property exists on the document that is not declared on a workflow.  This can cause dependency issues in a distributed system - if one service registers a workflow and another service executes that workflow, if the definition changes you will need to deploy both services.  This gets particularly problematic when a workflow uses a class as a property that is used in multiple places.
 
-To remove this dependency, you can add the following attribute to your workflow class definition:
+To remove this dependency, you can add the following attribute to your workflow class definition to fix it on only your worklow.  Note that child classes will also need this attribute.
 
 ```csharp
 [MongoDB.Bson.Serialization.Attributes.BsonIgnoreExtraElements]
 ```
 
+Alternatively, you can fix it globally in application start-up:
+
+```csharp
+ConventionRegistry.Register(
+    "IgnoreExtraElements",
+    new ConventionPack { new IgnoreExtraElementsConvention(true) },
+    type => true);
+```
 Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
 
 # Workflow Definitions
+
 
 The `IWorkflowServer` will attempt to persist workflow definitions into a `WorkflowDefinitions` collection or table when types are registered.  These will result in graphs that can be rendered in the console displaying a representation of the workflow.  This option can be turned off using the `WorkflowOptions` property.
