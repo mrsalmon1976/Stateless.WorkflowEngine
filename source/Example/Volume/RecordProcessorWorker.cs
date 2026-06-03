@@ -37,7 +37,7 @@ namespace Stateless.TestHarness.Multithread
                     if (executed == 0)
                     {
                         ConsoleWriter.WriteLine("No workflows found to process, sleeping for 2 seconds");
-                        Thread.Sleep(2000);
+                        await Task.Delay(2000);
                     }
                     else
                     {
