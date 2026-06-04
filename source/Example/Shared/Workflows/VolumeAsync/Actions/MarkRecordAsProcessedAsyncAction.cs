@@ -1,6 +1,7 @@
 ﻿using System;
 using Stateless.WorkflowEngine;
 using System.IO;
+using System.Threading;
 using Dapper;
 using System.Data.SQLite;
 
@@ -12,7 +13,7 @@ namespace Example.Shared.Workflows.VolumeAsync.Actions
 
         const string SelectSql = "SELECT Id from VolumeTest WHERE Id = @Id";
 
-        public async Task ExecuteAsync(Stateless.WorkflowEngine.Workflow workflow)
+        public async Task ExecuteAsync(Stateless.WorkflowEngine.Workflow workflow, CancellationToken cancellationToken = default)
         {
             VolumeAsyncWorkflow mtw = (VolumeAsyncWorkflow)workflow;
 

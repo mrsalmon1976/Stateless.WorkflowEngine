@@ -1,6 +1,7 @@
 ﻿using Stateless.Graph;
 using Stateless.WorkflowEngine.Exceptions;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine
@@ -139,14 +140,14 @@ namespace Stateless.WorkflowEngine
         /// Fire a trigger on the workflow by it's name.
         /// </summary>
         /// <param name="triggerName"></param>
-        public override async Task FireAsync(string triggerName)
+        public override async Task FireAsync(string triggerName, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrEmpty(triggerName))
             {
                 throw new WorkflowException(String.Format("Unable to fire null or empty trigger name in worker '{0}'", this.GetType().FullName));
             }
             TTrigger trigger = ConvertStringTrigger(triggerName);
-            await this.FireAsync(trigger);
+            await this.FireAsync(trigger, cancellationToken);
         }
 
         public virtual void Fire(TTrigger trigger)
@@ -154,7 +155,7 @@ namespace Stateless.WorkflowEngine
             this._stateMachine.Fire(trigger);
         }
 
-        public virtual async Task FireAsync(TTrigger trigger)
+        public virtual async Task FireAsync(TTrigger trigger, CancellationToken cancellationToken = default)
         {
             await this._stateMachine.FireAsync(trigger);
         }

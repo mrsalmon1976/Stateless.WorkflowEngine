@@ -1,9 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine
 {
     public interface IWorkflowActionAsync
     {
-        Task ExecuteAsync(Workflow workflow);
+        Task ExecuteAsync(Workflow workflow, CancellationToken cancellationToken = default);
     }
 }

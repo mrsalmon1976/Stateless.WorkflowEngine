@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 [assembly: InternalsVisibleToAttribute("Test.Stateless.WorkflowEngine")]
@@ -186,7 +187,7 @@ namespace Stateless.WorkflowEngine
         /// Fires a trigger asynchronously - this needs to be a trigger configured for the current state.
         /// </summary>
         /// <param name="triggerName"></param>
-        public abstract Task FireAsync(string triggerName);
+        public abstract Task FireAsync(string triggerName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 
@@ -214,7 +215,7 @@ namespace Stateless.WorkflowEngine
         /// 
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        protected async virtual Task ExecuteWorkflowActionAsync<T>() where T : class, IWorkflowActionAsync
+        protected async virtual Task ExecuteWorkflowActionAsync<T>(CancellationToken cancellationToken = default) where T : class, IWorkflowActionAsync
         {
             IWorkflowActionAsync workflowAction;
 
@@ -227,9 +228,9 @@ namespace Stateless.WorkflowEngine
                 workflowAction = this.DependencyResolver.GetInstance<T>();
             }
 
-            await this.OnActionExecutingAsync(workflowAction);
-            await workflowAction.ExecuteAsync(this);
-            await this.OnActionExecutedAsync(workflowAction);
+            await this.OnActionExecutingAsync(workflowAction, cancellationToken);
+            await workflowAction.ExecuteAsync(this, cancellationToken);
+            await this.OnActionExecutedAsync(workflowAction, cancellationToken);
         }
 
         /// <summary>
@@ -247,7 +248,7 @@ namespace Stateless.WorkflowEngine
         /// Only fires on ExecuteWorkflowActionAsync method call.
         /// </summary>
         /// <param name="action"></param>
-        public virtual Task OnActionExecutingAsync(IWorkflowActionAsync action)
+        public virtual Task OnActionExecutingAsync(IWorkflowActionAsync action, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
@@ -268,7 +269,7 @@ namespace Stateless.WorkflowEngine
         /// Only fires on ExecuteWorkflowActionAsync method.
         /// </summary>
         /// <param name="action"></param>
-        public virtual Task OnActionExecutedAsync(IWorkflowActionAsync action)
+        public virtual Task OnActionExecutedAsync(IWorkflowActionAsync action, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

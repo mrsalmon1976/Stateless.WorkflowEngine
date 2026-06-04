@@ -36,7 +36,7 @@ namespace Stateless.WorkflowEngine
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
-        Task ExecuteWorkflowAsync(Workflow workflow);
+        Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then

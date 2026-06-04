@@ -145,7 +145,7 @@ namespace Stateless.WorkflowEngine
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
-        public async Task ExecuteWorkflowAsync(Workflow workflow)
+        public async Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default)
         {
             if (workflow == null)
             {
@@ -163,7 +163,7 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     workflow.LastException = null;
-                    await workflow.FireAsync(workflow.ResumeTrigger);
+                    await workflow.FireAsync(workflow.ResumeTrigger, cancellationToken);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
                 }
@@ -215,7 +215,7 @@ namespace Stateless.WorkflowEngine
             // hits - but if the priority has changed then rather allow for another poll
             if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
             {
-                await this.ExecuteWorkflowAsync(workflow);
+                await this.ExecuteWorkflowAsync(workflow, cancellationToken);
             }
         }
 
@@ -289,13 +289,13 @@ namespace Stateless.WorkflowEngine
                     {
                         try
                         {
-                            await ExecuteWorkflowAsync(wf);
+                            await ExecuteWorkflowAsync(wf, ct);
                         }
                         finally
                         {
                             semaphore.Release();
                         }
-                    });
+                    }, ct);
                     tasks.Add(t);
                 }
 
