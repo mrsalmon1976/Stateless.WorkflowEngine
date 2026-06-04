@@ -271,6 +271,7 @@
     <Compile Include="Caching\CacheProvider.cs" />
     <Compile Include="Caching\WebConsoleMemoryCache.cs" />
     <Compile Include="BLL\Data\Models\ConnectionModel.cs" />
+    <Compile Include="BLL\Data\Models\CustomDashboardModel.cs" />
     <Compile Include="BLL\Data\Models\UserModel.cs" />
     <Compile Include="BLL\Data\Models\WorkflowStoreType.cs" />
     <Compile Include="BLL\Data\Stores\UserStore.cs" />
@@ -293,6 +294,7 @@
     <Compile Include="BLL\Security\UserMapper.cs" />
     <Compile Include="Modules\UpdateModule.cs" />
     <Compile Include="Modules\ConnectionModule.cs" />
+    <Compile Include="Modules\CustomDashboardModule.cs" />
     <Compile Include="Modules\StoreModule.cs" />
     <Compile Include="Modules\WebConsoleModule.cs" />
     <Compile Include="Modules\WebConsoleSecureModule.cs" />
@@ -307,6 +309,10 @@
     <Compile Include="ViewModels\Connection\ConnectionInfoViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
+    <Compile Include="ViewModels\CustomDashboard\CustomDashboardConnectionsViewModel.cs" />
+    <Compile Include="ViewModels\CustomDashboard\CustomDashboardInfoViewModel.cs" />
+    <Compile Include="ViewModels\CustomDashboard\CustomDashboardListViewModel.cs" />
+    <Compile Include="ViewModels\CustomDashboard\CustomDashboardViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\VersionCheckResult.cs" />
     <Compile Include="ViewModels\Login\LoginViewModel.cs" />
@@ -347,6 +353,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Views\Connection\_ConnectionList.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Views\CustomDashboard\CustomDashboardView.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Views\CustomDashboard\_CustomDashboardConnections.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Views\CustomDashboard\_CustomDashboardList.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Views\Dashboard\DashboardView.cshtml">
@@ -470,6 +485,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\Views\StoreView.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\Js\Views\CustomDashboardView.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\Js\Views\DashboardView.js">

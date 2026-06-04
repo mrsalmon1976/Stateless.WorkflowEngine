@@ -6,6 +6,7 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
 using Stateless.WorkflowEngine.WebConsole.BLL.Models;
 using Stateless.WorkflowEngine.WebConsole.BLL.Utils;
 using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
+using Stateless.WorkflowEngine.WebConsole.ViewModels.CustomDashboard;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,21 +19,15 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
     {
         ConnectionInfoViewModel GetWorkflowStoreInfo(ConnectionModel connectionModel);
 
-        //IEnumerable<UIWorkflow> ConvertWorkflowDocuments(IEnumerable<string> documents, WorkflowStoreType workflowStoreType);
-
         IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
 
         string GetWorkflowDefinition(ConnectionModel connectionModel, string qualifiedWorkflowName);
 
-        /// <summary>
-        /// Converts a JSON workflow into a UIWorkflow object.
-        /// </summary>
-        /// <param name="json"></param>
-        /// <param name="workflowStoreType"></param>
-        /// <returns></returns>
         UIWorkflow GetWorkflowInfoFromJson(string json, WorkflowStoreType workflowStoreType);
 
+        IEnumerable<string> GetWorkflowTypes(ConnectionModel connectionModel);
 
+        CustomDashboardInfoViewModel GetCustomDashboardInfo(CustomDashboardModel dashboard, ConnectionModel connectionModel);
     }
 
 
@@ -145,6 +140,56 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Services
 
             IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
             return workflowStore.GetDefinitionByQualifiedName(qualifiedWorkflowName)?.Graph;
+        }
+
+        public IEnumerable<string> GetWorkflowTypes(ConnectionModel connectionModel)
+        {
+            IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
+
+            var definitions = workflowStore.GetDefinitions().ToList();
+            if (definitions.Any())
+            {
+                return definitions
+                    .Select(x => x.QualifiedName)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+
+            return workflowStore.GetIncomplete(200)
+                .Select(x => x.QualifiedName)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+        }
+
+        public CustomDashboardInfoViewModel GetCustomDashboardInfo(CustomDashboardModel dashboard, ConnectionModel connectionModel)
+        {
+            var result = new CustomDashboardInfoViewModel();
+            try
+            {
+                IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
+                foreach (string qualifiedName in dashboard.WorkflowQualifiedNames)
+                {
+                    string shortName = qualifiedName.Contains('.')
+                        ? qualifiedName.Substring(qualifiedName.LastIndexOf('.') + 1)
+                        : qualifiedName;
+                    result.WorkflowTypeCounts.Add(new WorkflowTypeCountViewModel
+                    {
+                        QualifiedName = qualifiedName,
+                        ShortName = shortName,
+                        ActiveCount = workflowStore.GetActiveCountByQualifiedName(qualifiedName),
+                        SuspendedCount = workflowStore.GetSuspendedCountByQualifiedName(qualifiedName),
+                        CompletedCount = workflowStore.GetCompletedCountByQualifiedName(qualifiedName)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                result.ConnectionError = ex.Message;
+            }
+            return result;
         }
     }
 }

@@ -466,6 +466,54 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .CountDocumentsAsync();
         }
 
+        public override long GetActiveCountByQualifiedName(string qualifiedName)
+        {
+            var collection = GetCollection();
+            return collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == false)
+                .CountDocuments();
+        }
+
+        public override async Task<long> GetActiveCountByQualifiedNameAsync(string qualifiedName)
+        {
+            var collection = GetCollection();
+            return await collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == false)
+                .CountDocumentsAsync();
+        }
+
+        public override long GetSuspendedCountByQualifiedName(string qualifiedName)
+        {
+            var collection = GetCollection();
+            return collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == true)
+                .CountDocuments();
+        }
+
+        public override async Task<long> GetSuspendedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            var collection = GetCollection();
+            return await collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == true)
+                .CountDocumentsAsync();
+        }
+
+        public override long GetCompletedCountByQualifiedName(string qualifiedName)
+        {
+            var collection = GetCompletedCollection();
+            return collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName)
+                .CountDocuments();
+        }
+
+        public override async Task<long> GetCompletedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            var collection = GetCompletedCollection();
+            return await collection
+                .Find(x => x.Workflow.QualifiedName == qualifiedName)
+                .CountDocumentsAsync();
+        }
+
         /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>

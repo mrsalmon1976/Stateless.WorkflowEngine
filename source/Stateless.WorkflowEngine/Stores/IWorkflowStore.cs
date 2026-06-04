@@ -239,6 +239,36 @@ namespace Stateless.WorkflowEngine.Stores
         Task<long> GetSuspendedCountAsync();
 
         /// <summary>
+        /// Gets the count of unsuspended (active) workflows matching the specified qualified name.
+        /// </summary>
+        long GetActiveCountByQualifiedName(string qualifiedName);
+
+        /// <summary>
+        /// Gets the count of unsuspended (active) workflows matching the specified qualified name.
+        /// </summary>
+        Task<long> GetActiveCountByQualifiedNameAsync(string qualifiedName);
+
+        /// <summary>
+        /// Gets the count of suspended workflows matching the specified qualified name.
+        /// </summary>
+        long GetSuspendedCountByQualifiedName(string qualifiedName);
+
+        /// <summary>
+        /// Gets the count of suspended workflows matching the specified qualified name.
+        /// </summary>
+        Task<long> GetSuspendedCountByQualifiedNameAsync(string qualifiedName);
+
+        /// <summary>
+        /// Gets the count of completed workflows matching the specified qualified name.
+        /// </summary>
+        long GetCompletedCountByQualifiedName(string qualifiedName);
+
+        /// <summary>
+        /// Gets the count of completed workflows matching the specified qualified name.
+        /// </summary>
+        Task<long> GetCompletedCountByQualifiedNameAsync(string qualifiedName);
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>

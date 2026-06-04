@@ -69,6 +69,13 @@
                         <a href="@Actions.User.Default">Users</a>
                     </li>
                 }
+                @if (currentUserClaims.Contains(Claims.CustomDashboardAdd) || currentUserClaims.Contains(Claims.CustomDashboardDelete))
+                {
+                    <li class="launcher@(MenuActiveClass("Custom Dashboards"))">
+                        <i class="fa fa-tachometer"></i>
+                        <a href="@Actions.CustomDashboard.Default">Custom Dashboards</a>
+                    </li>
+                }
             </ul>
             <div data-toggle="tooltip" id="beaker" title="" data-original-title="Made by lab2023"></div>
         </section>

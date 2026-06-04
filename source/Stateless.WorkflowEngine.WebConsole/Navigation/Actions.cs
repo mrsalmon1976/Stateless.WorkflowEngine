@@ -13,6 +13,18 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
             public const string Default = "/dashboard";
         }
 
+        public class CustomDashboard
+        {
+            public const string Default = "/customdashboard";
+            public const string List = "/customdashboard/list";
+            public const string Save = "/customdashboard/save";
+            public const string Delete = "/customdashboard/delete";
+            public const string RemoveConnection = "/customdashboard/removeconnection";
+            public const string WorkflowTypes = "/customdashboard/workflowtypes";
+            public const string Connections = "/customdashboard/connections";
+            public const string Info = "/customdashboard/info";
+        }
+
         public class Connection
         {
             public const string Delete = "/connection/delete";

@@ -241,6 +241,66 @@ namespace Stateless.WorkflowEngine.RavenDb
             }
         }
 
+        public override long GetActiveCountByQualifiedName(string qualifiedName)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == false)
+                    .Count();
+            }
+        }
+
+        public override async Task<long> GetActiveCountByQualifiedNameAsync(string qualifiedName)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == false)
+                    .CountAsync();
+            }
+        }
+
+        public override long GetSuspendedCountByQualifiedName(string qualifiedName)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == true)
+                    .Count();
+            }
+        }
+
+        public override async Task<long> GetSuspendedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName && x.Workflow.IsSuspended == true)
+                    .CountAsync();
+            }
+        }
+
+        public override long GetCompletedCountByQualifiedName(string qualifiedName)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<RavenCompletedWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName)
+                    .Count();
+            }
+        }
+
+        public override async Task<long> GetCompletedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<RavenCompletedWorkflow>()
+                    .Where(x => x.Workflow.QualifiedName == qualifiedName)
+                    .CountAsync();
+            }
+        }
+
         /// <summary>
         /// Gets a completed workflow by it's unique identifier, or null if it does not exist.
         /// </summary>

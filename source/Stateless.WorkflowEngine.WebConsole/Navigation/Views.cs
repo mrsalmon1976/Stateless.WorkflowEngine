@@ -15,6 +15,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
             public const string List = "Views/Connection/_ConnectionList.cshtml";
         }
 
+        public class CustomDashboard
+        {
+            public const string Default = "Views/CustomDashboard/CustomDashboardView.cshtml";
+            public const string ListPartial = "Views/CustomDashboard/_CustomDashboardList.cshtml";
+            public const string ConnectionsPartial = "Views/CustomDashboard/_CustomDashboardConnections.cshtml";
+        }
+
         public class Dashboard
         {
             public const string Default = "Views/Dashboard/DashboardView.cshtml";

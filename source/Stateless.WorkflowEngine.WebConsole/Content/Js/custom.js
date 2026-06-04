@@ -79,6 +79,11 @@ Utils.showError = function (selector, error) {
     $(selector).removeClass('hidden');
 };
 
+Utils.hideError = function (selector) {
+    $(selector).html('');
+    $(selector).addClass('hidden');
+};
+
 var MainLayout = function () {
 
     var that = this;
