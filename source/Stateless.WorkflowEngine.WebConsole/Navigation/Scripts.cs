@@ -10,6 +10,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Navigation
     {
         public const string DashboardView = "/Content/Js/Views/DashboardView.js";
 
+        public const string CustomDashboardView = "/Content/Js/Views/CustomDashboardView.js";
+
         public const string LoginView = "/Content/Js/Views/LoginView.js";
 
         public const string StoreView = "/Content/Js/Views/StoreView.js";

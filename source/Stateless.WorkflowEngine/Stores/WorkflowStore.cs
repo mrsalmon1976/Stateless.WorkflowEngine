@@ -319,6 +319,58 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract Task<long> GetSuspendedCountAsync();
 
         /// <summary>
+        /// Gets the count of unsuspended (active) workflows matching the specified qualified name.
+        /// </summary>
+        public virtual long GetActiveCountByQualifiedName(string qualifiedName)
+        {
+            return this.GetAllByQualifiedName(qualifiedName).Count(x => !x.IsSuspended);
+        }
+
+        /// <summary>
+        /// Gets the count of unsuspended (active) workflows matching the specified qualified name.
+        /// </summary>
+        public virtual async Task<long> GetActiveCountByQualifiedNameAsync(string qualifiedName)
+        {
+            var workflows = await this.GetAllByQualifiedNameAsync(qualifiedName);
+            return workflows.Count(x => !x.IsSuspended);
+        }
+
+        /// <summary>
+        /// Gets the count of suspended workflows matching the specified qualified name.
+        /// </summary>
+        public virtual long GetSuspendedCountByQualifiedName(string qualifiedName)
+        {
+            return this.GetAllByQualifiedName(qualifiedName).Count(x => x.IsSuspended);
+        }
+
+        /// <summary>
+        /// Gets the count of suspended workflows matching the specified qualified name.
+        /// </summary>
+        public virtual async Task<long> GetSuspendedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            var workflows = await this.GetAllByQualifiedNameAsync(qualifiedName);
+            return workflows.Count(x => x.IsSuspended);
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows matching the specified qualified name.
+        /// Concrete store implementations must override this method.
+        /// </summary>
+        public virtual long GetCompletedCountByQualifiedName(string qualifiedName)
+        {
+            throw new NotSupportedException("Override GetCompletedCountByQualifiedName in the concrete store implementation.");
+        }
+
+        /// <summary>
+        /// Gets the count of completed workflows matching the specified qualified name.
+        /// Concrete store implementations must override this method.
+        /// </summary>
+        public virtual async Task<long> GetCompletedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetCompletedCountByQualifiedName(qualifiedName));
+        }
+
+        /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>
         /// <param name="autoCreateTables"></param>

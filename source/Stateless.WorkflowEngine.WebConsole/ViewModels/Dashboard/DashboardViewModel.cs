@@ -11,7 +11,11 @@ namespace Stateless.WorkflowEngine.WebConsole.ViewModels.Dashboard
     {
         public DashboardViewModel()
         {
+            this.CustomDashboards = new List<CustomDashboardModel>();
         }
 
+        public List<CustomDashboardModel> CustomDashboards { get; set; }
+
+        public bool CurrentUserCanManageDashboards { get; set; }
     }
 }

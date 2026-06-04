@@ -14,5 +14,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Caching
         {
             return $"ConnectionInfo_{connectionId}";
         }
+
+        public static string CustomDashboardInfo(string dashboardId, string connectionId)
+        {
+            return $"CustomDashboardInfo_{dashboardId}_{connectionId}";
+        }
     }
 }

@@ -30,6 +30,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         List<ConnectionModel> Connections { get; set; }
 
         /// <summary>
+        /// Gets/sets the configured custom dashboards.
+        /// </summary>
+        List<CustomDashboardModel> CustomDashboards { get; set; }
+
+        /// <summary>
         /// Gets a user by user name.
         /// </summary>
         /// <param name="userName"></param>
@@ -42,6 +47,13 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// <param name="connectionId"></param>
         /// <returns></returns>
         ConnectionModel GetConnection(Guid connectionId);
+
+        /// <summary>
+        /// Gets a custom dashboard by its unique id.
+        /// </summary>
+        /// <param name="dashboardId"></param>
+        /// <returns></returns>
+        CustomDashboardModel GetCustomDashboard(Guid dashboardId);
 
         /// <summary>
         /// Loads the users for the app from the file on disk.
@@ -69,6 +81,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
             _passwordProvider = passwordProvider;
             this.Users = new List<UserModel>();
             this.Connections = new List<ConnectionModel>();
+            this.CustomDashboards = new List<CustomDashboardModel>();
         }
 
         [IgnoreDataMember]
@@ -83,6 +96,11 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         /// Gets/sets the configured connections.
         /// </summary>
         public List<ConnectionModel> Connections { get; set; }
+
+        /// <summary>
+        /// Gets/sets the configured custom dashboards.
+        /// </summary>
+        public List<CustomDashboardModel> CustomDashboards { get; set; }
 
         /// <summary>
         /// Gets a user by user name.
@@ -105,6 +123,16 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
         }
 
         /// <summary>
+        /// Gets a custom dashboard by its unique id.
+        /// </summary>
+        /// <param name="dashboardId"></param>
+        /// <returns></returns>
+        public CustomDashboardModel GetCustomDashboard(Guid dashboardId)
+        {
+            return this.CustomDashboards.SingleOrDefault(x => x.Id == dashboardId);
+        }
+
+        /// <summary>
         /// Loads the users for the app from the file on disk.
         /// </summary>
         public void Load()
@@ -115,6 +143,7 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores
                 UserStore store = JsonConvert.DeserializeObject<UserStore>(text);
                 this.Users.AddRange(store.Users);
                 this.Connections.AddRange(store.Connections);
+                this.CustomDashboards.AddRange(store.CustomDashboards ?? new List<CustomDashboardModel>());
             }
             else
             {

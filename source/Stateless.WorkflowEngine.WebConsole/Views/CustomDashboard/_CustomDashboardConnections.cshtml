@@ -1,0 +1,74 @@
+@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.CustomDashboard.CustomDashboardConnectionsViewModel>
+@using Stateless.WorkflowEngine.WebConsole.Navigation
+@using System.Linq
+@functions {
+    public string GetConnectionTitleTooltip(Stateless.WorkflowEngine.WebConsole.ViewModels.Connection.ConnectionViewModel model)
+    {
+        string user = (String.IsNullOrEmpty(model.User) ? String.Empty : "(" + model.User + ")");
+        return String.Format("{0}:{1} / {2} {3}", model.Host, model.Port, model.Database, user);
+    }
+}
+@if (Model.Connections.Count == 0)
+{
+    <h4>No connections configured.</h4>
+}
+else
+{
+    <div id="pnl-custom-dashboard-panels">
+        @foreach (var conn in Model.Connections)
+        {
+            string rs = string.Empty;
+            if (!String.IsNullOrWhiteSpace(conn.ReplicaSet))
+            {
+                rs = " (" + conn.ReplicaSet + ")";
+            }
+            <div class="panel panel-default connection-wrapper dashboard-panel pull-left font90 custom-dashboard-connection"
+                 data-model-id="@conn.Id"
+                 data-connection-id="@conn.Id"
+                 data-dashboard-id="@Model.Dashboard.Id">
+                <div class="panel-heading">
+                    <div class="row conn-row">
+                        <div class="conn-image pull-left">
+                            <img src="/Content/Images/mongo_24x24.png" alt="" title="">
+                        </div>
+                        <div class="conn-title pull-left">
+                            <a class="conn-title-link" id="mnu@(conn.Id)" href="@(Actions.Store.Default)?id=@(conn.Id)" title="" data-title="@GetConnectionTitleTooltip(conn)">
+                                @conn.Database
+                            </a>
+                            <br />
+                            <small>@(conn.Host):@(conn.Port)@(rs)</small>
+                        </div>
+                        @if (Model.CurrentUserCanDeleteConnection)
+                        {
+                            <div class="conn-icons pull-right">
+                                <a href="#" class="btn-remove-dashboard-connection" title="Remove from custom dashboard" data-dashboard-id="@Model.Dashboard.Id" data-model-id="@(conn.Id)" data-model-db="@(conn.Database)"><i class="fa fa-trash-o fa-lg"></i></a>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="row conn-row conn-row-stats">
+                        <div class="conn-workflow-info conn-row-active">
+                            <span class="conn-row-span-loading"><img src="/Content/Images/pulse_20.gif" width="20" height="20" alt="Loading..." /></span>
+                            <span class="conn-row-span-data conn-row-span-active">??</span>
+                            <br />
+                            <small class="conn-row-span-data">Active</small>
+                        </div>
+                        <div class="conn-workflow-info-alt conn-row-suspended">
+                            <span class="conn-row-span-loading"><img src="/Content/Images/pulse_20.gif" width="20" height="20" alt="Loading..." /></span>
+                            <span class="conn-row-span-data conn-row-span-suspended">??</span>
+                            <br />
+                            <small class="conn-row-span-data">Suspended</small>
+                        </div>
+                        <div class="conn-workflow-info conn-row-complete">
+                            <span class="conn-row-span-loading"><img src="/Content/Images/pulse_20.gif" width="20" height="20" alt="Loading..." /></span>
+                            <span class="conn-row-span-data conn-row-span-complete">??</span>
+                            <br />
+                            <small class="conn-row-span-data">Complete</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

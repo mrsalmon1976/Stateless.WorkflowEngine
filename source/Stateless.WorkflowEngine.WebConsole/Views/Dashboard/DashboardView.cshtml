@@ -16,7 +16,7 @@
     <ul class="breadcrumb" id="breadcrumb">
         <li class="title"><a href="/dashboard">Dashboard</a></li>
     </ul>
-    <div id="toolbar">
+    <div id="toolbar" class="dashboard-toolbar">
         <div class="btn-group">
             <a id="btn-refresh" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
                 <i class="fa fa-refresh"></i>
@@ -28,6 +28,26 @@
                 </a>
             }
         </div>
+        @if (Model.CustomDashboards.Count > 0)
+        {
+            <div class="btn-group">
+                <select id="sel-dashboard" class="form-control input-sm dashboard-select">
+                    <option value="">Default (all connections)</option>
+                    @foreach (var db in Model.CustomDashboards)
+                    {
+                        <option value="@db.Id">@db.Name</option>
+                    }
+                </select>
+            </div>
+        }
+        @if (Model.CurrentUserCanManageDashboards)
+        {
+            <div class="btn-group">
+                <a href="@Actions.CustomDashboard.Default" class="btn" title="Manage custom dashboards">
+                    <i class="fa fa-tachometer"></i>
+                </a>
+            </div>
+        }
         <div class="btn-group btn-group-connections-layout">
             <a id="btn-layout-list" class="btn" data-toggle="toolbar-tooltip" href="#" title="" data-original-title="">
                 <i class="fa fa-list"></i>

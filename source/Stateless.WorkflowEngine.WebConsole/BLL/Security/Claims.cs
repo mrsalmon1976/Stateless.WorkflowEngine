@@ -10,10 +10,12 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
     {
         static Claims()
         {
-            AllClaims = new List<string>(new string[] 
-            { 
-                ConnectionAdd, 
+            AllClaims = new List<string>(new string[]
+            {
+                ConnectionAdd,
                 ConnectionDelete,
+                CustomDashboardAdd,
+                CustomDashboardDelete,
                 RemoveWorkflow,
                 SuspendWorkflow,
                 UnsuspendWorkflow,
@@ -26,6 +28,10 @@ namespace Stateless.WorkflowEngine.WebConsole.BLL.Security
         public const string ConnectionAdd = "ConnectionAdd";
 
         public const string ConnectionDelete = "ConnectionDelete";
+
+        public const string CustomDashboardAdd = "CustomDashboardAdd";
+
+        public const string CustomDashboardDelete = "CustomDashboardDelete";
 
         public const string RemoveWorkflow = "RemoveWorkflow";
 

@@ -329,6 +329,45 @@ namespace Stateless.WorkflowEngine.Stores
             return await Task.FromResult(GetSuspendedCount());
         }
 
+        public override long GetActiveCountByQualifiedName(string qualifiedName)
+        {
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values.Count(x => !x.IsSuspended && x.GetType().FullName == qualifiedName);
+            }
+        }
+
+        public override async Task<long> GetActiveCountByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetActiveCountByQualifiedName(qualifiedName));
+        }
+
+        public override long GetSuspendedCountByQualifiedName(string qualifiedName)
+        {
+            lock (syncLock)
+            {
+                return _activeWorkflows.Values.Count(x => x.IsSuspended && x.GetType().FullName == qualifiedName);
+            }
+        }
+
+        public override async Task<long> GetSuspendedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetSuspendedCountByQualifiedName(qualifiedName));
+        }
+
+        public override long GetCompletedCountByQualifiedName(string qualifiedName)
+        {
+            lock (syncLock)
+            {
+                return _completedWorkflows.Values.Count(x => x.GetType().FullName == qualifiedName);
+            }
+        }
+
+        public override async Task<long> GetCompletedCountByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetCompletedCountByQualifiedName(qualifiedName));
+        }
+
         /// <summary>
         /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
         /// </summary>

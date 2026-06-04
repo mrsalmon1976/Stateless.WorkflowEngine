@@ -1,0 +1,46 @@
+@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase<Stateless.WorkflowEngine.WebConsole.ViewModels.CustomDashboard.CustomDashboardListViewModel>
+@using Stateless.WorkflowEngine.WebConsole.BLL.Security
+@using System.Collections.Generic
+@using System.Linq
+@{
+    List<string> currentUserClaims = ViewBag.Claims;
+}
+@if (Model.Dashboards.Count == 0)
+{
+    <h4>No custom dashboards configured. Add one by clicking the <i class="fa fa-plus"></i> button above.</h4>
+}
+else
+{
+    <table class="table table-striped table-hover table-bordered font90">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Connections</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var db in Model.Dashboards)
+            {
+                <tr>
+                    <td>@db.Name</td>
+                    <td>@db.ConnectionIds.Count</td>
+                    <td class="action" style="white-space:nowrap; width:80px;">
+                        @if (Model.CurrentUserCanAdd)
+                        {
+                            <a class="btn btn-default btn-edit-dashboard" href="#" data-model-id="@db.Id" data-model-name="@db.Name" data-connection-ids="@string.Join(",", db.ConnectionIds)" title="Edit this dashboard">
+                                <i class="fa fa-pencil"></i>
+                            </a>
+                        }
+                        @if (Model.CurrentUserCanDelete)
+                        {
+                            <a class="btn btn-danger btn-delete-dashboard" href="#" data-model-id="@db.Id" data-model-name="@db.Name" title="Delete this dashboard">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
