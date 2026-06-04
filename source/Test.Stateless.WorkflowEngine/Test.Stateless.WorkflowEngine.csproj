@@ -86,6 +86,9 @@
     <Compile Include="Stores\WorkflowStoreTestBase.cs" />
     <Compile Include="WorkflowEngineExceptionHandlerTest.cs" />
     <Compile Include="WorkflowServerTest.cs" />
+    <Compile Include="Workflows\Async\Actions\AsyncDoingStuffAction.cs" />
+    <Compile Include="Workflows\Async\Actions\NoDefaultConstructorAsyncAction.cs" />
+    <Compile Include="Workflows\Async\TestableAsyncWorkflow.cs" />
     <Compile Include="Workflows\Basic\Actions\DoingStuffAction.cs" />
     <Compile Include="Workflows\Basic\BasicWorkflow.cs" />
     <Compile Include="Workflows\Broken\BrokenWorkflow.cs" />

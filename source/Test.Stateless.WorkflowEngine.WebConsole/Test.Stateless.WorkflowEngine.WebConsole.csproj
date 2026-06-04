@@ -253,6 +253,8 @@
     <Compile Include="BLL\Validators\ConnectionValidatorTest.cs" />
     <Compile Include="BLL\Validators\UserValidatorTest.cs" />
     <Compile Include="DataHelper.cs" />
+    <Compile Include="ViewModels\Connection\ConnectionMappingExtensionsTest.cs" />
+    <Compile Include="ViewModels\User\UserMappingExtensionsTest.cs" />
     <Compile Include="Modules\DashboardModuleTest.cs" />
     <Compile Include="Modules\ConnectionModuleTest.cs" />
     <Compile Include="Modules\UpdateModuleTest.cs" />

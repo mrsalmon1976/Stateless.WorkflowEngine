@@ -187,7 +187,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             bool result = await regService.IsSingleInstanceWorkflowRegisteredAsync<BasicWorkflow>(workflowStore);
 
-            workflowStore.Received(1).GetAllByQualifiedNameAsync<BasicWorkflow>();
+            await workflowStore.Received(1).GetAllByQualifiedNameAsync<BasicWorkflow>();
         }
 
         #endregion
@@ -218,7 +218,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             await regService.RegisterWorkflowAsync(workflowStore, workflow);
 
-            workflowStore.Received(1).GetAllByQualifiedNameAsync(workflow.QualifiedName);
+            await workflowStore.Received(1).GetAllByQualifiedNameAsync(workflow.QualifiedName);
             await workflowStore.Received(1).SaveAsync(workflow);
         }
 
@@ -233,7 +233,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
             await regService.RegisterWorkflowAsync(workflowStore, workflow);
 
-            workflowStore.DidNotReceive().GetAllByQualifiedNameAsync(Arg.Any<string>());
+            await workflowStore.DidNotReceive().GetAllByQualifiedNameAsync(Arg.Any<string>());
             await workflowStore.Received(1).SaveAsync(workflow);
         }
 

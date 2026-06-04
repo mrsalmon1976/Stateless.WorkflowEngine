@@ -43,7 +43,7 @@ namespace Stateless.TestHarness.Multithread
                 for (int i = 0; i < _recordCount; i++)
                 {
                     int recordId = conn.ExecuteScalar<int>(_sqlInsert, new { CreateDate = DateTime.Now }, tran, 30);
-                    Workflow workflow = null;
+                    Workflow? workflow = null;
                     if (this._runAsync)
                     {
                         VolumeAsyncWorkflow vwa = new VolumeAsyncWorkflow();

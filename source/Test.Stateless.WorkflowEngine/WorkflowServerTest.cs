@@ -753,6 +753,45 @@ namespace Test.Stateless.WorkflowEngine
             workflow.Received(1).OnError(Arg.Any<Exception>());
         }
 
+        [Test]
+        public async Task ExecuteWorkflowAsync_PassesCancellationTokenToFireAsync()
+        {
+            CancellationToken expectedToken = new CancellationTokenSource().Token;
+            CancellationToken capturedToken = CancellationToken.None;
+
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.ResumeOn = DateTime.UtcNow.AddHours(1);
+            workflow.When(x => x.FireAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()))
+                    .Do(x => capturedToken = x.ArgAt<CancellationToken>(1));
+
+            IWorkflowStore store = Substitute.For<IWorkflowStore>();
+            store.SaveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            IWorkflowServer workflowServer = new WorkflowServer(store);
+            await workflowServer.ExecuteWorkflowAsync(workflow, expectedToken);
+
+            Assert.That(capturedToken, Is.EqualTo(expectedToken));
+        }
+
+        [Test]
+        public async Task ExecuteWorkflowAsync_WhenFireAsyncThrowsOperationCanceledException_WorkflowIsSaved()
+        {
+            Workflow workflow = Substitute.For<Workflow>();
+            workflow.ResumeTrigger = "Test";
+            workflow.WhenForAnyArgs(x => x.FireAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()))
+                    .Do(_ => { throw new OperationCanceledException(); });
+
+            IWorkflowStore store = Substitute.For<IWorkflowStore>();
+            store.SaveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+
+            // Use a substitute exception handler so it doesn't re-throw when RetryIntervals is not set
+            IWorkflowServer workflowServer = CreateWorkflowServer(store, null, Substitute.For<IWorkflowRegistrationService>(), Substitute.For<IWorkflowExceptionHandler>());
+            await workflowServer.ExecuteWorkflowAsync(workflow, new CancellationTokenSource().Token);
+
+            await store.Received(1).SaveAsync(workflow);
+        }
+
 
         #endregion
 

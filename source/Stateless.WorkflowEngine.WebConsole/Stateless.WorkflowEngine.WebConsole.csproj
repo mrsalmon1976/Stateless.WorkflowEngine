@@ -305,6 +305,7 @@
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\BasicResult.cs" />
     <Compile Include="ViewModels\Connection\ConnectionInfoViewModel.cs" />
+    <Compile Include="ViewModels\Connection\ConnectionMappingExtensions.cs" />
     <Compile Include="ViewModels\Connection\ConnectionViewModel.cs" />
     <Compile Include="ViewModels\Connection\ConnectionListViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
@@ -318,6 +319,7 @@
     <Compile Include="ViewModels\Store\WorkflowSuspensionModel.cs" />
     <Compile Include="ViewModels\Store\WorkflowViewModel.cs" />
     <Compile Include="ViewModels\User\UserListViewModel.cs" />
+    <Compile Include="ViewModels\User\UserMappingExtensions.cs" />
     <Compile Include="ViewModels\User\UserViewModel.cs" />
     <Compile Include="WebConsoleBootstrapper.cs" />
     <Compile Include="WebConsoleService.cs" />
