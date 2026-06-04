@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Nancy;
+﻿using Nancy;
 using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
 using Nancy.Responses.Negotiation;
@@ -28,7 +27,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
     [TestFixture]
     public class UserModuleTest
     {
-        private IMapper _mapper;
         private IUserStore _userStore;
         private IUserValidator _userValidator;
         private IPasswordProvider _passwordProvider;
@@ -39,11 +37,6 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             _userStore = Substitute.For<IUserStore>();
             _userValidator = Substitute.For<IUserValidator>();
             _passwordProvider = Substitute.For<IPasswordProvider>();
-
-            var config = new MapperConfiguration(cfg => {
-                cfg.CreateMap<UserViewModel, UserModel>();
-            });
-            _mapper = config.CreateMapper();
         }
 
         #region ChangePassword Tests
@@ -55,7 +48,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -84,7 +77,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -119,7 +112,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -171,7 +164,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             // setup
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -213,7 +206,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             currentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -248,7 +241,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             currentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -285,7 +278,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             currentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })
@@ -329,7 +322,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Modules
             var currentUser = new UserIdentity() { Id = Guid.NewGuid(), UserName = "Joe Soap" };
             currentUser.Claims = new string[] { Claims.UserAdd };
             var browser = new Browser((bootstrapper) =>
-                bootstrapper.Module(new UserModule(_mapper, _userStore, _userValidator, _passwordProvider))
+                bootstrapper.Module(new UserModule(_userStore, _userValidator, _passwordProvider))
                     .RequestStartup((container, pipelines, context) => {
                         context.CurrentUser = currentUser;
                     })

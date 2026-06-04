@@ -10,38 +10,29 @@ namespace Example.Shared
     {
         public static string GetInputStoreType()
         {
-            string storeType = "";
-            const string Exit = "X";
             const string msg = @"What store type would you like to use?
             * MongoDb [" + Constants.StoreTypeMongoDb + @"]
             * RavenDb [" + Constants.StoreTypeRavenDb + @"]
-            * Exit [" + Exit + "]";
+            * Back [Enter]";
             Console.WriteLine(msg);
-            while (String.IsNullOrEmpty(storeType))
+
+            while (true)
             {
                 string? input = Console.ReadLine()?.ToUpper();
+
+                if (string.IsNullOrEmpty(input))
+                    return string.Empty;
+
                 switch (input)
                 {
                     case Constants.StoreTypeMongoDb:
                     case Constants.StoreTypeRavenDb:
-                    case Exit:
-                        storeType = input;
-                        break;
+                        return input;
                     default:
                         Console.WriteLine("Invalid input - please try again");
-                        continue;
+                        break;
                 }
             }
-
-            if (storeType == Exit)
-            {
-                Console.WriteLine("Exit selected.  Hit enter to continue.");
-                Console.ReadLine();
-                Environment.Exit(0);
-
-            }
-
-            return storeType;
         }
     }
 }

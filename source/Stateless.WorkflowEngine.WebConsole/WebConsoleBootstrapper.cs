@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
 using Nancy;
 using Nancy.Authentication.Forms;
 using Nancy.Bootstrapper;
@@ -14,8 +13,6 @@ using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.WebConsole.BLL.Web;
 using Stateless.WorkflowEngine.WebConsole.Caching;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.Connection;
-using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -64,18 +61,6 @@ namespace Stateless.WorkflowEngine.WebConsole
             container.Register<IVersionCheckService, VersionCheckService>();
             container.Register<IVersionUpdateService, VersionUpdateService>();
             container.Register<IVersionComparisonService, VersionComparisonService>();
-
-            // set up mappings
-            var config = new MapperConfiguration(cfg => {
-                cfg.CreateMap<ConnectionViewModel, ConnectionModel>();
-                cfg.CreateMap<ConnectionModel, ConnectionViewModel>()
-                    .ForMember(dest => dest.Password, opt => opt.Ignore())
-                    .ForMember(dest => dest.PasswordConfirm, opt => opt.Ignore());
-                cfg.CreateMap<UserViewModel, UserModel>();
-                //cfg.CreateMap<Workflow, UIWorkflow>();
-            });
-            var mapper = config.CreateMapper();
-            container.Register<IMapper>(mapper);
 
             // set up the stores
             var dataPath = Path.Combine(this.RootPathProvider.GetRootPath(), "Data");

@@ -14,21 +14,18 @@ using Stateless.WorkflowEngine.WebConsole.ViewModels.User;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using Stateless.WorkflowEngine.WebConsole.ViewModels;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Models;
-using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 
 namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class UserModule : WebConsoleSecureModule
     {
-        private IMapper _mapper;
         private IUserStore _userStore;
         private IPasswordProvider _passwordProvider;
         private IUserValidator _userValidator;
 
-        public UserModule(IMapper mapper, IUserStore userStore, IUserValidator userValidator, IPasswordProvider passwordProvider) : base()
+        public UserModule(IUserStore userStore, IUserValidator userValidator, IPasswordProvider passwordProvider) : base()
         {
-            _mapper = mapper;
             _userStore = userStore;
             _userValidator = userValidator;
             _passwordProvider = passwordProvider;
@@ -96,7 +93,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         {
 
             var model = this.Bind<UserViewModel>();
-            UserModel user = _mapper.Map<UserViewModel, UserModel>(model);
+            UserModel user = model.ToUserModel();
 
             // do first level validation - if it fails then we need to exit
             ValidationResult validationErrors = this._userValidator.Validate(user);

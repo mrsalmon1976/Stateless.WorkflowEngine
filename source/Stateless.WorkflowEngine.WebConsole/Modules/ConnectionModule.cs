@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 using Stateless.WorkflowEngine.WebConsole.BLL.Validators;
 using Stateless.WorkflowEngine.WebConsole.BLL.Data.Stores;
 using Encryption;
-using AutoMapper;
 using Stateless.WorkflowEngine.WebConsole.BLL.Services;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.BLL.Factories;
@@ -25,7 +24,6 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
 {
     public class ConnectionModule : WebConsoleSecureModule
     {
-        private IMapper _mapper;
         private readonly ICacheProvider _cacheProvider;
         private IUserStore _userStore;
         private IConnectionValidator _connectionValidator;
@@ -33,10 +31,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
         private IWorkflowInfoService _workflowInfoService;
         private IWorkflowStoreFactory _workflowStoreFactory;
 
-        public ConnectionModule(IMapper mapper, ICacheProvider cacheProvider, IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
+        public ConnectionModule(ICacheProvider cacheProvider, IUserStore userStore, IConnectionValidator connectionValidator, IEncryptionProvider encryptionProvider, IWorkflowInfoService workflowStoreService, IWorkflowStoreFactory workflowStoreFactory)
             : base()
         {
-            _mapper = mapper;
             _cacheProvider = cacheProvider;
             _userStore = userStore;
             _connectionValidator = connectionValidator;
@@ -121,7 +118,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // load the connections 
             var connections = _userStore.Connections;
             ConnectionListViewModel model = new ConnectionListViewModel();
-            List<ConnectionViewModel> connectionViewModels = _mapper.Map<List<ConnectionModel>, List<ConnectionViewModel>>(connections);
+            List<ConnectionViewModel> connectionViewModels = connections.Select(c => c.ToConnectionViewModel()).ToList();
             model.Connections.AddRange(connectionViewModels.OrderBy(x => x.Host.ToUpper()).ThenBy(x => x.Database.ToUpper()));
             
             model.CurrentUserCanDeleteConnection = this.Context.CurrentUser.HasClaim(Claims.ConnectionDelete);
@@ -140,7 +137,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
                 return Response.AsJson<ValidationResult>(validationResult);
             }
 
-            ConnectionModel model = _mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+            ConnectionModel model = viewModel.ToConnectionModel();
             model.Id = Guid.NewGuid();
 
             // encrypt the password if it's set
@@ -172,7 +169,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Modules
             // try and connect
             try
             {
-                ConnectionModel model = _mapper.Map<ConnectionViewModel, ConnectionModel>(viewModel);
+                ConnectionModel model = viewModel.ToConnectionModel();
                 // encrypt the password if it's set
                 if (!String.IsNullOrEmpty(model.Password))
                 {

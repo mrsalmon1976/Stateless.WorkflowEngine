@@ -39,8 +39,7 @@ namespace Example.Client
             }
             else
             {
-                Console.WriteLine($"Store type '{storeType}' not supported");
-                Environment.Exit(0);
+                throw new InvalidOperationException($"Store type '{storeType}' not supported");
             }
 
             // this call doesn't need to be there in your code - it's just here for the example so the store gets
@@ -64,6 +63,9 @@ namespace Example.Client
             Console.WriteLine();
 
             string inputStoreType = Prompts.GetInputStoreType();
+            if (string.IsNullOrEmpty(inputStoreType))
+                return;
+
             Console.WriteLine();
 
             IWorkflowClient workflowClient = CreateWorkflowClient(inputStoreType);
@@ -79,10 +81,9 @@ namespace Example.Client
 
             Console.WriteLine("Three workflows have been registered - run the Example.Server project to execute the workflows");
             Console.WriteLine();
-            Console.WriteLine("Hit enter to exit");
+            Console.WriteLine("Hit enter to continue");
             Console.WriteLine();
             Console.ReadLine();
-            Environment.Exit(0);
         }
     }
 }

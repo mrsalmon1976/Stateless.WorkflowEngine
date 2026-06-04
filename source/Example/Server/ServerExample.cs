@@ -46,8 +46,7 @@ namespace Example.Server
             }
             else
             {
-                Console.WriteLine($"Store type '{storeType}' not supported");
-                Environment.Exit(0);
+                throw new InvalidOperationException($"Store type '{storeType}' not supported");
             }
 
             return new WorkflowServer(workflowStore);
@@ -57,6 +56,9 @@ namespace Example.Server
         public static void Run()
         {
             string inputStoreType = Prompts.GetInputStoreType();
+            if (string.IsNullOrEmpty(inputStoreType))
+                return;
+
             Console.WriteLine();
 
             IWorkflowServer workflowServer = CreateWorkflowServer(inputStoreType);
@@ -83,7 +85,7 @@ namespace Example.Server
                 {
                     Console.WriteLine("Error occurred executing workflow: " + ex.Message);
                     Console.WriteLine(ex.StackTrace);
-                    Environment.Exit(0);
+                    return;
                 }
 
                 if (executedCount == 0)
@@ -100,7 +102,7 @@ namespace Example.Server
             }
 
             Console.WriteLine("All workflows have completed or suspended");
-            Console.WriteLine("Hit enter to exit");
+            Console.WriteLine("Hit enter to continue");
             Console.ReadLine();
         }
     }

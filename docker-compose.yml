@@ -1,0 +1,27 @@
+services:
+
+  mongodb:
+    image: mongo:latest
+    container_name: stateless_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  ravendb:
+    image: ravendb/ravendb:latest
+    container_name: stateless_ravendb
+    ports:
+      - "8080:8080"
+      - "38888:38888"
+    environment:
+      - RAVEN_Setup_Mode=Initial
+      - RAVEN_Args=--Security.UnsecureMethodsAllowed=Local,Network
+    volumes:
+      - ravendb_data:/opt/RavenDB/Server/RavenData
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  ravendb_data:

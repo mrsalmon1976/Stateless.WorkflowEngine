@@ -3,32 +3,34 @@ using Example.Server;
 using Example.Shared;
 using Example.Volume;
 
-Console.WriteLine(@"Would you like to: 
-    1. register workflows with a WorkflowClient [1] 
-    2. execute workflows with a WorkflowServer [2] 
+while (true)
+{
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine(@"Would you like to:
+    1. register workflows with a WorkflowClient [1]
+    2. execute workflows with a WorkflowServer [2]
     3. execute a high volume async client/server test (creates a SQLite database) [3]
-    4. execute a high volume synchronous client/server test (creates a SQLite database) [4]");
-string? input = Console.ReadLine()?.ToUpper();
-Console.WriteLine("");
+    4. execute a high volume synchronous client/server test (creates a SQLite database) [4]
 
-if (input == "1")
-{
-    ClientExample.Run();
-}
-else if (input == "2")
-{
-    ServerExample.Run();
-}
-else if (input == "3")
-{
-    VolumeExample.Run(ExampleDbType.Sqlite, true);
-}
-else if (input == "4")
-{
-    VolumeExample.Run(ExampleDbType.Sqlite, false);
-}
-else
-{
-    Console.WriteLine("Invalid input option....exiting. Hit enter to continue.");
-    Console.ReadLine();
+Press Enter to exit.");
+
+    string? input = Console.ReadLine()?.ToUpper();
+    Console.ForegroundColor = ConsoleColor.White;
+    Console.WriteLine("");
+
+    if (string.IsNullOrEmpty(input))
+        break;
+
+    if (input == "1")
+        ClientExample.Run();
+    else if (input == "2")
+        ServerExample.Run();
+    else if (input == "3")
+        VolumeExample.Run(ExampleDbType.Sqlite, true);
+    else if (input == "4")
+        VolumeExample.Run(ExampleDbType.Sqlite, false);
+    else
+        Console.WriteLine("Invalid option - please try again.");
+
+    Console.WriteLine("");
 }
