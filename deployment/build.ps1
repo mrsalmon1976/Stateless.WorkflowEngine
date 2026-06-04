@@ -3,9 +3,14 @@ Clear-Host
 
 function GetMSBuildPath()
 {
+	$msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
+	
 	# default to VS2022 Pro
-	$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
-
+	if ([System.IO.File]::Exists($msbuild) -eq $false)
+	{
+		$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
+	}
+	
 	# VS2022 Community
 	if ([System.IO.File]::Exists($msbuild) -eq $false)
 	{
