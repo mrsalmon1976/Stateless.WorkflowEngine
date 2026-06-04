@@ -31,6 +31,7 @@ This table shows the client version and the associated driver/client versions us
 |           | 3.1.0     | RavenDB.Client | 5.4.109         |
 |           | 4.0.0     | RavenDB.Client | 5.4.200         |
 |           | 5.0.0     | RavenDB.Client | 7.2.1           |
+|           | 5.1.0     | RavenDB.Client | 7.2.2           |
 
 # Workflow Configuration
 
@@ -38,7 +39,14 @@ Workflows are configured in a similar fashion to Stateless.  You should make an 
 
 # Example  
 
-There is a full example application in the source code, in the Test.Stateless.WorkflowEngine.Example folder.  This contains a windows service that creates a sample workflow when it runs, which writes 10 files to the "C:\Temp" folder, then deletes all the files.  You can look at this example to see how to set up a windows service that runs the workflow engine.  The WorkerThreadFunc method in the WorkflowEngineExampleService class contains an instantiation of each store type (Memory, MongoDb and RavenDb), if you'd like to run the example just configure what you want.  You can set up your connection properties in the Bootstrapper.
+There is a full example application in the source code, in the Test.Stateless.WorkflowEngine.Example folder.  This contains the following examples:
+
+1. register workflows with an `IWorkflowClient`
+2. execute these workflows: each writes 10 files to the "C:\Temp" folder, then deletes all the files.  
+3. create and execute 1000 workflows using sync methods with contrived exceptions to show the retry mechanism of the engine
+4. same as previous, except using async methods 
+
+You can look at this example to see how to set up a windows service that runs the workflow engine.  You can set up your connection properties in the Bootstrapper.
 
 # Code and Concepts
 
@@ -56,24 +64,131 @@ The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the
 - `AutoCreateIndexes` - if set to `true` this option will result in the server creating basic indexes (see below for more details).  Defaults to `true`.
 - `PersistWorkflowDefinitions` - if set to true, workflow definitions will be inspected and stored if possible.  Defaults to `true`.
 
-### Executing Workflows
+### Executing a Single Workflow
 
-The `IWorkflowServer` contains two execution methods:
+`IWorkflowServer` provides both synchronous and asynchronous methods for executing a single workflow instance directly:
 
-- `int ExecuteWorkflows(int count, int? maxConcurrent = null)` - Synchronous option - will load and execute `count` workflows using `Parallel.Invoke` - executing `maxConcurrent` workflows in parallel
-- `async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` - Asynchronous option that will load and execute `count` workflows using a semaphore to control concurrency, with no more than `maxConcurrent` workflows executed in parallel
+| Method | Description |
+|--------|-------------|
+| `void ExecuteWorkflow(Workflow workflow)` | Synchronous. Fires the workflow's current trigger and saves state. |
+| `Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default)` | Asynchronous equivalent. The cancellation token is forwarded through to the workflow's `FireAsync` call and into any `IWorkflowActionAsync` actions. |
 
-For example, this code will load 100 workflows, executing them 10 at a time.  
+You would typically use these methods only when you have a specific workflow instance already in hand (e.g. in tests or when reprocessing a suspended workflow). The batch methods below are the normal production path.
+
+### Executing Workflows in Bulk
+
+`IWorkflowServer` provides batch execution methods that load workflows from the store and execute them, with optional concurrency control:
+
+| Method | Description |
+|--------|-------------|
+| `int ExecuteWorkflows(int count, int? maxConcurrent = null)` | Synchronous. Loads up to `count` workflows and executes them using `Parallel.ForEach`, with no more than `maxConcurrent` running at once. |
+| `Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` | Asynchronous. Loads up to `count` workflows and executes them using a `SemaphoreSlim` to cap concurrency at `maxConcurrent`. Supports cancellation — already-dispatched tasks run to completion before the method returns. |
+
+Both methods load workflows ordered by **Priority DESC**, then **CreatedOn ASC**.
+
+The following code loads up to 100 workflows and processes them 10 at a time:
 
 ```csharp
- int workflowsExecuted = await _workflowServer.ExecuteWorkflowsAsync(100, 10);
+int workflowsExecuted = await _workflowServer.ExecuteWorkflowsAsync(100, 10);
 ```
 
-The `workflowsExecuted` result will be the number of workflows actually executed.  If there were only 20 active workflows in the workflow store available for execution, this would return 20.  If there were more than 100 workflows available, this would max out at 100 and return 100.  This value can be used to determine if you want your service to go to sleep for a while, or continue executing workflows immediately.
+The return value is the number of workflows actually dispatched. If there were only 20 active workflows ready to run it returns 20; if there were more than 100 it caps at 100. This is useful for deciding whether to sleep or loop immediately:
+
+```csharp
+while (true)
+{
+    int executed = await _workflowServer.ExecuteWorkflowsAsync(100, 10, cancellationToken);
+    if (executed == 0)
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+}
+```
+
+#### Cancellation
+
+`ExecuteWorkflowsAsync` accepts a `CancellationToken`. Cancelling it stops new workflows from being dispatched but allows any already-running workflows to finish cleanly. The token is also forwarded into each `ExecuteWorkflowAsync` call, and from there into `workflow.FireAsync` and any `IWorkflowActionAsync` actions, so long-running async actions can observe it directly.
 
 ## Creating a WorkflowClient
 
-A WorkflowClient is used to register workflows for processing by the WorkflowServer.  
+A WorkflowClient is used to register workflows for processing by the WorkflowServer.
+
+## Workflow Actions
+
+Each step of a workflow is implemented as an action class. There are two variants depending on whether the work is synchronous or asynchronous.
+
+### Synchronous Actions
+
+Implement `IWorkflowAction` and its `Execute(Workflow workflow)` method. Wire it up in your workflow's `Initialise` method using `OnEntry` and `ExecuteWorkflowAction<T>()`:
+
+```csharp
+public interface IWorkflowAction
+{
+    void Execute(Workflow workflow);
+}
+```
+
+```csharp
+// In your Workflow.Initialise():
+this.Configure(State.WritingFirstFile)
+    .OnEntry(() => this.ExecuteWorkflowAction<WriteFirstFileAction>())
+    .Permit(Trigger.WriteAdditionalFiles, State.WritingAdditionalFiles);
+```
+
+```csharp
+public class WriteFirstFileAction : IWorkflowAction
+{
+    public void Execute(Workflow workflow)
+    {
+        var wf = (FileCreationWorkflow)workflow;
+        // do synchronous work...
+        wf.ResumeTrigger = FileCreationWorkflow.Trigger.WriteAdditionalFiles.ToString();
+    }
+}
+```
+
+### Asynchronous Actions
+
+Implement `IWorkflowActionAsync` and its `ExecuteAsync(Workflow workflow, CancellationToken cancellationToken)` method. Wire it up using `OnEntryAsync` and `ExecuteWorkflowActionAsync<T>()`:
+
+```csharp
+public interface IWorkflowActionAsync
+{
+    Task ExecuteAsync(Workflow workflow, CancellationToken cancellationToken = default);
+}
+```
+
+```csharp
+// In your Workflow.Initialise():
+this.Configure(State.MarkingRecordAsProcessed)
+    .OnEntryAsync(async () => await this.ExecuteWorkflowActionAsync<MarkRecordAsProcessedAsyncAction>())
+    .Permit(Trigger.Complete, State.Complete);
+```
+
+```csharp
+public class MarkRecordAsProcessedAsyncAction : IWorkflowActionAsync
+{
+    public async Task ExecuteAsync(Workflow workflow, CancellationToken cancellationToken = default)
+    {
+        var wf = (VolumeAsyncWorkflow)workflow;
+        // await async work...
+        wf.ResumeTrigger = VolumeAsyncWorkflow.Trigger.Complete.ToString();
+    }
+}
+```
+
+The `CancellationToken` passed to `ExecuteWorkflowActionAsync<T>` flows from `WorkflowServer.ExecuteWorkflowsAsync`, so if the server's token is cancelled your action can observe it and stop cleanly.
+
+### Action Hooks
+
+Both sync and async paths provide hook methods on the `Workflow` base class that you can override for logging or instrumentation:
+
+| Sync | Async | Fires |
+|------|-------|-------|
+| `OnActionExecuting(IWorkflowAction action)` | `OnActionExecutingAsync(IWorkflowActionAsync action, CancellationToken ct)` | Before the action executes |
+| `OnActionExecuted(IWorkflowAction action)` | `OnActionExecutedAsync(IWorkflowActionAsync action, CancellationToken ct)` | After the action executes |
+
+### Choosing Sync vs Async
+
+Use `IWorkflowActionAsync` whenever the action performs I/O (database queries, HTTP calls, file operations). Use `IWorkflowAction` for CPU-bound or trivially fast work. Mixing both in the same workflow is fine — each state entry independently chooses its variant.
 
 ## Workflow Priority
 
@@ -155,11 +270,13 @@ The `IWorkflowServer` interface exposes two events:
 
 When you implement your `Workflow` classes, you can also override the following event handlers:
 
-1. `OnActionExecuting` - Invoked before a workflow action is executed by the engine.  Useful for  logging.
-2. `OnActionExecuted` - Invoked after a workflow action is executed by the engine.  Useful for logging.
-3. `OnComplete` - Invoked when a workflow completes and is moved into the CompletedWorkflows collection.
-4. `OnError` - Invoked when an error occurs within a workflow action.  Useful for error logging.
-3. `OnSuspend` - Invoked when a workflow has exceeded its configured retries, and moves into a suspended state.
+1. `OnActionExecuting(IWorkflowAction action)` - Invoked before a synchronous workflow action executes. Useful for logging.
+2. `OnActionExecutingAsync(IWorkflowActionAsync action, CancellationToken ct)` - Async equivalent, invoked before an async workflow action executes.
+3. `OnActionExecuted(IWorkflowAction action)` - Invoked after a synchronous workflow action executes. Useful for logging.
+4. `OnActionExecutedAsync(IWorkflowActionAsync action, CancellationToken ct)` - Async equivalent, invoked after an async workflow action executes.
+5. `OnComplete` - Invoked when a workflow completes and is moved into the CompletedWorkflows collection.
+6. `OnError` - Invoked when an error occurs within a workflow action. Useful for error logging.
+7. `OnSuspend` - Invoked when a workflow has exceeded its configured retries, and moves into a suspended state.
 
 ## Single Instance Workflows
 
