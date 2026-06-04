@@ -3,6 +3,7 @@
 	b. Automatically update the relevant source files
 	c. Build a release version of the solution
 	d. Create the zip files (WebConsole, RavenDb, MongoDb) 
+2. Push all changes to GitHub
 3. Run publish.ps1 to push the Nuget packages
 	* Make sure you have updated all .nuspec files for dependencies - this is a manual process
 	* make sure you enter the correct version number when prompted
