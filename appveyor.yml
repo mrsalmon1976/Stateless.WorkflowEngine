@@ -1,8 +1,15 @@
 version: 1.0.{build}
-image: Visual Studio 2022
+# the web console targets .NET 10, which needs the MSBuild that ships with Visual Studio 2026 - the
+# Visual Studio 2022 MSBuild ignores the .NET 10 SDK and falls back to an older one (error NETSDK1045)
+image: Visual Studio 2026
 install:
-# the web console targets .NET 10
-- ps: Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile dotnet-install.ps1; ./dotnet-install.ps1 -Channel 10.0 -InstallDir "$env:ProgramFiles\dotnet"
+# install the .NET 10 SDK only if the image doesn't already have it
+- ps: |
+    if (-not (dotnet --list-sdks | Where-Object { $_ -like "10.*" })) {
+      Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile dotnet-install.ps1
+      ./dotnet-install.ps1 -Channel 10.0 -InstallDir "$env:ProgramFiles\dotnet"
+    }
+    dotnet --list-sdks
 before_build:
 - cmd: nuget restore ./source/Stateless.WorkflowEngine.sln
 - cmd: dotnet restore ./source/Stateless.WorkflowEngine.sln
