@@ -120,25 +120,30 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
+        /// <remarks>
+        /// Counting non-suspended workflows directly scans (nearly) the whole collection, so this is calculated as the
+        /// estimated collection size (from metadata) less the suspended count (which uses the partial suspended
+        /// index).  As with GetIncompleteCount, the result is an estimate - it can be slightly out after an unclean
+        /// shutdown or when orphaned documents exist in a sharded cluster.
+        /// </remarks>
         /// <returns></returns>
         public override long GetActiveCount()
         {
-            var collection = GetCollection();
-            return collection
-                .Find(x => x.Workflow.IsSuspended == false)
-                .CountDocuments();
+            long count = GetIncompleteCount() - GetSuspendedCount();
+            return Math.Max(0, count);
         }
 
         /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
+        /// <remarks>
+        /// See GetActiveCount for how this is calculated.
+        /// </remarks>
         /// <returns></returns>
         public override async Task<long> GetActiveCountAsync()
         {
-            var collection = GetCollection();
-            return await collection
-                .Find(x => x.Workflow.IsSuspended == false)
-                .CountDocumentsAsync();
+            long count = await GetIncompleteCountAsync() - await GetSuspendedCountAsync();
+            return Math.Max(0, count);
         }
 
         /// <summary>
@@ -488,6 +493,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             if (autoCreateIndexes)
             {
                 this.SchemaService.EnsureActiveIndexExists(this.MongoDatabase, this.CollectionActive);
+                this.SchemaService.EnsureSuspendedIndexExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureCompletedIndexExists(this.MongoDatabase, this.CollectionCompleted);
             }
         }

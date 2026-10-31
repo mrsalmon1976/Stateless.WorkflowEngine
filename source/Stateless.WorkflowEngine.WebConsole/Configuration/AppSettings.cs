@@ -1,71 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Stateless.WorkflowEngine.WebConsole.Configuration
 {
     public interface IAppSettings
     {
+        /// <summary>
+        /// Gets the absolute path of the folder where users, connections and data protection keys are stored.
+        /// </summary>
+        string DataPath { get; }
 
         /// <summary>
-        /// Gets the port used for the application.
+        /// Gets the GitHub API url used to check for the latest release.
         /// </summary>
-        int Port { get; }
-
-        /// <summary>
-        /// Gets/sets the application security key
-        /// </summary>
-        string SecureKey { get; }
-
         string LatestVersionUrl { get; }
 
+        /// <summary>
+        /// Gets how long the result of the version check is cached for.
+        /// </summary>
         int UpdateCheckIntervalInMinutes { get; }
     }
 
     public class AppSettings : IAppSettings
     {
+        public const string DefaultLatestVersionUrl = "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest";
 
-        /// <summary>
-        /// Gets the port used for the application.
-        /// </summary>
-        public int Port 
+        public AppSettings(IConfiguration configuration, string contentRootPath)
         {
-            get
-            {
-                return Int32.Parse(ConfigurationManager.AppSettings["Port"]);
-            }
+            string dataPath = configuration["DataPath"] ?? "Data";
+            DataPath = Path.IsPathRooted(dataPath) ? dataPath : Path.Combine(contentRootPath, dataPath);
+            LatestVersionUrl = configuration["LatestVersionUrl"] ?? DefaultLatestVersionUrl;
+            UpdateCheckIntervalInMinutes = configuration.GetValue("UpdateCheckIntervalInMinutes", 60);
         }
 
-        /// <summary>
-        /// Gets/sets the application security key
-        /// </summary>
-        public string SecureKey
-        {
-            get
-            {
-                return (ConfigurationManager.AppSettings["SecureKey"] ?? "this a Def@ult security key if it is not specified in app.config");
-            }
-        }
+        public string DataPath { get; }
 
-        public string LatestVersionUrl
-        {
-            get
-            {
-                return ConfigurationManager.AppSettings["LatestVersionUrl"];
-            }
-        }
+        public string LatestVersionUrl { get; }
 
-        public int UpdateCheckIntervalInMinutes
-        {
-            get
-            {
-                return Int32.Parse(ConfigurationManager.AppSettings["UpdateCheckIntervalInMinutes"]);
-            }
-        }
-
-
+        public int UpdateCheckIntervalInMinutes { get; }
     }
 }

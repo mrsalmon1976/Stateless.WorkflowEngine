@@ -20,18 +20,18 @@ namespace Example.Client
             if (storeType == Constants.StoreTypeMongoDb)
             {
                 Console.WriteLine($"Using MongoDb - please ensure an unauthenticated version of MongoDb is running " + Environment.NewLine + 
-                    $"on 'mongodb://localhost'; collection '{DbName}' will be created.");
-                var client = new MongoClient("mongodb://localhost");
+                    $"on '{AppSettings.MongoDbConnectionString}' (run start.ps1 to start one in Docker); collection '{DbName}' will be created.");
+                var client = new MongoClient(AppSettings.MongoDbConnectionString);
                 var database = client.GetDatabase(DbName);
                 workflowStore = new MongoDbWorkflowStore(database);
             }
             else if (storeType == Constants.StoreTypeRavenDb)
             {
-                Console.WriteLine($"Using RavenDb - please ensure RavenDb is running on 'http://localhost:8080'; " + Environment.NewLine +
+                Console.WriteLine($"Using RavenDb - please ensure RavenDb is running on '{AppSettings.RavenDbUrl}' (run start.ps1 to start one in Docker); " + Environment.NewLine +
                     $"database '{DbName}' will be created.");
                 IDocumentStore store = new DocumentStore
                 {
-                    Urls = new String[] { "http://localhost:8080" },
+                    Urls = new String[] { AppSettings.RavenDbUrl },
                     Database = DbName,
                 };
                 store.Initialize();

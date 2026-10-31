@@ -19,7 +19,7 @@ namespace Example.Volume
         {
             _dbType = dbType;
             const int TestRecordCount = 1000;
-            var mongoClient = new MongoClient("mongodb://localhost");
+            var mongoClient = new MongoClient(AppSettings.MongoDbConnectionString);
             var database = mongoClient.GetDatabase(AppSettings.VolumeExampleMongoDbName);
             IWorkflowStore workflowStore = new MongoDbWorkflowStore(database);
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore);

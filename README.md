@@ -39,14 +39,14 @@ Workflows are configured in a similar fashion to Stateless.  You should make an 
 
 # Example  
 
-There is a full example application in the source code, in the Test.Stateless.WorkflowEngine.Example folder.  This contains the following examples:
+There is a full example console application in the source code, in the `source/Example` folder (`dotnet run --project source/Example`).  This contains the following examples:
 
-1. register workflows with an `IWorkflowClient`
-2. execute these workflows: each writes 10 files to the "C:\Temp" folder, then deletes all the files.  
-3. create and execute 1000 workflows using sync methods with contrived exceptions to show the retry mechanism of the engine
-4. same as previous, except using async methods 
+1. register workflows with an `IWorkflowClient` (MongoDb or RavenDb)
+2. execute these workflows with an `IWorkflowServer`: each writes 10 files to the "C:\Temp" folder, then deletes all the files.  
+3. create and execute 1000 workflows using async methods with contrived exceptions to show the retry mechanism of the engine
+4. same as previous, except using sync methods 
 
-You can look at this example to see how to set up a windows service that runs the workflow engine.  You can set up your connection properties in the Bootstrapper.
+The examples connect to MongoDb on `mongodb://localhost:27017` and RavenDb on `http://localhost:8080` - the containers started by `start.ps1` (see [Development](#development)).  These can be overridden with the `STATELESS_MONGODB_CONNECTIONSTRING` and `STATELESS_RAVENDB_URL` environment variables, or in `AppSettings.cs`.
 
 # Code and Concepts
 
@@ -299,10 +299,21 @@ Over time, workflow collections grow, and the CompletedWorkflows data store can 
 
 ## Default Indexes
 
+### MongoDb
+
 The following indexes are created by default:
 
 * Workflows: Priority descending, RetryCount descending, CreatedOn ascending
+* Workflows: IsSuspended - a partial index containing only suspended workflows, used for suspended and active counts
 * CompletedWorkflows: CreatedOn descending
+
+The active workflow count (`GetActiveCount`) is calculated as the estimated size of the Workflows collection less the suspended count, rather than by scanning the collection.  Like the incomplete and completed counts, it is an estimate - it can be slightly out after an unclean shutdown or when orphaned documents exist in a sharded cluster.
+
+### RavenDb
+
+No indexes are created - `Initialise()` only creates the database.  The store uses dynamic queries, which RavenDB always answers from **auto indexes**: it creates one for each query shape the first time it runs (e.g. `Auto/RavenWorkflows/ByWorkflow.IsSuspended`), and keeps it up to date from then on.  Note that on an existing large database, results from a newly created auto index can be incomplete until RavenDB has finished building it.
+
+Versions prior to 6.0 deployed two static indexes, `WorkflowIndex/Priority/RetryCount/CreatedOn` and `CompletedWorkflowIndex/CreatedOn`.  No query ever used them, so they only added indexing and storage overhead.  They are no longer created, and existing copies can safely be deleted from the database in the RavenDB Studio (Indexes > List of Indexes).
 
 ## Manually creating indexes: MongoDb
 
@@ -316,6 +327,12 @@ On the Workflows collection (only create this if you generate a lot of workflows
 
 ```csharp
 db.Workflows.createIndex({ "Workflow.Priority" : -1, "Workflow.RetryCount" : -1, "Workflow.CreatedOn" : 1 }, { name : "Workflow_Priority_RetryCount_CreatedOn" })
+```
+
+On the Workflows collection, a small partial index of suspended workflows (recommended - it keeps suspended and active counts fast, which the web console requests on every dashboard load):
+
+```csharp
+db.Workflows.createIndex({ "Workflow.IsSuspended" : 1 }, { name : "Workflow_IsSuspended", partialFilterExpression : { "Workflow.IsSuspended" : true } })
 ```
 
 ## Serialisation
@@ -343,4 +360,86 @@ Note that like all things, this comes with its own risks - the engine will no lo
 # Workflow Definitions
 
 
-The `IWorkflowServer` will attempt to persist workflow definitions into a `WorkflowDefinitions` collection or table when types are registered.  These will result in graphs that can be rendered in the console displaying a representation of the workflow.  This option can be turned off using the `WorkflowOptions` property.
+The `IWorkflowServer` will attempt to persist workflow definitions into a `WorkflowDefinitions` collection or table when types are registered.  These will result in graphs that can be rendered in the [web console](#web-console) displaying a representation of the workflow.  This option can be turned off using the `WorkflowOptions` property.
+
+# Web Console
+
+The web console is a browser-based tool for monitoring and managing workflow stores.  It is an ASP.NET Core (.NET 10) application that serves a Vue / Nuxt UI single page app, and runs as a Windows service or a Docker container.  It currently supports **MongoDb** stores only.
+
+Features:
+
+* A dashboard of connections to workflow stores, showing active, suspended and completed workflow counts (with optional auto refresh)
+* A list of incomplete workflows per store - view the workflow JSON, view the workflow definition graph, and suspend, unsuspend or delete workflows individually or in bulk
+* User management with Admin and User roles - Users can be granted individual permissions (add/edit/delete connections, suspend/unsuspend/delete workflows, view/add/edit/delete users)
+* A notification when a new version of the console is available
+
+The workflow list shows the first N incomplete workflows (up to 1000) - sorting and filtering apply to the loaded rows only.  To find a specific workflow in a large store, paste its full id into the filter and it will be looked up directly.  Completed workflows are not shown.
+
+## Installing as a Windows service
+
+1. Install the [ASP.NET Core 10 runtime (Hosting Bundle)](https://dotnet.microsoft.com/download/dotnet/10.0) on the server
+2. Download `Stateless.WorkflowEngine.WebConsole_v{version}.zip` from the [latest release](https://github.com/mrsalmon1976/Stateless.WorkflowEngine/releases/latest) and unzip it into the install folder
+3. In an elevated PowerShell prompt in the install folder, run `.\install-service.ps1` (use `.\install-service.ps1 -Uninstall` to remove the service)
+4. Browse to `http://localhost:8811` and sign in with **admin / admin** - change this password immediately
+
+## Configuration
+
+Settings are in `appsettings.json`.  To override them, create an `appsettings.Production.json` in the install folder - this file is preserved when upgrading.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `Urls` | `http://localhost:8811` | The url(s) the console listens on.  Use e.g. `http://*:8811` to allow access from other machines |
+| `DataPath` | `Data` | Folder for users, connections and encryption keys (relative to the install folder) |
+| `LatestVersionUrl` | GitHub releases API | Used to check for new versions |
+| `UpdateCheckIntervalInMinutes` | `60` | How long the version check is cached for |
+
+Users and connections are stored in `Data\users.json`.  Connection passwords are encrypted with ASP.NET Core Data Protection, with the keys stored in `Data\keys` - back up the whole `Data` folder, as connection passwords can't be decrypted without the keys.
+
+## Upgrading
+
+The console shows a banner when a new version is available, but upgrades are run manually: in an elevated PowerShell prompt in the install folder, run `.\Update.ps1`.  This downloads the latest release, backs up the current install to `Backup\{version}`, and replaces the application files, keeping `Data`, `logs` and `appsettings.Production.json`.
+
+**Upgrading from version 5.x or earlier** (the .NET Framework console):
+
+* Install the ASP.NET Core 10 runtime first
+* Back up `Data\users.json`
+* Copy `Update.ps1` from the new release zip over the old one before running it - the old script can't install the new service
+* Existing users and connections are kept.  Saved connection passwords are re-encrypted on first start, after which the old console can no longer read them
+
+## Running in Docker
+
+```bash
+docker build -f source/Stateless.WorkflowEngine.WebConsole/Dockerfile -t stateless-workflowengine-webconsole source
+docker run -d -p 8811:8080 -v webconsole_data:/app/Data stateless-workflowengine-webconsole
+```
+
+The `/app/Data` volume holds users, connections and the encryption keys, so it must be persisted.  Settings can be overridden with environment variables, e.g. `-e LatestVersionUrl=...`.  Note that inside a container, `localhost` refers to the container itself - connect to MongoDb using a host name reachable from the container.
+
+## Performance on large stores
+
+Each dashboard load (and auto refresh) requests the workflow counts for every connection.  On MongoDb these use collection metadata and the partial `Workflow_IsSuspended` index (see [Default Indexes](#default-indexes)), so make sure that index exists on large stores.
+
+# Development
+
+`start.ps1` in the repository root starts a local environment in Docker (starting Docker Desktop if necessary):
+
+* MongoDb on `mongodb://localhost:27017`
+* RavenDb on `http://localhost:8080` (an unsecured development instance)
+* The web console on `http://localhost:8811`, built from source, with a connection to the example MongoDb database
+
+```powershell
+.\start.ps1            # start everything, rebuilding the console image
+.\start.ps1 -NoBuild   # start without rebuilding the console image
+.\start.ps1 -Stop      # stop the containers (data volumes are kept)
+```
+
+The example application and the MongoDb/RavenDb test projects use these containers by default.  Tests that need a database are marked with the `RequiresMongoDb` and `RequiresRavenDb` categories.
+
+To work on the web console with hot reload, run the API and the Vite dev server (which proxies `/api` calls to the API):
+
+```powershell
+dotnet run --project source\Stateless.WorkflowEngine.WebConsole        # http://localhost:8811
+cd source\Stateless.WorkflowEngine.WebConsole.Client; npm install; npm run dev   # http://localhost:5173
+```
+
+Building a release (`deployment\build.ps1`) requires the .NET 10 SDK and Node.js, as publishing the console builds the client app.

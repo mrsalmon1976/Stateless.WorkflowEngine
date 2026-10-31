@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* highlight.js tokens for the workflow JSON viewer, using Nuxt UI tokens so they follow the colour mode */
+.json-viewer .hljs-attr {
+  color: var(--ui-primary);
+}
+
+.json-viewer .hljs-string {
+  color: var(--ui-success);
+}
+
+.json-viewer .hljs-number,
+.json-viewer .hljs-literal {
+  color: var(--ui-warning);
+}
+
+.json-viewer .hljs-punctuation {
+  color: var(--ui-text-muted);
+}
+
+/* definition graphs are rendered by graphviz with black strokes - invert them in dark mode */
+.dark .definition-graph svg {
+  filter: invert(0.9) hue-rotate(180deg);
+}

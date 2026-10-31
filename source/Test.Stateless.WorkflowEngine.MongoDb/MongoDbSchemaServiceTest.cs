@@ -26,7 +26,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         [OneTimeSetUp]
         public void MongoDbSchemaServiceTest_OneTimeSetUp()
         {
-            var connectionString = "mongodb://localhost";
+            var connectionString = TestSettings.MongoDbConnectionString;
             var client = new MongoClient(connectionString);
             _database = client.GetDatabase("StatelessWorkflowTest");
         }
@@ -232,6 +232,72 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
 
         #endregion
+
+        #region EnsureSuspendedIndexExists Tests
+
+        [Test]
+        public void EnsureSuspendedIndexExists_WhenCalledOnce_PartialIndexIsCreated()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureSuspendedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            var index = indexes.Single(x => x.GetValue("name").AsString == IndexNames.Workflow_IsSuspended);
+            Assert.That(index["partialFilterExpression"], Is.EqualTo(new BsonDocument("Workflow.IsSuspended", true)));
+        }
+
+        [Test]
+        public void EnsureSuspendedIndexExists_WhenCalledMultipleTimes_IndexIsCreatedOnce()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            mongoDbSchemaService.EnsureSuspendedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureSuspendedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureSuspendedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            Assert.That(IndexExists(indexes, IndexNames.Workflow_IsSuspended), Is.True);
+        }
+
+        [Test]
+        public void EnsureSuspendedIndexExists_SuspendedCountUsesIndex()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureSuspendedIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            // explain the aggregation the driver runs for GetSuspendedCount (CountDocuments) - it must use the
+            // index rather than falling back to a collection scan
+            var pipeline = new BsonArray
+            {
+                new BsonDocument("$match", new BsonDocument("Workflow.IsSuspended", true)),
+                new BsonDocument("$group", new BsonDocument { { "_id", 1 }, { "n", new BsonDocument("$sum", 1) } })
+            };
+            var explain = _database.RunCommand<BsonDocument>(new BsonDocument
+            {
+                { "explain", new BsonDocument
+                    {
+                        { "aggregate", MongoDbWorkflowStore.DefaultCollectionActive },
+                        { "pipeline", pipeline },
+                        { "cursor", new BsonDocument() }
+                    }
+                },
+                { "verbosity", "queryPlanner" }
+            });
+
+            string plan = explain.ToJson();
+            Assert.That(plan, Does.Contain(IndexNames.Workflow_IsSuspended));
+            Assert.That(plan, Does.Not.Contain("COLLSCAN"));
+        }
+
+        #endregion
+
         #region Private Methods
 
         private void DeleteTestCollections()

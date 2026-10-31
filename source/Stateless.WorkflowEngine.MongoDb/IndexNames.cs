@@ -9,5 +9,10 @@ namespace Stateless.WorkflowEngine.MongoDb
         public const string Workflow_Priority_RetryCount_CreatedOn = "Workflow_Priority_RetryCount_CreatedOn";
 
         public const string CompletedWorkflow_CreatedOn = "CompletedWorkflow_CreatedOn";
+
+        /// <summary>
+        /// Partial index containing only suspended workflows.
+        /// </summary>
+        public const string Workflow_IsSuspended = "Workflow_IsSuspended";
     }
 }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
-using Stateless.WorkflowEngine.RavenDb.Index;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
 using Raven.Client.Exceptions;
@@ -471,13 +470,12 @@ namespace Stateless.WorkflowEngine.RavenDb
                 }
             }
 
-            if (autoCreateIndexes)
-            {
-                // ravendb indexes are safe by default, so we can just fire this off every time
-                // https://ravendb.net/docs/article-page/4.2/csharp/indexes/creating-and-deploying
-                new WorkflowIndex_Priority_RetryCount_CreatedOn().Execute(_documentStore);
-                new CompletedWorkflowIndex_CreatedOn().Execute(_documentStore);
-            }
+            // No static indexes are created.  All queries in this store are dynamic queries (session.Query<T>() without
+            // an index), which RavenDB only ever answers from auto indexes - it creates an auto index for each query
+            // shape on first use (e.g. "Auto/RavenWorkflows/ByWorkflow.IsSuspended") and maintains it from then on.
+            // Versions prior to 6.0 deployed static indexes here ("WorkflowIndex/Priority/RetryCount/CreatedOn" and
+            // "CompletedWorkflowIndex/CreatedOn"), but no query ever used them, so they only added indexing and storage
+            // overhead.  Existing copies can be deleted from the database.  See https://ravendb.net/docs/article-page/7.0/csharp/indexes/creating-and-deploying
         }
 
 

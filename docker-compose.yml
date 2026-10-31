@@ -15,13 +15,29 @@ services:
     ports:
       - "8080:8080"
       - "38888:38888"
+    # unsecured dev instance - no setup wizard, accessible from the host and other containers
     environment:
-      - RAVEN_Setup_Mode=Initial
-      - RAVEN_Args=--Security.UnsecureMethodsAllowed=Local,Network
+      - RAVEN_Setup_Mode=None
+      - RAVEN_License_Eula_Accepted=true
+      - RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork
     volumes:
       - ravendb_data:/opt/RavenDB/Server/RavenData
+    restart: unless-stopped
+
+  webconsole:
+    build:
+      context: ./source
+      dockerfile: Stateless.WorkflowEngine.WebConsole/Dockerfile
+    container_name: stateless_webconsole
+    ports:
+      - "8811:8080"
+    volumes:
+      - webconsole_data:/app/Data
+    depends_on:
+      - mongodb
     restart: unless-stopped
 
 volumes:
   mongodb_data:
   ravendb_data:
+  webconsole_data:

@@ -46,7 +46,7 @@ function GetMSBuildPath()
 	return $msbuild
 }
 
-function UpdateAppConfigSetting
+function UpdateJsonSetting
 {
 	param([string]$filePath, [string]$key, [string]$value)
 
@@ -54,13 +54,9 @@ function UpdateAppConfigSetting
 		throw "$filePath does not exist - unable to update setting"
 	}
 
-	$doc = New-Object System.Xml.XmlDocument
-	$doc.Load($filePath)
-
-	$setting = $doc.SelectSingleNode("//appSettings/add[@key = '$key']")
-	$setting.value = "$value"
-
-	$doc.Save($filePath)
+	$json = Get-Content -Path $filePath -Raw | ConvertFrom-Json
+	$json.$key = $value
+	$json | ConvertTo-Json -Depth 10 | Set-Content -Path $filePath -Encoding UTF8
 }
 
 function UpdateProjectVersion
@@ -144,7 +140,7 @@ function ZipFile
 	}
 
 	set-alias sz $exeloc  
-	sz a -xr!'Data\users.json' -tzip -r $zipFile $sourceFile | Out-Null
+	sz a -xr!'Data' -tzip -r $zipFile $sourceFile | Out-Null
 }
 
 $root = $PSScriptRoot
@@ -161,6 +157,7 @@ UpdateAssemblyVersion -assemblyFilePath "$source\SharedAssemblyInfo.cs" -version
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" -version $version -versionWithSuffix $versionWithSuffix
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
+UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" -version $version -versionWithSuffix $versionWithSuffix
 
 # run msbuild on the solution
 Write-Host "Building solution $version"
@@ -193,19 +190,23 @@ $zip = "$root\Stateless.WorkflowEngine.RavenDb_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
 ZipFile -sourcefile "$ravendbPublishDir\*.*" -zipfile $zip 
 
-# package the workflow console with production settings
+# package the web console (the client is built into wwwroot by the BuildClient target - requires node/npm)
 Write-Host "Building Stateless.Workflow.WebConsole version $versionWithSuffix"
 $webconsolePublishDir = "$publish\Stateless.WorkflowEngine.WebConsole"
-& $msbuild "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$webconsolePublishDir"
-if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe")) {
+& dotnet publish "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" -c Release -r win-x64 --self-contained false -o "$webconsolePublishDir"
+if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe") -or !(Test-Path -Path "$webconsolePublishDir\wwwroot\index.html")) {
 	Write-Host "WebConsole publish location/files not found at $webconsolePublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit
 }
-UpdateAppConfigSetting -filePath "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe.config" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
+UpdateJsonSetting -filePath "$webconsolePublishDir\appsettings.json" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
 
 $zip = "$root\Stateless.WorkflowEngine.WebConsole_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
-ZipFile -sourcefile "$webconsolePublishDir\*.*" -zipfile $zip 
+ZipFile -sourcefile "$webconsolePublishDir\*" -zipfile $zip 
+
+$buildDocker = Read-Host -Prompt "Build the web console Docker image? [y/N]"
+if ($buildDocker -eq "y") {
+	& docker build -f "$source\Stateless.WorkflowEngine.WebConsole\Dockerfile" -t "stateless-workflowengine-webconsole:$versionWithSuffix" -t "stateless-workflowengine-webconsole:latest" "$source"
+}
 
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White
-

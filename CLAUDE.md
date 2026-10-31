@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Stateless.WorkflowEngine is a .NET workflow engine built as a wrapper around the [Stateless](https://github.com/nblumhardt/stateless) state machine library. It adds persistence, retry mechanisms, exception handling, and workflow suspension on top of Stateless. Current version: 4.1.1.
+Stateless.WorkflowEngine is a .NET workflow engine built as a wrapper around the [Stateless](https://github.com/nblumhardt/stateless) state machine library. It adds persistence, retry mechanisms, exception handling, and workflow suspension on top of Stateless.
 
 ## Build Commands
 
@@ -22,7 +22,9 @@ powershell -File deployment/publish.ps1
 ## Testing
 
 - **Framework**: NUnit 4.1.0 with NSubstitute 5.1.0 for mocking
-- **Test projects** target .NET Framework 4.8 and use `packages.config` (not SDK-style)
+- **Test projects** target .NET Framework 4.8 and use `packages.config` (not SDK-style), except `Test.Stateless.WorkflowEngine.WebConsole` (net10.0, SDK-style, includes `WebApplicationFactory` integration tests)
+
+`start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
 
 ```bash
 # Run all tests (from solution root)
@@ -71,8 +73,9 @@ Test projects:
 
 ### Other Projects
 
-- **`Stateless.WorkflowEngine.WebConsole`** (net4.8) — Nancy-based web console for monitoring workflows, managing connections, user auth
-- **`Example`** (net10.0) — interactive console app demonstrating all features and stores
+- **`Stateless.WorkflowEngine.WebConsole`** (net10.0) — ASP.NET Core (Kestrel) host and API for the web console: monitoring workflows, managing connections, user auth. See "Web Console" below.
+- **`Stateless.WorkflowEngine.WebConsole.Client`** — Vue 3 + Vite + Nuxt UI (JavaScript) SPA, built into the WebConsole's `wwwroot`
+- **`Example`** (net8.0) — interactive console app demonstrating all features and stores
 
 ## Key Patterns
 
@@ -84,4 +87,21 @@ Test projects:
 
 ## Mixed Target Frameworks
 
-The core library targets **netstandard2.0**. The test projects, WebConsole, and RavenDb store target **.NET Framework 4.8** and use legacy `packages.config` NuGet management. The Example project targets **net6.0**.
+The core library targets **netstandard2.0**. The core/MongoDb/RavenDb test projects and the RavenDb store target **.NET Framework 4.8** and use legacy `packages.config` NuGet management. The WebConsole and its test project are SDK-style **net10.0**. The Example project targets **net8.0**.
+
+## Web Console
+
+- **Backend** (`source/Stateless.WorkflowEngine.WebConsole`): controllers under `Features/<Area>/` (route prefix `/api`), all inheriting `AuthenticatedBaseController`. Validators are plain classes with `virtual` methods so they can be substituted in tests. Services are registered in `WebConsoleServiceCollectionExtensions.AddWebConsole()`.
+- **Auth**: cookie authentication; each claim in `Security/Claims.cs` is also an authorization policy of the same name. Admins get all claims. The principal is rebuilt from the user store on every request.
+- **Storage**: users and connections live in `{DataPath}/users.json` (format shared with the old Nancy console). Connection passwords use ASP.NET Data Protection (keys in `{DataPath}/keys`); legacy AES-GCM passwords are migrated on load.
+- **Hosting**: Windows service (`Stateless.WorkflowEngine.Console`, default `http://localhost:8811`) or Docker (`Dockerfile` in the project, context = `source`). `Update.ps1` is run manually by admins to upgrade; the UI only shows an update-available banner.
+- **Frontend** (`source/Stateless.WorkflowEngine.WebConsole.Client`): `composables/use*.js` per area with module-level shared state, `api()` fetch wrapper in `useApi.js`, views under `features/<area>/`.
+
+```bash
+# dev: run the API (port 8811) and the Vite dev server (port 5173, proxies /api)
+dotnet run --project source/Stateless.WorkflowEngine.WebConsole
+cd source/Stateless.WorkflowEngine.WebConsole.Client && npm install && npm run dev
+
+# publish (runs npm ci/build into wwwroot; pass -p:SkipClientBuild=true to skip)
+dotnet publish source/Stateless.WorkflowEngine.WebConsole -c Release -r win-x64 --self-contained false
+```

@@ -17,3 +17,6 @@ bin/
 obj/
 
 /.claude/*
+
+source/Stateless.WorkflowEngine.WebConsole/wwwroot/
+source/Stateless.WorkflowEngine.WebConsole/Data/

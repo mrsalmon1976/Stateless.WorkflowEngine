@@ -29,7 +29,7 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
         [OneTimeSetUp]
         public void MongoDbWorkflowStoreTest_OneTimeSetUp()
         {
-            var connectionString = "mongodb://localhost";
+            var connectionString = TestSettings.MongoDbConnectionString;
             var client = new MongoClient(connectionString);
             _database = client.GetDatabase("StatelessWorkflowTest");
         }

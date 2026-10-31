@@ -1,0 +1,8 @@
+**/bin
+**/obj
+**/node_modules
+**/.vs
+Stateless.WorkflowEngine.WebConsole/wwwroot
+Stateless.WorkflowEngine.WebConsole/Data
+Stateless.WorkflowEngine.WebConsole/logs
+packages

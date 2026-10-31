@@ -191,6 +191,7 @@
   <ItemGroup>
     <Compile Include="MongoDbSchemaServiceTest.cs" />
     <Compile Include="MongoDbWorkflowStoreTest.cs" />
+    <Compile Include="TestSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

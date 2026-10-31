@@ -9,7 +9,7 @@ Stateless.WorkflowEngine is a .NET workflow engine built on top of the [stateles
     - **MemoryStore:** In-memory persistence (good for testing).
     - **MongoDbStore:** Persistence using MongoDB (implemented in `source/Stateless.WorkflowEngine.MongoDb`).
     - **RavenDbStore:** Persistence using RavenDB (implemented in `source/Stateless.WorkflowEngine.RavenDb`).
-- **Web Console:** A self-hosted monitoring interface using Nancy, located in `source/Stateless.WorkflowEngine.WebConsole`.
+- **Web Console:** A monitoring interface - an ASP.NET Core (.NET 10) host in `source/Stateless.WorkflowEngine.WebConsole` serving a Vue 3 + Nuxt UI SPA from `source/Stateless.WorkflowEngine.WebConsole.Client`.
 - **Example App:** A sample application demonstrating usage is in `source/Example`.
 
 ## Architecture & Key Components
@@ -38,10 +38,10 @@ Alternatively, use the provided build script in the `deployment` folder:
 ```
 
 ### Running the Web Console
-The Web Console is a Topshelf-hosted service. You can run it as a console application for development:
+The Web Console runs as a Windows service (or Docker container) in production. For development, run the API and the Vite dev server (which proxies `/api` to the API):
 ```powershell
-cd source\Stateless.WorkflowEngine.WebConsole\bin\Debug
-.\Stateless.WorkflowEngine.WebConsole.exe
+dotnet run --project source\Stateless.WorkflowEngine.WebConsole      # http://localhost:8811
+cd source\Stateless.WorkflowEngine.WebConsole.Client; npm install; npm run dev   # http://localhost:5173
 ```
 
 ### Testing

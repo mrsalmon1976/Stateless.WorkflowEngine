@@ -1,7 +1,11 @@
 version: 1.0.{build}
 image: Visual Studio 2022
+install:
+# the web console targets .NET 10
+- ps: Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile dotnet-install.ps1; ./dotnet-install.ps1 -Channel 10.0 -InstallDir "$env:ProgramFiles\dotnet"
 before_build:
 - cmd: nuget restore ./source/Stateless.WorkflowEngine.sln
+- cmd: dotnet restore ./source/Stateless.WorkflowEngine.sln
 build:
   project: source/Stateless.WorkflowEngine.sln
   verbosity: minimal

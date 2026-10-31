@@ -15,6 +15,8 @@ namespace Stateless.WorkflowEngine.MongoDb
         void EnsureActiveIndexExists(IMongoDatabase database, string collectionName);
 
         void EnsureCompletedIndexExists(IMongoDatabase database, string collectionName);
+
+        void EnsureSuspendedIndexExists(IMongoDatabase database, string collectionName);
     }
 
     internal class MongoDbSchemaService : IMongoDbSchemaService
@@ -69,6 +71,33 @@ namespace Stateless.WorkflowEngine.MongoDb
 
             var indexOptions = new CreateIndexOptions();
             indexOptions.Name = IndexNames.CompletedWorkflow_CreatedOn;
+
+            var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
+            collection.Indexes.CreateOne(indexModel);
+        }
+
+        /// <summary>
+        /// Creates a partial index containing only suspended workflows.  Suspended workflows should be rare, so the
+        /// index stays small and cheap to maintain, while making suspended counts and queries index-only.  Being
+        /// partial, the query planner only uses it for queries that filter on IsSuspended == true.
+        /// </summary>
+        public void EnsureSuspendedIndexExists(IMongoDatabase database, string collectionName)
+        {
+            var collection = database.GetCollection<MongoWorkflow>(collectionName);
+
+            var indexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Ascending(wf => wf.Workflow.IsSuspended);
+
+            bool indexExists = IndexExists(collection, IndexNames.Workflow_IsSuspended, indexKeys);
+            if (indexExists)
+            {
+                return;
+            }
+
+            var indexOptions = new CreateIndexOptions<MongoWorkflow>();
+            indexOptions.Name = IndexNames.Workflow_IsSuspended;
+            indexOptions.PartialFilterExpression = Builders<MongoWorkflow>.Filter.Eq(wf => wf.Workflow.IsSuspended, true);
 
             var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);

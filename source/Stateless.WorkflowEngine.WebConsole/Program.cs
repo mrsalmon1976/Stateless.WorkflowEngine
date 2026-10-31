@@ -1,48 +1,44 @@
-﻿using NLog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Topshelf;
+using Microsoft.Extensions.Hosting.WindowsServices;
+using NLog.Web;
+using Stateless.WorkflowEngine.WebConsole;
+using Stateless.WorkflowEngine.WebConsole.Configuration;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
-namespace Stateless.WorkflowEngine.WebConsole
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    class Program
+    Args = args,
+    // when running as a Windows service the working directory is System32 - use the install folder instead
+    ContentRootPath = WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : null
+});
+
+builder.Host.UseWindowsService(o => o.ServiceName = "Stateless.WorkflowEngine.Console");
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
+
+var appSettings = new AppSettings(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddWebConsole(appSettings);
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
     {
-        private static Logger _logger = LogManager.GetCurrentClassLogger();
+        o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
-        static void Main(string[] args)
-        {
-            _logger.Info("Stateless.WorkflowEngine Console starting up");
+var app = builder.Build();
 
-            try
-            {
-                HostFactory.Run(
-                    configuration =>
-                    {
-                        configuration.Service<WebConsoleService>(
-                            service =>
-                            {
-                                service.ConstructUsing(x => new WebConsoleService());
-                                service.WhenStarted(x => x.Start());
-                                service.WhenStopped(x => x.Stop());
-                            });
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
-                        configuration.RunAsLocalSystem();
+// unknown api routes should 404 rather than fall through to the SPA
+app.Map("/api/{**path}", (HttpContext ctx) => Results.NotFound());
+app.MapFallbackToFile("index.html");
 
-                        configuration.SetServiceName("Stateless.WorkflowEngine.Console");
-                        configuration.SetDisplayName("Stateless.WorkflowEngine Console");
-                        configuration.SetDescription("The Stateless.WorkflowEngine Console service.");
-                    });
-                _logger.Info("Stateless.WorkflowEngine Console shutting down");
-            }
-            catch (Exception ex)
-            {
-                _logger.Fatal(ex, "Stateless.WorkflowEngine Console crashed!");
-            }
+app.Run();
 
-
-        }
-    }
+public partial class Program
+{
 }

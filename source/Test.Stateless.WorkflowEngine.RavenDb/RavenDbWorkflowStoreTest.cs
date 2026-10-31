@@ -35,7 +35,7 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
         {
             _documentStore = new DocumentStore
             {
-                Urls = new String[] { "http://localhost:8080" },
+                Urls = new String[] { TestSettings.RavenDbUrl },
                 Database = DbName
             };
             _documentStore.Initialize();
@@ -87,35 +87,27 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
         }
 
         [Test]
-        public void Initialise_AutoCreateIndexTrue_WorkflowIndexesAreCreated()
+        public void Initialise_AutoCreateIndexTrue_NoStaticIndexesAreCreated()
         {
-            using (var session = _documentStore.OpenSession())
-            {
-                RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
-                workflowStore.Initialise(false, true, false);
+            // the store relies on RavenDB auto indexes - see RavenDbWorkflowStore.Initialise
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            workflowStore.Initialise(false, true, false);
 
-                string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
-                Assert.That(indexNames.Count(), Is.GreaterThan(0));
-
-                var expectedIndex = indexNames.FirstOrDefault(x => x == "WorkflowIndex/Priority/RetryCount/CreatedOn");
-                Assert.That(expectedIndex, Is.Not.Null);
-            }
+            string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto/")).ToArray();
+            Assert.That(indexNames, Is.Empty);
         }
 
         [Test]
-        public void Initialise_AutoCreateIndexTrue_CompletedWorkflowIndexesAreCreated()
+        public void GetSuspendedCount_IsAnsweredFromAutoIndex()
         {
-            using (var session = _documentStore.OpenSession())
-            {
-                RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
-                workflowStore.Initialise(false, true, false);
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            workflowStore.Initialise(false, true, false);
 
-                string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto")).ToArray();
-                Assert.That(indexNames.Count(), Is.GreaterThan(0));
+            workflowStore.GetSuspendedCount();
+            workflowStore.GetActiveCount();
 
-                var expectedIndex = indexNames.FirstOrDefault(x => x == "CompletedWorkflowIndex/CreatedOn");
-                Assert.That(expectedIndex, Is.Not.Null);
-            }
+            string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10));
+            Assert.That(indexNames, Does.Contain("Auto/RavenWorkflows/ByWorkflow.IsSuspended"));
         }
 
         #endregion

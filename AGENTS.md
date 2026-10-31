@@ -4,14 +4,15 @@ This quick guide summarizes crucial architectural decision points and command re
 
 ## Build & Testing
 *   **Test Framework:** Uses NUnit 4.1.0 with NSubstitute 5.1.0.
-*   **Test Projects Target:** Be aware that WebConsole, MongoDb, and core test projects target **.NET Framework 4.8** and rely on `packages.config` for dependencies, not modern SDK-style approaches.
+*   **Test Projects Target:** Be aware that the MongoDb, RavenDb and core test projects target **.NET Framework 4.8** and rely on `packages.config` for dependencies, not modern SDK-style approaches. The WebConsole tests are SDK-style **net10.0**.
 *   **Running All Tests:** Use `dotnet test source/Stateless.WorkflowEngine.sln` from the solution root.
 
 ## Architecture
 *   **Mixed Targets:** The codebase uses multiple target frameworks:
     *   Core library: `netstandard2.0`
-    *   WebConsole/RavenDb/Tests: `.NET Framework 4.8`
-    *   Example demo app: `net6.0`
+    *   WebConsole (ASP.NET Core host + Vue/Nuxt UI SPA in `Stateless.WorkflowEngine.WebConsole.Client`): `net10.0`
+    *   RavenDb/Tests: `.NET Framework 4.8`
+    *   Example demo app: `net8.0`
 *   **MongoDb Serialization:** When dealing with MongoDB workflows, always ensure the use of `[BsonIgnoreExtraElements]` for defining classes to maintain forward compatibility.
 
 ## Build Commands
