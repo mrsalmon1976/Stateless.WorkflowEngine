@@ -10,9 +10,9 @@ Stateless.WorkflowEngine is a .NET workflow engine built as a wrapper around the
 
 ```bash
 # Build the solution
-msbuild source/Stateless.WorkflowEngine.sln
+dotnet build source/Stateless.WorkflowEngine.sln
 
-# Build via deployment script (finds MSBuild automatically, packages releases)
+# Build via deployment script (packages releases)
 powershell -File deployment/build.ps1
 
 # Publish NuGet packages
@@ -21,8 +21,8 @@ powershell -File deployment/publish.ps1
 
 ## Testing
 
-- **Framework**: NUnit 4.1.0 with NSubstitute 5.1.0 for mocking
-- **Test projects** target .NET Framework 4.8 and use `packages.config` (not SDK-style), except `Test.Stateless.WorkflowEngine.WebConsole` (net10.0, SDK-style, includes `WebApplicationFactory` integration tests)
+- **Framework**: NUnit 4.3.2 with NSubstitute 5.3.0 for mocking
+- **Test projects** are SDK-style net10.0. `Test.Stateless.WorkflowEngine.MongoDb`/`.RavenDb` reference `Test.Stateless.WorkflowEngine` for the shared `WorkflowStoreTestBase`; `Test.Stateless.WorkflowEngine.WebConsole` includes `WebApplicationFactory` integration tests
 
 `start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
 
@@ -54,9 +54,9 @@ Test projects:
 
 | Store | Project | Target | Key Dependency |
 |-------|---------|--------|---------------|
-| MemoryWorkflowStore | Core library | netstandard2.0 | — |
-| MongoDbWorkflowStore | `Stateless.WorkflowEngine.MongoDb` | netstandard2.0 | MongoDB.Driver 2.26.0 |
-| RavenDbWorkflowStore | `Stateless.WorkflowEngine.RavenDb` | net4.8 | RavenDB.Client 5.4.210 |
+| MemoryWorkflowStore | Core library | net10.0 | — |
+| MongoDbWorkflowStore | `Stateless.WorkflowEngine.MongoDb` | net10.0 | MongoDB.Driver 2.30.0 |
+| RavenDbWorkflowStore | `Stateless.WorkflowEngine.RavenDb` | net10.0 | RavenDB.Client 7.2.2 |
 
 ### Workflow Lifecycle
 
@@ -75,7 +75,7 @@ Test projects:
 
 - **`Stateless.WorkflowEngine.WebConsole`** (net10.0) — ASP.NET Core (Kestrel) host and API for the web console: monitoring workflows, managing connections, user auth. See "Web Console" below.
 - **`Stateless.WorkflowEngine.WebConsole.Client`** — Vue 3 + Vite + Nuxt UI (JavaScript) SPA, built into the WebConsole's `wwwroot`
-- **`Example`** (net8.0) — interactive console app demonstrating all features and stores
+- **`Example`** (net10.0) — interactive console app demonstrating all features and stores
 
 ## Key Patterns
 
@@ -85,9 +85,9 @@ Test projects:
 - **DI support**: `IWorkflowEngineDependencyResolver` or override `CreateWorkflowActionInstance<T>()`
 - Serialization via Newtonsoft.Json; MongoDB workflows should use `[BsonIgnoreExtraElements]` for forward compatibility
 
-## Mixed Target Frameworks
+## Target Framework
 
-The core library targets **netstandard2.0**. The core/MongoDb/RavenDb test projects and the RavenDb store target **.NET Framework 4.8** and use legacy `packages.config` NuGet management. The WebConsole and its test project are SDK-style **net10.0**. The Example project targets **net8.0**.
+Every project is SDK-style and targets **net10.0** (from v6; .NET Framework consumers stay on 5.x). Packages use `PackageReference` — there is no `packages.config`, `.nuget` folder or `SharedAssemblyInfo.cs`; versions live in each csproj and are set by `deployment/build.ps1`.
 
 ## Web Console
 

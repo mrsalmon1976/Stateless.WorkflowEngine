@@ -33,6 +33,8 @@ This table shows the client version and the associated driver/client versions us
 |           | 5.0.0     | RavenDB.Client | 7.2.1           |
 |           | 5.1.0     | RavenDB.Client | 7.2.2           |
 
+From version 6.0, all packages target **.NET 10** (`net10.0`).  Version 5.x targeted .NET Standard 2.0 (and .NET Framework 4.8 for RavenDb) - applications running on .NET Framework should stay on 5.x.
+
 # Workflow Configuration
 
 Workflows are configured in a similar fashion to Stateless.  You should make an effort to understand how Stateless works before attempting to use this workflow engine.  All configuration should go into the `Initialise` override on the Workflow itself.  Extra properties can be added to your custom workflows, and these will be serialized with the workflow when it is persisted to the store. The Stateless concepts of State and Triggers remain the same, and are used by the workflow engine to move between actions in the workflow.
@@ -434,6 +436,14 @@ Each dashboard load (and auto refresh) requests the workflow counts for every co
 ```
 
 The example application and the MongoDb/RavenDb test projects use these containers by default.  Tests that need a database are marked with the `RequiresMongoDb` and `RequiresRavenDb` categories.
+
+Every project targets .NET 10, so the solution builds and tests with the .NET 10 SDK alone:
+
+```powershell
+dotnet build source\Stateless.WorkflowEngine.sln
+dotnet test source\Stateless.WorkflowEngine.sln     # needs start.ps1 running for the database tests
+dotnet test source\Stateless.WorkflowEngine.sln --filter "TestCategory!=RequiresMongoDb&TestCategory!=RequiresRavenDb"   # no databases needed
+```
 
 To work on the web console with hot reload, run the API and the Vite dev server (which proxies `/api` calls to the API):
 

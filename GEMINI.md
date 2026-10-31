@@ -22,14 +22,14 @@ Stateless.WorkflowEngine is a .NET workflow engine built on top of the [stateles
 ## Building and Running
 
 ### Prerequisites
-- .NET SDK / Visual Studio
-- MSBuild (for build scripts)
+- .NET 10 SDK (every project targets `net10.0`)
+- Node.js/npm (only for publishing the web console client)
 - PowerShell (for deployment scripts)
 
 ### Build Commands
-The project uses MSBuild. You can build the solution from the `source` directory:
+You can build the solution from the `source` directory:
 ```powershell
-msbuild Stateless.WorkflowEngine.sln
+dotnet build Stateless.WorkflowEngine.sln
 ```
 
 Alternatively, use the provided build script in the `deployment` folder:
@@ -45,7 +45,7 @@ cd source\Stateless.WorkflowEngine.WebConsole.Client; npm install; npm run dev  
 ```
 
 ### Testing
-Tests are written using NUnit and can be found in the `source/Test.*` projects. You can run them using the NUnit test runner or through Visual Studio.
+Tests are written using NUnit and can be found in the `source/Test.*` projects. Run them with `dotnet test source/Stateless.WorkflowEngine.sln` or through Visual Studio. The `RequiresMongoDb`/`RequiresRavenDb` tests need the containers started by `start.ps1`.
 
 ## Development Conventions
 
@@ -59,4 +59,3 @@ Tests are written using NUnit and can be found in the `source/Test.*` projects. 
 - `source/`: Contains the main solution and project files.
 - `deployment/`: Contains build and packaging scripts.
 - `docs/`: Documentation and example files.
-- `packages/`: NuGet packages.

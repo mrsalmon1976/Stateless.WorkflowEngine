@@ -1,5 +1,5 @@
 version: 1.0.{build}
-# the web console targets .NET 10, which needs the MSBuild that ships with Visual Studio 2026 - the
+# the solution targets .NET 10, which needs the MSBuild that ships with Visual Studio 2026 - the
 # Visual Studio 2022 MSBuild ignores the .NET 10 SDK and falls back to an older one (error NETSDK1045)
 image: Visual Studio 2026
 install:
@@ -11,13 +11,9 @@ install:
     }
     dotnet --list-sdks
 before_build:
-- cmd: nuget restore ./source/Stateless.WorkflowEngine.sln
 - cmd: dotnet restore ./source/Stateless.WorkflowEngine.sln
-build:
-  project: source/Stateless.WorkflowEngine.sln
-  verbosity: minimal
-test:
-  categories:
-    except:
-    - RequiresRavenDb
-    - RequiresMongoDb
+build_script:
+# the web console's client (npm) build only runs on publish, so a plain build doesn't need node
+- cmd: dotnet build ./source/Stateless.WorkflowEngine.sln -c Release --no-restore
+test_script:
+- cmd: dotnet test ./source/Stateless.WorkflowEngine.sln -c Release --no-build --filter "TestCategory!=RequiresMongoDb&TestCategory!=RequiresRavenDb"

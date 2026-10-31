@@ -1,140 +1,20 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.props" Condition="Exists('..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.props')" />
-  <Import Project="..\packages\NUnit.4.1.0\build\NUnit.props" Condition="Exists('..\packages\NUnit.4.1.0\build\NUnit.props')" />
-  <Import Project="..\packages\NUnit3TestAdapter.4.5.0\build\net462\NUnit3TestAdapter.props" Condition="Exists('..\packages\NUnit3TestAdapter.4.5.0\build\net462\NUnit3TestAdapter.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>8.0.30703</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Test.Stateless.WorkflowEngine</RootNamespace>
-    <AssemblyName>Test.Stateless.WorkflowEngine</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
-    <RestorePackages>true</RestorePackages>
-    <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="Castle.Core, Version=5.0.0.0, Culture=neutral, PublicKeyToken=407dd0808d44fbdc, processorArchitecture=MSIL">
-      <HintPath>..\packages\Castle.Core.5.2.1\lib\net462\Castle.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.VisualStudio.CodeCoverage.Shim, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.CodeCoverage.17.14.1\lib\net462\Microsoft.VisualStudio.CodeCoverage.Shim.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="NSubstitute, Version=5.3.0.0, Culture=neutral, PublicKeyToken=92dd2e9066daa5ca, processorArchitecture=MSIL">
-      <HintPath>..\packages\NSubstitute.5.3.0\lib\net462\NSubstitute.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework, Version=4.0.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\packages\NUnit.4.1.0\lib\net462\nunit.framework.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework.legacy, Version=4.0.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\packages\NUnit.4.1.0\lib\net462\nunit.framework.legacy.dll</HintPath>
-    </Reference>
-    <Reference Include="Stateless, Version=4.0.0.0, Culture=neutral, PublicKeyToken=93038f0927583c9a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Stateless.5.20.1\lib\net462\Stateless.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data.Services.Client" />
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="WorkflowClientTest.cs" />
-    <Compile Include="Services\WorkflowRegistrationServiceTest.cs" />
-    <Compile Include="Stores\MemoryWorkflowStoreTest.cs" />
-    <Compile Include="Stores\WorkflowStoreTestBase.cs" />
-    <Compile Include="WorkflowEngineExceptionHandlerTest.cs" />
-    <Compile Include="WorkflowServerTest.cs" />
-    <Compile Include="Workflows\Async\Actions\AsyncDoingStuffAction.cs" />
-    <Compile Include="Workflows\Async\Actions\NoDefaultConstructorAsyncAction.cs" />
-    <Compile Include="Workflows\Async\TestableAsyncWorkflow.cs" />
-    <Compile Include="Workflows\Basic\Actions\DoingStuffAction.cs" />
-    <Compile Include="Workflows\Basic\BasicWorkflow.cs" />
-    <Compile Include="Workflows\Broken\BrokenWorkflow.cs" />
-    <Compile Include="Workflows\Delayed\Actions\DelayedAction.cs" />
-    <Compile Include="Workflows\Delayed\DelayedWorkflow.cs" />
-    <Compile Include="Workflows\DependencyInjection\Actions\NoDefaultConstructorAction.cs" />
-    <Compile Include="Workflows\DependencyInjection\DependencyInjectionWorkflow.cs" />
-    <Compile Include="Workflows\DecreasingPriority\Actions\AlterPriorityAction.cs" />
-    <Compile Include="Workflows\DecreasingPriority\DecreasingPriorityWorkflow.cs" />
-    <Compile Include="Workflows\SimpleTwoState\Actions\SendEmailAction.cs" />
-    <Compile Include="Workflows\SimpleTwoState\Actions\LoadDataAction.cs" />
-    <Compile Include="Workflows\SimpleTwoState\SimpleTwoStateWorkflow.cs" />
-    <Compile Include="Workflows\SingleInstance\SingleInstanceWorkflow.cs" />
-    <Compile Include="WorkflowTest.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj">
-      <Project>{EB4615D8-4123-4316-8D92-285680D6100C}</Project>
-      <Name>Stateless.WorkflowEngine</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\NUnit3TestAdapter.4.5.0\build\net462\NUnit3TestAdapter.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit3TestAdapter.4.5.0\build\net462\NUnit3TestAdapter.props'))" />
-    <Error Condition="!Exists('..\packages\NUnit.4.1.0\build\NUnit.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit.4.1.0\build\NUnit.props'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.props'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.targets'))" />
-  </Target>
-  <Import Project="..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.targets" Condition="Exists('..\packages\Microsoft.CodeCoverage.17.14.1\build\netstandard2.0\Microsoft.CodeCoverage.targets')" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

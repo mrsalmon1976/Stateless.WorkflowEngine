@@ -1,51 +1,6 @@
 $ErrorActionPreference = "Stop"
 Clear-Host
 
-function GetMSBuildPath()
-{
-	$msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-	
-	# default to VS2022 Pro
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
-	}
-	
-	# VS2022 Community
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
-	}
-
-	# VS2019
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe"
-	}
-	
-	# VS2017
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\15.0\Bin\MSBuild.exe"
-	}
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "D:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\MSBuild\15.0\Bin\MSBuild.exe"
-	}
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		$msbuild = "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSBuild.exe"
-	}
-	
-	if ([System.IO.File]::Exists($msbuild) -eq $false)
-	{
-		Write-Output "Unable to find valid MSBuild.exe" 
-		Throw "Unable to find valid MSBuild.exe" 
-		exit 1
-	}	
-	return $msbuild
-}
-
 function UpdateJsonSetting
 {
 	param([string]$filePath, [string]$key, [string]$value)
@@ -86,40 +41,6 @@ function UpdateXmlNodeIfExists
 	}
 }
 
-function UpdateAssemblyVersion
-{
-  param ([string]$assemblyFilePath, [string]$version)
-  $newVersion = 'AssemblyVersion("' + $version + '")';
-  $newFileVersion = 'AssemblyFileVersion("' + $version + '")';
-
-  if (!(Test-Path -Path $assemblyFilePath)) { throw "Assembly version file '$assemblyFilePath' does not exist" }
-
-	$tmpFile = $assemblyFilePath + ".tmp"
-	if (Test-Path -Path $tmpFile) { Remove-Item -Path $tmpFile -Force }
-
- 	Get-Content -Encoding UTF8 $assemblyFilePath | 
-    	%{$_ -replace 'AssemblyVersion\("[0-9]+(\.([0-9]+|\*)){1,3}"\)', $newVersion } |
-    	%{$_ -replace 'AssemblyFileVersion\("[0-9]+(\.([0-9]+|\*)){1,3}"\)', $newFileVersion }  > $tmpFile
-
- 	Move-Item $tmpFile $assemblyFilePath -force
-}
-
-function UpdateNuspecVersion
-{
-	param ([string]$filePath, [string]$version)
-	[xml]$xmlDoc = Get-Content $filePath
-	$xmlDoc.package.metadata.version = $version
-
-	foreach ($dep in $xmlDoc.package.metadata.dependencies.group.dependency) {
-		if ($dep.id -eq "Stateless.WorkflowEngine") {
-			$dep.version = $version
-		}
-	}
-
-	$xmlDoc.Save($filePath)
-	
-}
-
 function ZipFile
 {
 	param(
@@ -153,23 +74,15 @@ $versionWithSuffix = "$version-$preReleaseSuffix".TrimEnd("-")
 
 
 # make sure the files reflect the correct assembly version
-UpdateAssemblyVersion -assemblyFilePath "$source\SharedAssemblyInfo.cs" -version $version
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" -version $version -versionWithSuffix $versionWithSuffix
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -version $version -versionWithSuffix $versionWithSuffix
 UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" -version $version -versionWithSuffix $versionWithSuffix
 
-# run msbuild on the solution
-Write-Host "Building solution $version"
-# Set-Location "$source"
-$msbuild = GetMSBuildPath
-# & $msbuild Stateless.WorkflowEngine.sln /t:Clean,Build /p:Configuration=Release /p:OutDir=$publish
-# Set-Location $root
-
 # package mongodb
 Write-Host "Building Stateless.Workflow.MongoDb version $versionWithSuffix"
 $mongodbPublishDir = "$publish\Stateless.WorkflowEngine.MongoDb"
-& $msbuild "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$mongodbPublishDir"
+& dotnet publish "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -c Release -o "$mongodbPublishDir"
 if (!(Test-Path -Path "$mongodbPublishDir\Stateless.WorkflowEngine.MongoDb.dll")) {
 	Write-Host "MongoDb publish location/files not found at $mongodbPublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit
@@ -181,7 +94,7 @@ ZipFile -sourcefile "$mongodbPublishDir\*.*" -zipfile $zip
 # package raven db 
 Write-Host "Building Stateless.Workflow.RavenDB version $versionWithSuffix"
 $ravendbPublishDir = "$publish\Stateless.WorkflowEngine.RavenDb"
-& $msbuild "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" /t:Clean,Build /p:Configuration=Release /p:OutDir="$ravendbPublishDir"
+& dotnet publish "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -c Release -o "$ravendbPublishDir"
 if (!(Test-Path -Path $ravendbPublishDir) -or !(Test-Path -Path "$ravendbPublishDir\Stateless.WorkflowEngine.RavenDb.dll")) {
 	Write-Host "RavenDb publish location/files not found at $ravendbPublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit

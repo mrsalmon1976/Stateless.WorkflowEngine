@@ -5,33 +5,21 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stateless.WorkflowEngine", "Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj", "{EB4615D8-4123-4316-8D92-285680D6100C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine", "Test.Stateless.WorkflowEngine\Test.Stateless.WorkflowEngine.csproj", "{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{63251489-0863-4B6D-85AB-DEA53F9A2877}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.Stateless.WorkflowEngine", "Test.Stateless.WorkflowEngine\Test.Stateless.WorkflowEngine.csproj", "{CFAC7B02-61FB-46CF-A2E1-AAC075D6156A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stateless.WorkflowEngine.MongoDb", "Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj", "{650FF1F8-3DCC-4AA5-9D18-E4F77DB03C78}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.MongoDb", "Test.Stateless.WorkflowEngine.MongoDb\Test.Stateless.WorkflowEngine.MongoDb.csproj", "{A050AC70-2BB5-49DD-BBD3-E6D9E6572CFA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.Stateless.WorkflowEngine.MongoDb", "Test.Stateless.WorkflowEngine.MongoDb\Test.Stateless.WorkflowEngine.MongoDb.csproj", "{A050AC70-2BB5-49DD-BBD3-E6D9E6572CFA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.RavenDb", "Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj", "{61162277-AAE8-4189-AA1A-DC8545F87AE7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stateless.WorkflowEngine.RavenDb", "Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj", "{61162277-AAE8-4189-AA1A-DC8545F87AE7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.RavenDb", "Test.Stateless.WorkflowEngine.RavenDb\Test.Stateless.WorkflowEngine.RavenDb.csproj", "{858F932F-5F2A-4222-9152-4DB350F86527}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BB54F56E-1BF6-4C21-8E6C-16D8D12A873C}"
-	ProjectSection(SolutionItems) = preProject
-		SharedAssemblyInfo.cs = SharedAssemblyInfo.cs
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.Stateless.WorkflowEngine.RavenDb", "Test.Stateless.WorkflowEngine.RavenDb\Test.Stateless.WorkflowEngine.RavenDb.csproj", "{858F932F-5F2A-4222-9152-4DB350F86527}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example", "Example\Example.csproj", "{61307C2A-43B4-46A0-AC6D-53DA3A732450}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stateless.WorkflowEngine.WebConsole", "Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj", "{519565B1-4DCE-4D9E-9F96-C0AB6E7041FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Stateless.WorkflowEngine.WebConsole", "Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj", "{519565B1-4DCE-4D9E-9F96-C0AB6E7041FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Stateless.WorkflowEngine.WebConsole", "Test.Stateless.WorkflowEngine.WebConsole\Test.Stateless.WorkflowEngine.WebConsole.csproj", "{82A491EC-F29C-49FF-ACBC-B05860825131}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.Stateless.WorkflowEngine.WebConsole", "Test.Stateless.WorkflowEngine.WebConsole\Test.Stateless.WorkflowEngine.WebConsole.csproj", "{82A491EC-F29C-49FF-ACBC-B05860825131}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

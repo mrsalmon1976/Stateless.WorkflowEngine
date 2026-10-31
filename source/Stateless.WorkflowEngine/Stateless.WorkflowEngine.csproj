@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Version>5.1.0</Version>
     <AssemblyVersion>5.1.0</AssemblyVersion>
     <FileVersion>5.1.0</FileVersion>
@@ -13,4 +13,4 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Stateless" Version="5.20.1" />
   </ItemGroup>
-</Project>
+</Project>

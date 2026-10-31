@@ -33,12 +33,14 @@ if (!(Test-Path -Path $statelessWorkflowMongoDbNupkg)) {
 
 # now we push!
 if ($isProduction) {
-    & $sourceFolder\.nuget\nuget push "$statelessWorkflowNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
-    & $sourceFolder\.nuget\nuget push "$statelessWorkflowMongoDbNupkg" -Source https://www.nuget.org/api/v2/package -ApiKey $apiKey
+    & dotnet nuget push "$statelessWorkflowNupkg" --source https://api.nuget.org/v3/index.json --api-key $apiKey
+    & dotnet nuget push "$statelessWorkflowMongoDbNupkg" --source https://api.nuget.org/v3/index.json --api-key $apiKey
 }
 else {
-    & $sourceFolder\.nuget\nuget add "$statelessWorkflowNupkg" -source "$root\NugetTest\NugetPackageTest"
-    & $sourceFolder\.nuget\nuget add "$statelessWorkflowMongoDbNupkg" -source "$root\NugetTest\NugetPackageTest"
+    # pushing to a folder creates a local feed for the NugetTest app
+    New-Item -ItemType Directory -Force -Path "$root\NugetTest\NugetPackageTest" | Out-Null
+    & dotnet nuget push "$statelessWorkflowNupkg" --source "$root\NugetTest\NugetPackageTest"
+    & dotnet nuget push "$statelessWorkflowMongoDbNupkg" --source "$root\NugetTest\NugetPackageTest"
 }
 
 cd $root
