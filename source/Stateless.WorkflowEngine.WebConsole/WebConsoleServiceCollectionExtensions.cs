@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Stateless.WorkflowEngine.WebConsole.Configuration;
 using Stateless.WorkflowEngine.WebConsole.Storage.Stores;
 using Stateless.WorkflowEngine.WebConsole.Features.Connections;
+using Stateless.WorkflowEngine.WebConsole.Features.Dashboards;
 using Stateless.WorkflowEngine.WebConsole.Features.Users;
 using Stateless.WorkflowEngine.WebConsole.Security;
 using Stateless.WorkflowEngine.WebConsole.Services;
@@ -58,6 +59,7 @@ namespace Stateless.WorkflowEngine.WebConsole
 
             // validators
             services.AddTransient<ConnectionValidator>();
+            services.AddTransient<DashboardValidator>();
             services.AddTransient<UserValidator>();
 
             AddWebConsoleAuth(services);

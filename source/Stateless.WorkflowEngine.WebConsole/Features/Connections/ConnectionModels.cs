@@ -10,6 +10,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
         /// </summary>
         public Guid? Id { get; set; }
 
+        /// <summary>
+        /// Gets/sets the dashboard to add a new connection to - the default dashboard is used if not supplied.
+        /// Ignored when updating, as connections are copied rather than moved between dashboards.
+        /// </summary>
+        public Guid? DashboardId { get; set; }
+
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
         public string? Host { get; set; }
@@ -33,9 +39,16 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
         public string? WorkflowDefinitionCollection { get; set; }
     }
 
+    public class ConnectionCopyRequest
+    {
+        public Guid DashboardId { get; set; }
+    }
+
     public class ConnectionResponse
     {
         public Guid Id { get; set; }
+
+        public Guid? DashboardId { get; set; }
 
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
@@ -62,6 +75,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             return new ConnectionResponse
             {
                 Id = model.Id,
+                DashboardId = model.DashboardId,
                 WorkflowStoreType = model.WorkflowStoreType,
                 Host = model.Host,
                 Port = model.Port,

@@ -23,6 +23,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
         private const string Password = "password1";
 
         private static readonly Guid ConnectionId = Guid.NewGuid();
+        private static readonly Guid DashboardId = Guid.NewGuid();
         private static readonly Guid WorkflowId = Guid.NewGuid();
         private static readonly Guid LimitedUserId = Guid.NewGuid();
         private static readonly Guid TargetUserId = Guid.NewGuid();
@@ -45,6 +46,11 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
             yield return new Endpoint("POST", "/api/connections", connection, Claims.ConnectionAdd);
             yield return new Endpoint("PUT", $"/api/connections/{ConnectionId}", connection, Claims.ConnectionEdit);
             yield return new Endpoint("POST", "/api/connections/test", connection, Claims.ConnectionAdd);
+            yield return new Endpoint("POST", $"/api/connections/{ConnectionId}/copy", new { dashboardId = DashboardId }, Claims.ConnectionAdd);
+            yield return new Endpoint("GET", "/api/dashboards", null, null);
+            yield return new Endpoint("GET", $"/api/dashboards/{DashboardId}", null, null);
+            yield return new Endpoint("POST", "/api/dashboards", new { name = "New dashboard" }, Claims.DashboardAdd);
+            yield return new Endpoint("PUT", $"/api/dashboards/{DashboardId}", new { name = "Renamed" }, Claims.DashboardEdit);
             yield return new Endpoint("GET", $"/api/connections/{ConnectionId}/workflows", null, null);
             yield return new Endpoint("GET", $"/api/connections/{ConnectionId}/workflows/{WorkflowId}", null, null);
             yield return new Endpoint("GET", $"/api/connections/{ConnectionId}/definitions?qualifiedName=Test.Workflow", null, null);
@@ -59,6 +65,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
             // destructive calls last so they don't affect the other cases
             yield return new Endpoint("DELETE", $"/api/users/{TargetUserId}", null, Claims.UserDelete);
             yield return new Endpoint("DELETE", $"/api/connections/{ConnectionId}", null, Claims.ConnectionDelete);
+            yield return new Endpoint("DELETE", $"/api/dashboards/{DashboardId}", null, Claims.DashboardDelete);
         }
 
         private static IEnumerable<Endpoint> ProtectedEndpoints() => Endpoints().Where(x => x.Claim != null);
@@ -226,6 +233,10 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
                     new UserModel { UserName = "admin", Password = hash, Role = Roles.Admin },
                     new UserModel { Id = LimitedUserId, UserName = "limited", Password = hash, Role = Roles.User, Claims = Array.Empty<string>() },
                     new UserModel { Id = TargetUserId, UserName = "target", Password = hash, Role = Roles.User }
+                },
+                Dashboards = new[]
+                {
+                    new DashboardModel { Id = DashboardId, Name = "Other" }
                 },
                 Connections = new[]
                 {

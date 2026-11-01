@@ -4,6 +4,7 @@ import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import { useAuth } from '../../composables/useAuth'
 import { useConfirm } from '../../composables/useConfirm'
 import { useConnections } from '../../composables/useConnections'
+import { dashboardRoute, useDashboards } from '../../composables/useDashboards'
 import { notifySuccess } from '../../composables/useNotify'
 import { useWorkflows } from '../../composables/useWorkflows'
 import { ActiveErrorThreshold, ActiveWarningThreshold, Claims, MaxWorkflowCount } from '../../utils/constants'
@@ -20,6 +21,7 @@ const props = defineProps({
 const { hasClaim } = useAuth()
 const { confirm } = useConfirm()
 const { getConnection, getConnectionInfo } = useConnections()
+const { dashboards } = useDashboards()
 const { loadWorkflows, getWorkflow, suspendWorkflows, unsuspendWorkflows, deleteWorkflows } = useWorkflows(props.connectionId)
 const overlay = useOverlay()
 const detailSlideover = overlay.create(WorkflowDetailSlideover)
@@ -61,8 +63,10 @@ const columns = [
   { accessorKey: 'createdOn', header: 'Created', enableGlobalFilter: false }
 ]
 
+const connectionDashboard = computed(() => dashboards.value.find((d) => d.id === connection.value?.dashboardId) ?? null)
+
 const breadcrumb = computed(() => [
-  { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: { name: 'dashboard' } },
+  { label: connectionDashboard.value?.name ?? 'Dashboard', icon: 'i-lucide-layout-dashboard', to: dashboardRoute(connectionDashboard.value) },
   { label: connection.value ? `${connection.value.host}:${connection.value.port}` : '…' },
   { label: connection.value?.database ?? '…' }
 ])

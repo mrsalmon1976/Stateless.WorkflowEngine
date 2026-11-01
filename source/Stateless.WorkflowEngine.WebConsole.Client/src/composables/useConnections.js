@@ -5,10 +5,10 @@ const connections = ref([])
 const loading = ref(false)
 
 export function useConnections() {
-  async function loadConnections() {
+  async function loadConnections(dashboardId) {
     loading.value = true
     try {
-      connections.value = await api('/connections')
+      connections.value = await api(dashboardId ? `/connections?dashboardId=${dashboardId}` : '/connections')
     } finally {
       loading.value = false
     }
@@ -28,6 +28,10 @@ export function useConnections() {
       : api('/connections', { method: 'POST', body: connection, silent: true })
   }
 
+  function copyConnection(id, dashboardId) {
+    return api(`/connections/${id}/copy`, { method: 'POST', body: { dashboardId }, silent: true })
+  }
+
   function testConnection(connection) {
     return api('/connections/test', { method: 'POST', body: connection, silent: true })
   }
@@ -36,5 +40,5 @@ export function useConnections() {
     return api(`/connections/${id}`, { method: 'DELETE' })
   }
 
-  return { connections, loading, loadConnections, getConnection, getConnectionInfo, saveConnection, testConnection, deleteConnection }
+  return { connections, loading, loadConnections, getConnection, getConnectionInfo, saveConnection, copyConnection, testConnection, deleteConnection }
 }

@@ -20,11 +20,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         private IWorkflowInfoService _workflowInfoService = null!;
         private MemoryCache _memoryCache = null!;
         private ConnectionsController _controller = null!;
+        private DashboardModel _defaultDashboard = null!;
 
         [SetUp]
         public void SetUp()
         {
             _userStore = Substitute.For<IUserStore>();
+            _defaultDashboard = new DashboardModel { Name = DashboardModel.DefaultName, IsDefault = true };
+            _userStore.DefaultDashboard.Returns(_defaultDashboard);
             _validator = Substitute.For<ConnectionValidator>();
             _validator.Validate(Arg.Any<ConnectionRequest>()).Returns(new List<string>());
             _passwordProtector = Substitute.For<IConnectionPasswordProtector>();
@@ -58,6 +61,23 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
             Assert.That(connections.Select(x => x.Id), Is.EqualTo(new[] { c3.Id, c2.Id, c1.Id }));
             Assert.That(connections[0].HasPassword, Is.True);
             Assert.That(connections[1].HasPassword, Is.False);
+        }
+
+        [Test]
+        public void List_FiltersByDashboard_WhenSupplied()
+        {
+            var dashboardId = Guid.NewGuid();
+            var c1 = TestHelpers.CreateConnection("a");
+            c1.DashboardId = dashboardId;
+            var c2 = TestHelpers.CreateConnection("b");
+            c2.DashboardId = Guid.NewGuid();
+            _userStore.Connections.Returns(new[] { c1, c2 });
+
+            var result = (OkObjectResult)_controller.List(dashboardId);
+
+            var connections = ((IEnumerable<ConnectionResponse>)result.Value!).ToList();
+            Assert.That(connections.Select(x => x.Id), Is.EqualTo(new[] { c1.Id }));
+            Assert.That(connections[0].DashboardId, Is.EqualTo(dashboardId));
         }
 
         // --- Add ---
@@ -102,6 +122,112 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
             _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.WorkflowDefinitionCollection == "Defs"));
         }
 
+        [Test]
+        public void Add_UsesDefaultDashboard_WhenNoneSupplied()
+        {
+            _controller.Add(CreateRequest());
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.DashboardId == _defaultDashboard.Id));
+        }
+
+        [Test]
+        public void Add_UsesSuppliedDashboard()
+        {
+            var dashboard = new DashboardModel { Name = "Other" };
+            _userStore.GetDashboard(dashboard.Id).Returns(dashboard);
+            var request = CreateRequest();
+            request.DashboardId = dashboard.Id;
+
+            _controller.Add(request);
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.DashboardId == dashboard.Id));
+        }
+
+        [Test]
+        public void Add_Returns400_WhenDashboardNotFound()
+        {
+            var request = CreateRequest();
+            request.DashboardId = Guid.NewGuid();
+
+            var result = _controller.Add(request);
+
+            Assert.That(TestHelpers.GetErrors(result), Is.EqualTo(new[] { "Dashboard not found" }));
+            _userStore.DidNotReceiveWithAnyArgs().SaveConnection(default!);
+        }
+
+        // --- Copy ---
+
+        [Test]
+        public void Copy_Returns404_WhenConnectionNotFound()
+        {
+            var result = _controller.Copy(Guid.NewGuid(), new ConnectionCopyRequest { DashboardId = Guid.NewGuid() });
+
+            Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
+        }
+
+        [Test]
+        public void Copy_Returns400_WhenDashboardNotFound()
+        {
+            var existing = TestHelpers.CreateConnection();
+            _userStore.GetConnection(existing.Id).Returns(existing);
+
+            var result = _controller.Copy(existing.Id, new ConnectionCopyRequest { DashboardId = Guid.NewGuid() });
+
+            Assert.That(TestHelpers.GetErrors(result), Is.EqualTo(new[] { "Dashboard not found" }));
+            _userStore.DidNotReceiveWithAnyArgs().SaveConnection(default!);
+        }
+
+        [Test]
+        public void Copy_Returns400_WhenConnectionAlreadyOnDashboard()
+        {
+            var dashboard = new DashboardModel { Name = "Other" };
+            var existing = TestHelpers.CreateConnection();
+            existing.DashboardId = _defaultDashboard.Id;
+            // same store, different casing on the host and different credentials
+            var duplicate = TestHelpers.CreateConnection("LOCALHOST");
+            duplicate.DashboardId = dashboard.Id;
+            duplicate.User = "someone-else";
+            _userStore.GetConnection(existing.Id).Returns(existing);
+            _userStore.GetDashboard(dashboard.Id).Returns(dashboard);
+            _userStore.Connections.Returns(new[] { existing, duplicate });
+
+            var result = _controller.Copy(existing.Id, new ConnectionCopyRequest { DashboardId = dashboard.Id });
+
+            Assert.That(TestHelpers.GetErrors(result), Is.EqualTo(new[] { "The connection already exists on the 'Other' dashboard" }));
+            _userStore.DidNotReceiveWithAnyArgs().SaveConnection(default!);
+        }
+
+        [Test]
+        public void Copy_SavesNewConnectionWithCredentials_OnTargetDashboard()
+        {
+            var dashboard = new DashboardModel { Name = "Other" };
+            var existing = TestHelpers.CreateConnection();
+            existing.DashboardId = _defaultDashboard.Id;
+            existing.User = "joe";
+            existing.Password = "existing-cipher";
+            existing.ReplicaSet = "rs0";
+            existing.WorkflowDefinitionCollection = "Defs";
+            // a different database on the target dashboard is not a duplicate
+            var other = TestHelpers.CreateConnection(database: "otherdb");
+            other.DashboardId = dashboard.Id;
+            _userStore.GetConnection(existing.Id).Returns(existing);
+            _userStore.GetDashboard(dashboard.Id).Returns(dashboard);
+            _userStore.Connections.Returns(new[] { existing, other });
+
+            var result = _controller.Copy(existing.Id, new ConnectionCopyRequest { DashboardId = dashboard.Id });
+
+            Assert.That(result, Is.TypeOf<OkObjectResult>());
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x =>
+                x.Id != existing.Id
+                && x.DashboardId == dashboard.Id
+                && x.Host == existing.Host
+                && x.Database == existing.Database
+                && x.User == "joe"
+                && x.Password == "existing-cipher"
+                && x.ReplicaSet == "rs0"
+                && x.WorkflowDefinitionCollection == "Defs"));
+        }
+
         // --- Update ---
 
         [Test]
@@ -124,6 +250,20 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
 
             Assert.That(result, Is.TypeOf<OkObjectResult>());
             _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.Id == existing.Id && x.Host == "newhost" && x.Password == "existing-cipher"));
+        }
+
+        [Test]
+        public void Update_KeepsExistingDashboard()
+        {
+            var existing = TestHelpers.CreateConnection();
+            existing.DashboardId = Guid.NewGuid();
+            _userStore.GetConnection(existing.Id).Returns(existing);
+            var request = CreateRequest();
+            request.DashboardId = Guid.NewGuid();
+
+            _controller.Update(existing.Id, request);
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.DashboardId == existing.DashboardId));
         }
 
         [Test]

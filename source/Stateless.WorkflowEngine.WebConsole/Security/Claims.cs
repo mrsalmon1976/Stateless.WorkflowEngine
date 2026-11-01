@@ -8,6 +8,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Security
 
         public const string ConnectionEdit = "ConnectionEdit";
 
+        public const string DashboardAdd = "DashboardAdd";
+
+        public const string DashboardDelete = "DashboardDelete";
+
+        public const string DashboardEdit = "DashboardEdit";
+
         public const string RemoveWorkflow = "RemoveWorkflow";
 
         public const string SuspendWorkflow = "SuspendWorkflow";
@@ -32,6 +38,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Security
             ConnectionAdd,
             ConnectionDelete,
             ConnectionEdit,
+            DashboardAdd,
+            DashboardDelete,
+            DashboardEdit,
             RemoveWorkflow,
             SuspendWorkflow,
             UnsuspendWorkflow,

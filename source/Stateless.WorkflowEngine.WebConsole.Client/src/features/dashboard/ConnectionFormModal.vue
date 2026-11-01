@@ -4,7 +4,9 @@ import { useConnections } from '../../composables/useConnections'
 
 const props = defineProps({
   // the connection to edit - omit to add a new connection
-  connection: { type: Object, default: null }
+  connection: { type: Object, default: null },
+  // the dashboard to add a new connection to
+  dashboardId: { type: String, default: null }
 })
 
 const emit = defineEmits(['close'])
@@ -13,6 +15,7 @@ const { saveConnection, testConnection } = useConnections()
 const isEdit = computed(() => !!props.connection)
 const state = reactive({
   id: props.connection?.id ?? null,
+  dashboardId: props.connection?.dashboardId ?? props.dashboardId,
   workflowStoreType: props.connection?.workflowStoreType ?? 'MongoDb',
   host: props.connection?.host ?? '',
   port: props.connection?.port ?? 27017,

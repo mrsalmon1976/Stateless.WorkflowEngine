@@ -21,7 +21,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         { path: '', redirect: { name: 'dashboard' } },
-        { path: 'dashboard', name: 'dashboard', component: () => import('../features/dashboard/DashboardView.vue') },
+        // no dashboard id shows the default dashboard
+        { path: 'dashboard/:dashboardId?', name: 'dashboard', component: () => import('../features/dashboard/DashboardView.vue'), props: true },
         { path: 'connections/:connectionId/workflows', name: 'store', component: () => import('../features/store/StoreView.vue'), props: true },
         { path: 'users', name: 'users', component: () => import('../features/users/UsersView.vue'), meta: { claim: Claims.UserList } }
       ]

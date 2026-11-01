@@ -35,10 +35,14 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
 
         public static string InfoCacheKey(Guid connectionId) => $"ConnectionInfo_{connectionId}";
 
+        /// <summary>
+        /// Lists the connections, optionally only those on a dashboard.
+        /// </summary>
         [HttpGet]
-        public IActionResult List()
+        public IActionResult List([FromQuery] Guid? dashboardId = null)
         {
             var connections = _userStore.Connections
+                .Where(x => !dashboardId.HasValue || x.DashboardId == dashboardId)
                 .OrderBy(x => x.Host)
                 .ThenBy(x => x.Database)
                 .Select(ConnectionResponse.FromModel);
@@ -60,7 +64,49 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             var errors = _validator.Validate(request);
             if (errors.Count > 0) return ValidationFailed(errors);
 
+            DashboardModel? dashboard = request.DashboardId.HasValue ? _userStore.GetDashboard(request.DashboardId.Value) : _userStore.DefaultDashboard;
+            if (dashboard == null) return ValidationFailed("Dashboard not found");
+
             ConnectionModel connection = ToModel(request, null);
+            connection.DashboardId = dashboard.Id;
+            _userStore.SaveConnection(connection);
+            return Ok(ConnectionResponse.FromModel(connection));
+        }
+
+        /// <summary>
+        /// Copies a connection, including its credentials, to another dashboard.  Fails if the dashboard already
+        /// has a connection to the same store.
+        /// </summary>
+        [HttpPost("{id:guid}/copy")]
+        [Authorize(Policy = Claims.ConnectionAdd)]
+        public IActionResult Copy(Guid id, [FromBody] ConnectionCopyRequest request)
+        {
+            ConnectionModel? existing = _userStore.GetConnection(id);
+            if (existing == null) return ConnectionNotFound();
+
+            DashboardModel? dashboard = _userStore.GetDashboard(request.DashboardId);
+            if (dashboard == null) return ValidationFailed("Dashboard not found");
+
+            if (_userStore.Connections.Any(x => x.DashboardId == dashboard.Id && x.IsSameStoreAs(existing)))
+            {
+                return ValidationFailed($"The connection already exists on the '{dashboard.Name}' dashboard");
+            }
+
+            var connection = new ConnectionModel
+            {
+                DashboardId = dashboard.Id,
+                WorkflowStoreType = existing.WorkflowStoreType,
+                Host = existing.Host,
+                Port = existing.Port,
+                Database = existing.Database,
+                User = existing.User,
+                Password = existing.Password,
+                Key = existing.Key,
+                ReplicaSet = existing.ReplicaSet,
+                ActiveCollection = existing.ActiveCollection,
+                CompletedCollection = existing.CompletedCollection,
+                WorkflowDefinitionCollection = existing.WorkflowDefinitionCollection
+            };
             _userStore.SaveConnection(connection);
             return Ok(ConnectionResponse.FromModel(connection));
         }
@@ -149,6 +195,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             var model = new ConnectionModel
             {
                 Id = existing?.Id ?? Guid.NewGuid(),
+                DashboardId = existing?.DashboardId,
                 WorkflowStoreType = request.WorkflowStoreType,
                 Host = request.Host?.Trim(),
                 Port = request.Port,

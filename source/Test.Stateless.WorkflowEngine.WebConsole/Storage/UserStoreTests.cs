@@ -64,6 +64,89 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Storage
         }
 
         [Test]
+        public void Load_CreatesDefaultDashboard_WhenFileDoesNotExist()
+        {
+            var store = CreateStore();
+
+            store.Load();
+
+            Assert.That(store.Dashboards, Has.Count.EqualTo(1));
+            Assert.That(store.DefaultDashboard.Name, Is.EqualTo(DashboardModel.DefaultName));
+            Assert.That(store.DefaultDashboard.IsDefault, Is.True);
+        }
+
+        [Test]
+        public void Load_AssignsLegacyConnectionsToDefaultDashboardAndSaves()
+        {
+            var connectionId = Guid.NewGuid();
+            _fileSystem.AddFile(FilePath, new MockFileData($$"""
+                {
+                  "Users": [],
+                  "Connections": [ { "Id": "{{connectionId}}", "WorkflowStoreType": 0, "Host": "localhost", "Database": "db", "Port": 27017, "ActiveCollection": "Workflows", "CompletedCollection": "CompletedWorkflows" } ]
+                }
+                """));
+            var store = CreateStore();
+
+            store.Load();
+
+            Assert.That(store.GetConnection(connectionId)!.DashboardId, Is.EqualTo(store.DefaultDashboard.Id));
+            var saved = JObject.Parse(_fileSystem.File.ReadAllText(FilePath));
+            Assert.That((string?)saved["Dashboards"]![0]!["Id"], Is.EqualTo(store.DefaultDashboard.Id.ToString()));
+            Assert.That((string?)saved["Connections"]![0]!["DashboardId"], Is.EqualTo(store.DefaultDashboard.Id.ToString()));
+        }
+
+        [Test]
+        public void Load_AssignsConnectionsOnMissingDashboardsToDefaultDashboard()
+        {
+            var connection = TestHelpers.CreateConnection();
+            connection.DashboardId = Guid.NewGuid();
+            var defaultDashboard = new DashboardModel { Name = "Renamed", IsDefault = true };
+            _fileSystem.AddFile(FilePath, new MockFileData(Newtonsoft.Json.JsonConvert.SerializeObject(new { Users = new UserModel[0], Dashboards = new[] { defaultDashboard }, Connections = new[] { connection } })));
+            var store = CreateStore();
+
+            store.Load();
+
+            Assert.That(store.DefaultDashboard.Id, Is.EqualTo(defaultDashboard.Id));
+            Assert.That(store.DefaultDashboard.Name, Is.EqualTo("Renamed"));
+            Assert.That(store.GetConnection(connection.Id)!.DashboardId, Is.EqualTo(defaultDashboard.Id));
+        }
+
+        [Test]
+        public void SaveDashboard_IsKeptOnReload()
+        {
+            var store = CreateStore();
+            store.Load();
+            var dashboard = new DashboardModel { Name = "Production" };
+
+            store.SaveDashboard(dashboard);
+            var reloaded = CreateStore();
+            reloaded.Load();
+
+            Assert.That(reloaded.GetDashboard(dashboard.Id)!.Name, Is.EqualTo("Production"));
+            Assert.That(reloaded.DefaultDashboard.Id, Is.EqualTo(store.DefaultDashboard.Id));
+        }
+
+        [Test]
+        public void DeleteDashboard_RemovesDashboardAndItsConnections()
+        {
+            var store = CreateStore();
+            store.Load();
+            var dashboard = new DashboardModel { Name = "Production" };
+            store.SaveDashboard(dashboard);
+            var onDashboard = TestHelpers.CreateConnection();
+            onDashboard.DashboardId = dashboard.Id;
+            var onDefault = TestHelpers.CreateConnection();
+            onDefault.DashboardId = store.DefaultDashboard.Id;
+            store.SaveConnection(onDashboard);
+            store.SaveConnection(onDefault);
+
+            store.DeleteDashboard(dashboard.Id);
+
+            Assert.That(store.GetDashboard(dashboard.Id), Is.Null);
+            Assert.That(store.Connections.Select(x => x.Id), Is.EqualTo(new[] { onDefault.Id }));
+        }
+
+        [Test]
         public void Load_MigratesLegacyConnectionPasswordsAndSaves()
         {
             byte[] key = _legacyEncryptionProvider.NewKey();

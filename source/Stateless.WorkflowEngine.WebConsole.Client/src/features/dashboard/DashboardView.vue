@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDocumentVisibility, useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { useAuth } from '../../composables/useAuth'
 import { useConfirm } from '../../composables/useConfirm'
 import { useConnections } from '../../composables/useConnections'
+import { dashboardRoute, useDashboards } from '../../composables/useDashboards'
 import { notifySuccess } from '../../composables/useNotify'
 import { useVersionCheck } from '../../composables/useVersionCheck'
 import { ActiveErrorThreshold, ActiveWarningThreshold, AutoRefreshIntervalMs, Claims } from '../../utils/constants'
@@ -11,13 +13,27 @@ import { connectionName } from '../../utils/format'
 import CountBadge from '../../components/CountBadge.vue'
 import CountCell from '../../components/CountCell.vue'
 import ConnectionFormModal from './ConnectionFormModal.vue'
+import CopyConnectionModal from './CopyConnectionModal.vue'
+import DashboardFormModal from './DashboardFormModal.vue'
 
+const props = defineProps({
+  // omit for the default dashboard
+  dashboardId: { type: String, default: null }
+})
+
+const router = useRouter()
 const { hasClaim } = useAuth()
 const { confirm } = useConfirm()
-const { connections, loading, loadConnections, getConnectionInfo, deleteConnection } = useConnections()
+const { connections, loadConnections, getConnectionInfo, deleteConnection } = useConnections()
+const { dashboards, defaultDashboard, loadDashboards, deleteDashboard } = useDashboards()
 const { versionCheck, checkForUpdate } = useVersionCheck()
 const overlay = useOverlay()
 const connectionModal = overlay.create(ConnectionFormModal)
+const copyConnectionModal = overlay.create(CopyConnectionModal)
+const dashboardModal = overlay.create(DashboardFormModal)
+
+const dashboard = computed(() => props.dashboardId ? dashboards.value.find((d) => d.id === props.dashboardId) ?? null : defaultDashboard.value)
+const dashboardNotFound = computed(() => !dashboard.value && dashboards.value.length > 0)
 
 const layout = useLocalStorage('dashboardLayout', 'cards')
 const autoRefresh = useLocalStorage('dashboardAutoRefresh', false)
@@ -41,11 +57,25 @@ const tableColumns = [
 
 const canEdit = computed(() => hasClaim(Claims.ConnectionEdit))
 const canDelete = computed(() => hasClaim(Claims.ConnectionDelete))
+const canCopy = computed(() => hasClaim(Claims.ConnectionAdd) && dashboards.value.length > 1)
+
+const dashboardMenu = computed(() => {
+  const items = []
+  if (dashboard.value && hasClaim(Claims.DashboardEdit)) items.push({ label: 'Rename dashboard', icon: 'i-lucide-pencil', onSelect: onRenameDashboard })
+  if (dashboard.value && !dashboard.value.isDefault && hasClaim(Claims.DashboardDelete)) items.push({ label: 'Delete dashboard', icon: 'i-lucide-trash-2', color: 'error', onSelect: onDeleteDashboard })
+  if (hasClaim(Claims.DashboardAdd)) items.push({ label: 'Add dashboard', icon: 'i-lucide-plus', onSelect: onAddDashboard })
+  return items
+})
 
 async function refresh() {
   refreshing.value = true
   try {
-    await loadConnections()
+    await loadDashboards()
+    if (!dashboard.value) {
+      connections.value = []
+      return
+    }
+    await loadConnections(dashboard.value.id)
     await Promise.all(connections.value.map(loadInfo))
   } finally {
     refreshing.value = false
@@ -72,12 +102,53 @@ function isLoading(connection) {
 function connectionMenu(connection) {
   const items = []
   if (canEdit.value) items.push({ label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => openConnection(connection) })
+  if (canCopy.value) items.push({ label: 'Copy to dashboard', icon: 'i-lucide-copy', onSelect: () => onCopy(connection) })
   if (canDelete.value) items.push({ label: 'Delete', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => onDelete(connection) })
   return items
 }
 
+async function onCopy(connection) {
+  const copied = await copyConnectionModal.open({ connection }).result
+  if (copied) {
+    notifySuccess('Connection copied', `${connectionName(copied.connection)} was copied to ${copied.dashboard?.name}`)
+    await loadDashboards()
+  }
+}
+
+async function onAddDashboard() {
+  const saved = await dashboardModal.open().result
+  if (saved) {
+    notifySuccess('Dashboard added', saved.name)
+    await loadDashboards()
+    await router.push(dashboardRoute(saved))
+  }
+}
+
+async function onRenameDashboard() {
+  const saved = await dashboardModal.open({ dashboard: dashboard.value }).result
+  if (saved) {
+    notifySuccess('Dashboard renamed', saved.name)
+    await loadDashboards()
+  }
+}
+
+async function onDeleteDashboard() {
+  const target = dashboard.value
+  const count = target.connectionCount
+  const confirmed = await confirm({
+    title: 'Delete dashboard',
+    description: `Are you sure you want to delete the ${target.name} dashboard${count ? ` and its ${count} connection${count === 1 ? '' : 's'}` : ''}? Workflows in the stores are not affected.`,
+    confirmLabel: 'Delete',
+    color: 'error'
+  })
+  if (!confirmed) return
+  await deleteDashboard(target.id)
+  notifySuccess('Dashboard deleted', target.name)
+  await router.push({ name: 'dashboard' })
+}
+
 async function openConnection(connection = null) {
-  const saved = await connectionModal.open({ connection }).result
+  const saved = await connectionModal.open({ connection, dashboardId: dashboard.value?.id }).result
   if (saved) {
     notifySuccess(connection ? 'Connection updated' : 'Connection added', connectionName(saved))
     await refresh()
@@ -117,6 +188,12 @@ watch(visibility, (value) => {
   updateAutoRefresh()
 })
 
+watch(() => props.dashboardId, () => {
+  // don't show the previous dashboard's connections while the new one loads
+  connections.value = []
+  refresh()
+})
+
 onMounted(() => {
   refresh()
   checkForUpdate()
@@ -127,14 +204,19 @@ onMounted(() => {
 <template>
   <UDashboardPanel id="dashboard">
     <template #header>
-      <UDashboardNavbar title="Dashboard">
+      <UDashboardNavbar :title="dashboard?.name ?? 'Dashboard'">
         <template #leading>
           <UDashboardSidebarCollapse />
+        </template>
+        <template #trailing>
+          <UDropdownMenu v-if="dashboardMenu.length" :items="dashboardMenu">
+            <UButton icon="i-lucide-settings-2" color="neutral" variant="ghost" size="sm" aria-label="Dashboard actions" />
+          </UDropdownMenu>
         </template>
         <template #right>
           <USwitch :model-value="autoRefresh" label="Auto refresh" @update:model-value="onAutoRefreshChange" />
           <UButton icon="i-lucide-refresh-cw" color="neutral" variant="ghost" aria-label="Refresh" :loading="refreshing" @click="refresh" />
-          <UButton v-if="hasClaim(Claims.ConnectionAdd)" icon="i-lucide-plus" label="Add connection" @click="openConnection()" />
+          <UButton v-if="dashboard && hasClaim(Claims.ConnectionAdd)" icon="i-lucide-plus" label="Add connection" @click="openConnection()" />
         </template>
       </UDashboardNavbar>
       <UDashboardToolbar>
@@ -159,10 +241,18 @@ onMounted(() => {
       />
 
       <UEmpty
-        v-if="!loading && connections.length === 0"
+        v-if="dashboardNotFound"
+        icon="i-lucide-search-x"
+        title="Dashboard not found"
+        description="The dashboard may have been deleted."
+        :actions="[{ label: 'Back to default dashboard', to: { name: 'dashboard' } }]"
+      />
+
+      <UEmpty
+        v-else-if="!refreshing && connections.length === 0"
         icon="i-lucide-database"
         title="No connections"
-        description="Add a connection to a workflow store to start monitoring workflows."
+        :description="dashboards.length > 1 ? 'Add a connection to a workflow store, or copy one from another dashboard, to start monitoring workflows.' : 'Add a connection to a workflow store to start monitoring workflows.'"
         :actions="hasClaim(Claims.ConnectionAdd) ? [{ label: 'Add connection', icon: 'i-lucide-plus', onClick: () => openConnection() }] : []"
       />
 
@@ -203,7 +293,7 @@ onMounted(() => {
         </UCard>
       </div>
 
-      <UTable v-else :data="connections" :columns="tableColumns" :loading="loading" class="border border-default rounded-md">
+      <UTable v-else :data="connections" :columns="tableColumns" :loading="refreshing && connections.length === 0" class="border border-default rounded-md">
         <template #host-cell="{ row }">
           <RouterLink :to="{ name: 'store', params: { connectionId: row.original.id } }" class="flex items-center gap-2 font-medium hover:text-primary">
             <UIcon name="i-lucide-database" :class="infoFor(row.original)?.connectionError ? 'text-error' : 'text-primary'" />

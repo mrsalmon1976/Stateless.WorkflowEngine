@@ -4,6 +4,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Storage.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        /// <summary>
+        /// Gets/sets the dashboard the connection appears on.  Null for connections saved by versions prior
+        /// to dashboards - these are assigned to the default dashboard on load.
+        /// </summary>
+        public Guid? DashboardId { get; set; }
+
         public WorkflowStoreType WorkflowStoreType { get; set; }
 
         public string? Host { get; set; }
@@ -32,5 +38,19 @@ namespace Stateless.WorkflowEngine.WebConsole.Storage.Models
         public string? CompletedCollection { get; set; }
 
         public string? WorkflowDefinitionCollection { get; set; }
+
+        /// <summary>
+        /// Returns true if the other connection points at the same workflow store (store type, host, port,
+        /// database and collections), regardless of the dashboard or credentials.
+        /// </summary>
+        public bool IsSameStoreAs(ConnectionModel other)
+        {
+            return WorkflowStoreType == other.WorkflowStoreType
+                && String.Equals(Host, other.Host, StringComparison.OrdinalIgnoreCase)
+                && Port == other.Port
+                && String.Equals(Database, other.Database, StringComparison.Ordinal)
+                && String.Equals(ActiveCollection, other.ActiveCollection, StringComparison.Ordinal)
+                && String.Equals(CompletedCollection, other.CompletedCollection, StringComparison.Ordinal);
+        }
     }
 }

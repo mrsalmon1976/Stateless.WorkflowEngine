@@ -24,7 +24,7 @@ powershell -File deployment/publish.ps1
 - **Framework**: NUnit 4.6.1 with NSubstitute 5.3.0 for mocking
 - **Test projects** are SDK-style net10.0. `Test.Stateless.WorkflowEngine.MongoDb`/`.RavenDb` reference `Test.Stateless.WorkflowEngine` for the shared `WorkflowStoreTestBase`; `Test.Stateless.WorkflowEngine.WebConsole` includes `WebApplicationFactory` integration tests
 
-`start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
+`start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The console container is a baked image, so it only reflects source changes after a rebuild; `start.ps1 -Dev` instead stops that container and runs the console from source with live reload (`dotnet watch` on 8811 + Vite on 5173). The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
 
 ```bash
 # Run all tests (from solution root)
@@ -94,7 +94,7 @@ Every project is SDK-style and targets **net10.0** (from v6; .NET Framework cons
 
 - **Backend** (`source/Stateless.WorkflowEngine.WebConsole`): controllers under `Features/<Area>/` (route prefix `/api`), all inheriting `AuthenticatedBaseController`. Validators are plain classes with `virtual` methods so they can be substituted in tests. Services are registered in `WebConsoleServiceCollectionExtensions.AddWebConsole()`.
 - **Auth**: cookie authentication; each claim in `Security/Claims.cs` is also an authorization policy of the same name. Admins get all claims. The principal is rebuilt from the user store on every request.
-- **Storage**: users and connections live in `{DataPath}/users.json` (format shared with the old Nancy console). Connection passwords use ASP.NET Data Protection (keys in `{DataPath}/keys`); legacy AES-GCM passwords are migrated on load.
+- **Storage**: users, dashboards and connections live in `{DataPath}/users.json` (format shared with the old Nancy console). Each connection belongs to one dashboard (`ConnectionModel.DashboardId`); there is always exactly one default dashboard (renameable, not deletable) and connections without a valid dashboard are moved onto it on load. Connection passwords use ASP.NET Data Protection (keys in `{DataPath}/keys`); legacy AES-GCM passwords are migrated on load.
 - **Hosting**: Windows service (`Stateless.WorkflowEngine.Console`, default `http://localhost:8811`) or Docker (`Dockerfile` in the project, context = `source`). `Update.ps1` is run manually by admins to upgrade; the UI only shows an update-available banner.
 - **Frontend** (`source/Stateless.WorkflowEngine.WebConsole.Client`): `composables/use*.js` per area with module-level shared state, `api()` fetch wrapper in `useApi.js`, views under `features/<area>/`.
 
