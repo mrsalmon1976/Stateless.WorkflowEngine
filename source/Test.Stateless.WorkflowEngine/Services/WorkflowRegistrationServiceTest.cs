@@ -48,7 +48,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
-            TestDelegate del = () => regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
+            Action del = () => regService.IsSingleInstanceWorkflowRegistered<BasicWorkflow>(workflowStore);
             // assert
             Assert.Throws<WorkflowException>(del);
 
@@ -100,7 +100,7 @@ namespace Test.Stateless.WorkflowEngine
             SingleInstanceWorkflow workflow = new SingleInstanceWorkflow(SingleInstanceWorkflow.State.Start);
 
             IWorkflowRegistrationService regService = new WorkflowRegistrationService();
-            TestDelegate del = () => regService.RegisterWorkflow(workflowStore, workflow);
+            Action del = () => regService.RegisterWorkflow(workflowStore, workflow);
             Assert.Throws<SingleInstanceWorkflowAlreadyExistsException>(del);
         }
 

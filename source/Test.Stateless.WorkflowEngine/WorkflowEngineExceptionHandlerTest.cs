@@ -28,7 +28,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // execute
             IWorkflowExceptionHandler exceptionHandler = new WorkflowExceptionHandler();
-            TestDelegate del = () => exceptionHandler.HandleWorkflowException(workflow, new Exception("Dummy exception"));
+            Action del = () => exceptionHandler.HandleWorkflowException(workflow, new Exception("Dummy exception"));
 
             // assert
             Assert.Throws<WorkflowException>(del);

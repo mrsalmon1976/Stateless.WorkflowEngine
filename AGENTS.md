@@ -3,7 +3,7 @@
 This quick guide summarizes crucial architectural decision points and command requirements for working on the Workflow Engine.
 
 ## Build & Testing
-*   **Test Framework:** Uses NUnit 4.3.2 with NSubstitute 5.3.0.
+*   **Test Framework:** Uses NUnit 4.6.1 with NSubstitute 5.3.0.
 *   **Running All Tests:** Use `dotnet test source/Stateless.WorkflowEngine.sln` from the solution root. Tests in the `RequiresMongoDb`/`RequiresRavenDb` categories need the containers started by `start.ps1`.
 
 ## Architecture

@@ -21,7 +21,7 @@ powershell -File deployment/publish.ps1
 
 ## Testing
 
-- **Framework**: NUnit 4.3.2 with NSubstitute 5.3.0 for mocking
+- **Framework**: NUnit 4.6.1 with NSubstitute 5.3.0 for mocking
 - **Test projects** are SDK-style net10.0. `Test.Stateless.WorkflowEngine.MongoDb`/`.RavenDb` reference `Test.Stateless.WorkflowEngine` for the shared `WorkflowStoreTestBase`; `Test.Stateless.WorkflowEngine.WebConsole` includes `WebApplicationFactory` integration tests
 
 `start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
@@ -56,7 +56,7 @@ Test projects:
 |-------|---------|--------|---------------|
 | MemoryWorkflowStore | Core library | net10.0 | — |
 | MongoDbWorkflowStore | `Stateless.WorkflowEngine.MongoDb` | net10.0 | MongoDB.Driver 3.13.0 (server 4.4+) |
-| RavenDbWorkflowStore | `Stateless.WorkflowEngine.RavenDb` | net10.0 | RavenDB.Client 7.2.2 |
+| RavenDbWorkflowStore | `Stateless.WorkflowEngine.RavenDb` | net10.0 | RavenDB.Client 7.2.7 |
 
 ### Workflow Lifecycle
 

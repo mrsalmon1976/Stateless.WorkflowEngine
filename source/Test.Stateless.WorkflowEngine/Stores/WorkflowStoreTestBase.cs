@@ -126,7 +126,7 @@ namespace Test.Stateless.WorkflowEngine.Stores
         public void Get_InvalidId_ThrowsException()
         {
             IWorkflowStore store = GetStore();
-            TestDelegate del = () => store.Get(Guid.NewGuid());
+            Action del = () => store.Get(Guid.NewGuid());
             Assert.Throws<WorkflowNotFoundException>(del);
 
         }

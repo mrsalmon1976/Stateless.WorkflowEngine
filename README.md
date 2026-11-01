@@ -33,7 +33,7 @@ This table shows the client version and the associated driver/client versions us
 |           | 4.0.0     | RavenDB.Client | 5.4.200         |
 |           | 5.0.0     | RavenDB.Client | 7.2.1           |
 |           | 5.1.0     | RavenDB.Client | 7.2.2           |
-|           | 6.0.0     | RavenDB.Client | 7.2.2           |
+|           | 6.0.0     | RavenDB.Client | 7.2.7           |
 
 From version 6.0, all packages target **.NET 10** (`net10.0`).  Version 5.x targeted .NET Standard 2.0 (and .NET Framework 4.8 for RavenDb) - applications running on .NET Framework should stay on 5.x.
 

@@ -101,7 +101,7 @@ namespace Test.Stateless.WorkflowEngine
         public void ExecuteWorkflow_NullWorkflow_RaisesException()
         {
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            TestDelegate del = () => workflowServer.ExecuteWorkflow(null);
+            Action del = () => workflowServer.ExecuteWorkflow(null);
             Assert.Throws<ArgumentNullException>(del);
         }
 
@@ -109,7 +109,7 @@ namespace Test.Stateless.WorkflowEngine
         public void ExecuteWorkflowAsync_NullWorkflow_RaisesException()
         {
             IWorkflowServer workflowServer = new WorkflowServer(Substitute.For<IWorkflowStore>());
-            TestDelegate del = () => workflowServer.ExecuteWorkflowAsync(null).GetAwaiter().GetResult();
+            Action del = () => workflowServer.ExecuteWorkflowAsync(null).GetAwaiter().GetResult();
             Assert.Throws<ArgumentNullException>(del);
         }
 

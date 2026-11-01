@@ -26,7 +26,7 @@ namespace Test.Stateless.WorkflowEngine
         public void Fire_WithNullOrEmptyTriggerName_ThrowsException(string triggerName)
         {
             SimpleTwoStateWorkflow wf = new SimpleTwoStateWorkflow(SimpleTwoStateWorkflow.State.Start);
-            TestDelegate del = () => wf.Fire(triggerName);
+            Action del = () => wf.Fire(triggerName);
             Assert.Throws<WorkflowException>(del);
         }
 
@@ -35,7 +35,7 @@ namespace Test.Stateless.WorkflowEngine
         {
             DependencyInjectionWorkflow wf = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
             wf.DependencyResolver = null;
-            TestDelegate del = () => wf.Fire(DependencyInjectionWorkflow.Trigger.DoStuff);
+            Action del = () => wf.Fire(DependencyInjectionWorkflow.Trigger.DoStuff);
             Assert.Throws<MissingMethodException>(del);
         }
 
@@ -95,7 +95,7 @@ namespace Test.Stateless.WorkflowEngine
         {
             TestableAsyncWorkflow wf = new TestableAsyncWorkflow();
             wf.DependencyResolver = null;
-            TestDelegate del = () => wf.RunActionAsync<NoDefaultConstructorAsyncAction>().GetAwaiter().GetResult();
+            Action del = () => wf.RunActionAsync<NoDefaultConstructorAsyncAction>().GetAwaiter().GetResult();
             Assert.Throws<MissingMethodException>(del);
         }
 
