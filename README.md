@@ -386,18 +386,63 @@ The web console is a browser-based tool for monitoring and managing workflow sto
 
 Features:
 
-* A dashboard of connections to workflow stores, showing active, suspended and completed workflow counts (with optional auto refresh)
+* Dashboards of connections to workflow stores, showing active, suspended and completed workflow counts (with optional auto refresh)
 * A list of incomplete workflows per store - view the workflow JSON, view the workflow definition graph, and suspend, unsuspend or delete workflows individually or in bulk
-* User management with Admin and User roles - Users can be granted individual permissions (add/edit/delete connections, suspend/unsuspend/delete workflows, view/add/edit/delete users)
+* User management with Admin and User roles - Users can be granted individual permissions
 * A notification when a new version of the console is available
 
-The workflow list shows the first N incomplete workflows (up to 1000) - sorting and filtering apply to the loaded rows only.  To find a specific workflow in a large store, paste its full id into the filter and it will be looked up directly.  Completed workflows are not shown.
+See [Installing as a Windows service](#installing-as-a-windows-service) or [Running in Docker](#running-in-docker) to get started, then sign in with **admin / admin** and change the password (user menu, bottom left > **Change password**).
 
-## RavenDb connections
+## Dashboards
 
-RavenDb connections need the server host, port (default 8080) and database - the collections are fixed by the store, so they are not configured.  To connect to a secured RavenDb server, which uses https and authenticates with a client certificate, set **Client certificate** to the path of the certificate (`.pfx`) file on the console's server, and **Certificate password** to its password (if any).  In Docker, put the certificate in the `/app/Data` volume, e.g. `/app/Data/certs/client.pfx`.
+![Dashboard](docs/images/webconsole/dashboard.png)
 
-The console doesn't have the workflow types loaded, so it works with the raw workflow documents.  Versions of the RavenDb store prior to 6.0 loaded the workflow type to suspend, unsuspend and delete a workflow - from 6.0 these patch or delete the document directly, as the MongoDb store does.
+The dashboard shows a card for each connection, with its active, suspended and completed workflow counts.  Suspended workflows are highlighted in red, and a connection that can't be reached shows the error instead of its counts.  Switch to **Table** for a compact view of many connections, and turn on **Auto refresh** to keep the counts up to date.  Click a connection to see its workflows.
+
+Connections are grouped into dashboards (e.g. one per environment or team), listed on the left - use **+** to add a dashboard, and the settings icon next to its name to rename or delete it.  There is always a **Default** dashboard, which can be renamed but not deleted.  A connection's menu (**⋮**) has options to edit it, delete it, or copy it to another dashboard.
+
+## Connections
+
+Click **Add connection** to connect to a workflow store, and **Test connection** to check the settings before saving them.  Passwords are encrypted (see [Configuration](#configuration)), and are never sent back to the browser - leave the password blank when editing a connection to keep the existing one.
+
+**MongoDb** connections need the host, port (default 27017), database and the names of the active and completed workflow collections (`Workflows` and `CompletedWorkflows` unless your application changed them).  Optionally set a user and password, a replica set, and the workflow definition collection (default `WorkflowDefinitions`).
+
+**RavenDb** connections need the host, port (default 8080) and database - the collections are fixed by the store, so they are not configured.
+
+![RavenDb connection](docs/images/webconsole/connection-ravendb.png)
+
+To connect to a secured RavenDb server, which uses https and authenticates with a client certificate, set **Client certificate** to the path of the certificate (`.pfx`) file on the console's server, and **Certificate password** to its password (if any).  In Docker, put the certificate in the `/app/Data` volume, e.g. `/app/Data/certs/client.pfx`.
+
+The console doesn't have your workflow types loaded, so it works with the raw workflow documents.  Versions of the RavenDb store prior to 6.0 loaded the workflow type to suspend, unsuspend and delete a workflow - from 6.0 these patch or delete the document directly, as the MongoDb store does.
+
+## Workflows
+
+![Workflows](docs/images/webconsole/workflows.png)
+
+The workflow list shows the incomplete workflows in a store - completed workflows are not shown.  Suspended workflows are highlighted, and can be sorted to the top with the **Suspended** column.
+
+* **Show** sets how many workflows are loaded (up to 1000) - sorting and filtering apply to the loaded rows only.  To find a specific workflow in a large store, paste its full id into the filter and it will be looked up directly.
+* Select workflows with the checkboxes to **Suspend**, **Unsuspend** or **Delete** them in bulk.  Unsuspending a workflow resets its retry count, so it is picked up by the server straight away.
+* Click a workflow's row to see its full JSON document, which can be copied, and to suspend, unsuspend or delete it.
+
+![Workflow JSON](docs/images/webconsole/workflow-detail.png)
+
+* Click a workflow's type (or use **Definitions**) to see its state machine graph.  Graphs are only available for workflows whose definitions are saved to the store - see [Workflow Definitions](#workflow-definitions).
+
+![Workflow definition](docs/images/webconsole/definition-graph.png)
+
+## Users and permissions
+
+![Users](docs/images/webconsole/users.png)
+
+Admins can do everything, including managing users.  Users can view all dashboards and workflows, and can be granted individual permissions to:
+
+* add, edit and delete connections
+* add, rename and delete dashboards
+* suspend, unsuspend and delete workflows
+* view, add, edit and delete users
+
+Actions a user doesn't have permission for are hidden.  Every user can change their own password from the user menu.
 
 ## Installing as a Windows service
 

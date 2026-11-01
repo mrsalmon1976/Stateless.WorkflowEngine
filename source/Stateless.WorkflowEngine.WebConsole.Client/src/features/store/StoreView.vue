@@ -292,6 +292,8 @@ onMounted(refresh)
           </template>
           <template #isSuspended-cell="{ row }">
             <UBadge v-if="row.original.isSuspended" color="error" variant="subtle" label="Suspended" icon="i-lucide-pause" />
+            <!-- an empty slot falls back to the table's default cell, which would show "false" -->
+            <span v-else />
           </template>
           <template #resumeOn-cell="{ row }">
             {{ formatDate(row.original.resumeOn) }}
