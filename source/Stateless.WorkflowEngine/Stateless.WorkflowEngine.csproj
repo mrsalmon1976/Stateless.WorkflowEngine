@@ -7,8 +7,20 @@
     <Authors>Matt Salmon</Authors>
     <Title>Stateless.WorkflowEngine</Title>
     <Description>A workflow wrapper for the Stateless library that includes persistence, retries, and workflow suspension.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mrsalmon1976/Stateless.WorkflowEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mrsalmon1976/Stateless.WorkflowEngine.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageTags>workflow;workflow-engine;stateless;state-machine</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Stateless" Version="5.20.1" />

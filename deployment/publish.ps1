@@ -1,48 +1,55 @@
+$ErrorActionPreference = "Stop"
 Clear-Host
 $root = $PSScriptRoot
-$sourceFolder = [System.IO.Path]::Combine($root.Replace("deployment", ""), "source") 
-$statelessWorkflowFolder = "$sourceFolder\Stateless.WorkflowEngine"
-$statelessWorkflowMongoDbFolder = "$sourceFolder\Stateless.WorkflowEngine.MongoDb"
+$sourceFolder = [System.IO.Path]::Combine($root.Replace("deployment", ""), "source")
+$packageFolder = "$root\publish\nuget"
+$packages = @("Stateless.WorkflowEngine", "Stateless.WorkflowEngine.MongoDb", "Stateless.WorkflowEngine.RavenDb")
 
 # read the api key from a file that is not published with the repository
 $apiKey = [System.IO.File]::ReadAllText("$root\_apikey.txt").Trim()
 
-$version = Read-Host -Prompt "What version are we publishing (include prerelease suffix) [e.g. 2.3.0 or 0.0.2-alpha]"
-$isProduction = ((Read-Host -Prompt "Is this a production push?  [Y/y]").ToLower() -eq "y")
-
-# Stateless.WorkflowEngine
-Set-Location $statelessWorkflowFolder
-dotnet pack --configuration Release
-
-# Stateless.WorkflowEngine.MongoDb
-Set-Location $statelessWorkflowMongoDbFolder
-dotnet pack --configuration Release
-
-$statelessWorkflowNupkg = "$statelessWorkflowFolder\bin\Release\Stateless.WorkflowEngine.$version.nupkg"
-$statelessWorkflowMongoDbNupkg = "$statelessWorkflowMongoDbFolder\bin\Release\Stateless.WorkflowEngine.MongoDb.$version.nupkg"
-
-# make sure the packages have been built
-if (!(Test-Path -Path $statelessWorkflowNupkg)) {
-	Write-Host "Stateless.WorkflowEngine nuget package not found at $statelessWorkflowNupkg" -ForegroundColor White -BackgroundColor Red
+# the version is set in the project files by build.ps1 - all packages must be on the same version, as each store
+# package depends on the matching version of Stateless.WorkflowEngine
+$version = $null
+foreach ($package in $packages) {
+	$projectVersion = ([xml](Get-Content "$sourceFolder\$package\$package.csproj")).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+	if ($null -eq $version) { $version = $projectVersion }
+	if ($projectVersion -ne $version) {
+		Write-Host "$package is version $projectVersion but expected $version - run build.ps1 first" -ForegroundColor White -BackgroundColor Red
+		Exit 1
+	}
+}
+if ((Read-Host -Prompt "Publishing version $version - continue? [Y/y]").ToLower() -ne "y") {
 	Exit
 }
-if (!(Test-Path -Path $statelessWorkflowMongoDbNupkg)) {
-    Write-Host "Stateless.WorkflowEngine.MongoDb nuget package not found at $statelessWorkflowMongoDbNupkg" -ForegroundColor White -BackgroundColor Red
- 	Exit
+$isProduction = ((Read-Host -Prompt "Is this a production push?  [Y/y]").ToLower() -eq "y")
+
+# pack into a clean folder so a stale package can never be pushed
+if (Test-Path -Path $packageFolder) { Remove-Item $packageFolder -Recurse -Force }
+foreach ($package in $packages) {
+	& dotnet pack "$sourceFolder\$package\$package.csproj" --configuration Release --output $packageFolder
+	$nupkg = "$packageFolder\$package.$version.nupkg"
+	if ($LASTEXITCODE -ne 0 -or !(Test-Path -Path $nupkg)) {
+		Write-Host "$package nuget package not found at $nupkg" -ForegroundColor White -BackgroundColor Red
+		Exit 1
+	}
 }
 
-# now we push!
-if ($isProduction) {
-    & dotnet nuget push "$statelessWorkflowNupkg" --source https://api.nuget.org/v3/index.json --api-key $apiKey
-    & dotnet nuget push "$statelessWorkflowMongoDbNupkg" --source https://api.nuget.org/v3/index.json --api-key $apiKey
-}
-else {
-    # pushing to a folder creates a local feed for the NugetTest app
-    New-Item -ItemType Directory -Force -Path "$root\NugetTest\NugetPackageTest" | Out-Null
-    & dotnet nuget push "$statelessWorkflowNupkg" --source "$root\NugetTest\NugetPackageTest"
-    & dotnet nuget push "$statelessWorkflowMongoDbNupkg" --source "$root\NugetTest\NugetPackageTest"
+# now we push! (dotnet nuget push also pushes the matching .snupkg symbols package)
+foreach ($package in $packages) {
+	$nupkg = "$packageFolder\$package.$version.nupkg"
+	if ($isProduction) {
+		& dotnet nuget push $nupkg --source https://api.nuget.org/v3/index.json --api-key $apiKey
+	}
+	else {
+		# pushing to a folder creates a local feed for the NugetTest app
+		New-Item -ItemType Directory -Force -Path "$root\NugetTest\NugetPackageTest" | Out-Null
+		& dotnet nuget push $nupkg --source "$root\NugetTest\NugetPackageTest"
+	}
+	if ($LASTEXITCODE -ne 0) {
+		Write-Host "Failed to push $nupkg" -ForegroundColor White -BackgroundColor Red
+		Exit 1
+	}
 }
 
-cd $root
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White
-

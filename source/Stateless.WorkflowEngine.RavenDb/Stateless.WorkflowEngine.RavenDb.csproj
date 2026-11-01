@@ -7,8 +7,20 @@
     <Authors>Matt Salmon</Authors>
     <Title>Stateless.WorkflowEngine.RavenDb</Title>
     <Description>Assembly required for the persistence of workflows to a RavenDb database</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mrsalmon1976/Stateless.WorkflowEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mrsalmon1976/Stateless.WorkflowEngine.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageTags>workflow;workflow-engine;stateless;state-machine;ravendb</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="RavenDB.Client" Version="7.2.7" />
   </ItemGroup>

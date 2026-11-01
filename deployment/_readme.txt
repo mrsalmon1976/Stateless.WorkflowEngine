@@ -5,9 +5,12 @@
 	d. Create the zip files (WebConsole, RavenDb, MongoDb) - the WebConsole build requires the .NET 10 SDK and Node.js/npm
 	e. Optionally build the WebConsole Docker image
 2. Push all changes to GitHub
-3. Run publish.ps1 to push the Nuget packages
-	* Make sure you have updated all .nuspec files for dependencies - this is a manual process
-	* make sure you enter the correct version number when prompted
+3. Run publish.ps1 to push the Nuget packages (Stateless.WorkflowEngine, Stateless.WorkflowEngine.MongoDb and
+   Stateless.WorkflowEngine.RavenDb)
+	* The version is read from the project files set by build.ps1, and confirmed when prompted
+	* Package metadata and dependencies come from the .csproj files - there are no .nuspec files to maintain
+	* A non-production push creates a local feed in NugetTest\NugetPackageTest, which the NugetTestApp restores
+	  from (update its package versions to match)
 4. Go to GitHub and add these as new release files
 	* The tag name should be the version number, e.g. "2.3.0" (a "v" prefix is tolerated) - this is used by the
 	  console's update check and by Update.ps1
