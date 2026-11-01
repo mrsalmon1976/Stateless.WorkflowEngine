@@ -19,15 +19,35 @@ foreach ($package in $packages) {
 		Exit 1
 	}
 }
+# the packages must be built from a commit that is on GitHub - source link in the symbols points at that commit
+$repoRoot = $root.Replace("\deployment", "")
+$uncommitted = & git -C $repoRoot status --porcelain
+if ($uncommitted) {
+	Write-Host "There are uncommitted changes - commit and push them before publishing:" -ForegroundColor White -BackgroundColor Red
+	$uncommitted | ForEach-Object { Write-Host "  $_" }
+	Exit 1
+}
+& git -C $repoRoot fetch --quiet origin
+if ($LASTEXITCODE -ne 0) {
+	Write-Host "Unable to fetch from origin to check the commit has been pushed" -ForegroundColor White -BackgroundColor Red
+	Exit 1
+}
+$pushedTo = & git -C $repoRoot branch --remotes --contains HEAD
+if (!$pushedTo) {
+	Write-Host "Commit $(& git -C $repoRoot rev-parse --short HEAD) has not been pushed to origin - push before publishing" -ForegroundColor White -BackgroundColor Red
+	Exit 1
+}
+
 if ((Read-Host -Prompt "Publishing version $version - continue? [Y/y]").ToLower() -ne "y") {
 	Exit
 }
 $isProduction = ((Read-Host -Prompt "Is this a production push?  [Y/y]").ToLower() -eq "y")
 
-# pack into a clean folder so a stale package can never be pushed
+# pack into a clean folder so a stale package can never be pushed - ContinuousIntegrationBuild makes the build
+# deterministic (no local paths in the symbols, so source link maps to GitHub)
 if (Test-Path -Path $packageFolder) { Remove-Item $packageFolder -Recurse -Force }
 foreach ($package in $packages) {
-	& dotnet pack "$sourceFolder\$package\$package.csproj" --configuration Release --output $packageFolder
+	& dotnet pack "$sourceFolder\$package\$package.csproj" --configuration Release --output $packageFolder -p:ContinuousIntegrationBuild=true
 	$nupkg = "$packageFolder\$package.$version.nupkg"
 	if ($LASTEXITCODE -ne 0 -or !(Test-Path -Path $nupkg)) {
 		Write-Host "$package nuget package not found at $nupkg" -ForegroundColor White -BackgroundColor Red
