@@ -17,7 +17,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
         void Evict(Guid connectionId);
     }
 
-    public class WorkflowStoreFactory : IWorkflowStoreFactory
+    public class WorkflowStoreFactory : IWorkflowStoreFactory, IDisposable
     {
         public static readonly TimeSpan ServerSelectionTimeout = TimeSpan.FromSeconds(5);
 
@@ -44,7 +44,20 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
 
         public void Evict(Guid connectionId)
         {
-            _clients.TryRemove(connectionId, out _);
+            if (_clients.TryRemove(connectionId, out MongoClient? client))
+            {
+                // closes the client's connection pool - a request still using it will fail, which only happens when the
+                // connection is being edited or deleted at the same time
+                client.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (Guid connectionId in _clients.Keys)
+            {
+                Evict(connectionId);
+            }
         }
 
         public MongoUrl GetMongoUrl(ConnectionModel connectionModel)

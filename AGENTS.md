@@ -10,6 +10,7 @@ This quick guide summarizes crucial architectural decision points and command re
 *   **Target Framework:** Every project is SDK-style and targets **net10.0** (libraries, tests, WebConsole and Example). Packages are managed with `PackageReference` - there is no `packages.config` or `.nuget` folder.
 *   **WebConsole:** ASP.NET Core host + Vue/Nuxt UI SPA in `Stateless.WorkflowEngine.WebConsole.Client`.
 *   **MongoDb Serialization:** When dealing with MongoDB workflows, always ensure the use of `[BsonIgnoreExtraElements]` for defining classes to maintain forward compatibility.
+*   **MongoDb Guids:** The store uses MongoDB.Driver 3.x (server 4.4+), which needs an explicit Guid representation. Ids are stored as `CSharpLegacy` (binary subtype 3) to match data saved by earlier versions - see `MongoDbWorkflowStore.IdGuidRepresentation`. Don't register a global Guid serializer from library code.
 
 ## Build Commands
 *   **Build Solution:** `dotnet build source/Stateless.WorkflowEngine.sln` (Standard build).

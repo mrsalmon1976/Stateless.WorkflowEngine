@@ -1,11 +1,14 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.IO;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.MongoDb
@@ -19,6 +22,55 @@ namespace Stateless.WorkflowEngine.MongoDb
         public const string DefaultCollectionActive = "Workflows";
         public const string DefaultCollectionCompleted = "CompletedWorkflows";
         public const string DefaultCollectionDefinitions = "WorkflowDefinitions";
+
+        /// <summary>
+        /// The representation used for workflow and definition ids.  Version 3 of the MongoDb driver requires the Guid
+        /// representation to be configured, and previous versions of the store (driver 2.x) saved Guids in the C# legacy
+        /// representation (binary subtype 3), so the same representation is used to keep existing data readable.
+        /// </summary>
+        public const GuidRepresentation IdGuidRepresentation = GuidRepresentation.CSharpLegacy;
+
+        static MongoDbWorkflowStore()
+        {
+            // the id members are configured on the class maps rather than by registering a global Guid serializer, as
+            // the driver doesn't allow the global serializer to be changed once it has been used (and the application
+            // will usually have created a MongoClient before the store).  Guid properties on custom workflow classes are
+            // not covered by this - see the README.
+            BsonClassMap.TryRegisterClassMap<Workflow>(cm =>
+            {
+                cm.AutoMap();
+                cm.GetMemberMap(w => w.Id).SetSerializer(new GuidSerializer(IdGuidRepresentation));
+            });
+            BsonClassMap.TryRegisterClassMap<WorkflowDefinition>(cm =>
+            {
+                cm.AutoMap();
+                cm.GetMemberMap(d => d.Id).SetSerializer(new GuidSerializer(IdGuidRepresentation));
+            });
+        }
+
+        /// <summary>
+        /// Converts an id into a BsonValue for queries on BsonDocument collections, so the value matches the stored _id.
+        /// </summary>
+        private static BsonValue ToBsonId(Guid id)
+        {
+            return new BsonBinaryData(id, IdGuidRepresentation);
+        }
+
+        private static readonly Regex LegacyGuidHexDataRegex = new Regex("HexData\\(3, \"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\"\\)", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Version 3 of the driver writes C# legacy Guids in shell mode as HexData(3, "...") - the raw bytes formatted like
+        /// a Guid, which is misleading and can't be parsed back by the driver - so they are converted to CSUUID("...")
+        /// as written by previous versions.
+        /// </summary>
+        private static string ToReadableLegacyGuids(string json)
+        {
+            return LegacyGuidHexDataRegex.Replace(json, m =>
+            {
+                byte[] bytes = Convert.FromHexString(m.Groups[1].Value.Replace("-", ""));
+                return $"CSUUID(\"{new Guid(bytes)}\")";
+            });
+        }
 
         public MongoDbWorkflowStore(IMongoDatabase mongoDatabase) : this(mongoDatabase, DefaultCollectionActive, DefaultCollectionCompleted, DefaultCollectionDefinitions)
         {
@@ -351,7 +403,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// <returns></returns>
         public override string GetWorkflowAsJson(Guid id)
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
             var doc = this.MongoDatabase
                 .GetCollection<BsonDocument>(this.CollectionActive)
                 .Find(filter)
@@ -361,7 +413,7 @@ namespace Stateless.WorkflowEngine.MongoDb
                 
                 var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
-                return json;
+                return ToReadableLegacyGuids(json);
             }
             return null;
         }
@@ -587,7 +639,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
 
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
             var doc = coll
                 .Find(filter)
                 .SingleOrDefault();
@@ -611,7 +663,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override async Task SuspendWorkflowAsync(Guid id)
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
             var doc = await coll.Find(filter).SingleOrDefaultAsync();
 
             if (doc == null)
@@ -635,7 +687,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
 
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
             var doc = coll
                 .Find(filter)
                 .SingleOrDefault();
@@ -662,7 +714,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public override async Task UnsuspendWorkflowAsync(Guid id)
         {
             var coll = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive);
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", BsonValue.Create(id));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
             var doc = await coll.Find(filter).SingleOrDefaultAsync();
 
             if (doc == null)

@@ -26,14 +26,18 @@ This table shows the client version and the associated driver/client versions us
 |           | 3.1.0     | MongoDB.Driver | 2.21.0          |
 |           | 4.0.0     | MongoDB.Driver | 2.26.0          |
 |           | 5.0.0     | MongoDB.Driver | 2.30.0          |
+|           | 6.0.0     | MongoDB.Driver | 3.13.0          |
 | RavenDb   | 2.6.0     | RavenDB.Client | 3.5.7           |
 |           | 3.0.0     | RavenDB.Client | 5.4.4           |
 |           | 3.1.0     | RavenDB.Client | 5.4.109         |
 |           | 4.0.0     | RavenDB.Client | 5.4.200         |
 |           | 5.0.0     | RavenDB.Client | 7.2.1           |
 |           | 5.1.0     | RavenDB.Client | 7.2.2           |
+|           | 6.0.0     | RavenDB.Client | 7.2.2           |
 
 From version 6.0, all packages target **.NET 10** (`net10.0`).  Version 5.x targeted .NET Standard 2.0 (and .NET Framework 4.8 for RavenDb) - applications running on .NET Framework should stay on 5.x.
+
+Version 6.0 of the MongoDb store uses version 3 of the MongoDb driver, which requires **MongoDb Server 4.4 or later** - stay on 5.x for older servers.  Applications using the store must also use version 3 of the driver (see the [driver's upgrade guide](https://www.mongodb.com/docs/drivers/csharp/current/reference/upgrade/v3/) for any changes needed in your own MongoDb code), and existing workflows remain readable (see [Guids](#guids)).
 
 # Workflow Configuration
 
@@ -359,6 +363,18 @@ ConventionRegistry.Register(
 ```
 Note that like all things, this comes with its own risks - the engine will no longer fail to load a document with a property it does not recognise, but you will lose this data when it is written back to the document store after execution.
 
+#### Guids
+
+Version 3 of the MongoDb driver (used from version 6.0 of the store) requires the Guid format to be configured.  Earlier versions of the store saved Guids in the C# legacy format (binary subtype 3), so the store configures workflow and workflow definition ids to use that format - existing workflows can be read without any changes.
+
+**If your workflow classes have their own `Guid` properties**, register a Guid serializer at application start-up, *before* creating a `MongoClient` or using the store:
+
+```csharp
+BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.CSharpLegacy));
+```
+
+Without this, the driver will throw an exception when saving or loading those workflows (`GuidSerializer cannot serialize a Guid when GuidRepresentation is Unspecified`).  Use `CSharpLegacy` to keep reading workflows saved by earlier versions - only use another representation (such as `Standard`) for a new store with no existing data, as Guids saved in different formats do not match each other in queries.
+
 # Workflow Definitions
 
 
@@ -366,7 +382,7 @@ The `IWorkflowServer` will attempt to persist workflow definitions into a `Workf
 
 # Web Console
 
-The web console is a browser-based tool for monitoring and managing workflow stores.  It is an ASP.NET Core (.NET 10) application that serves a Vue / Nuxt UI single page app, and runs as a Windows service or a Docker container.  It currently supports **MongoDb** stores only.
+The web console is a browser-based tool for monitoring and managing workflow stores.  It is an ASP.NET Core (.NET 10) application that serves a Vue / Nuxt UI single page app, and runs as a Windows service or a Docker container.  It currently supports **MongoDb** stores only (MongoDb Server 4.4 or later).
 
 Features:
 

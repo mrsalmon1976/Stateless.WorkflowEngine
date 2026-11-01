@@ -1,0 +1,26 @@
+{
+  "_id" : { "$binary" : { "base64" : "HjyPCi1bf06aYTxNXm96iw==", "subType" : "03" } },
+  "Workflow" : {
+    "_t" : "GuidPropertyWorkflow",
+    "_id" : { "$binary" : { "base64" : "HjyPCi1bf06aYTxNXm96iw==", "subType" : "03" } },
+    "CreatedOn" : { "$date" : { "$numberLong" : "1790843400000" } },
+    "CompletedOn" : null,
+    "IsSuspended" : false,
+    "LastException" : null,
+    "Name" : "GuidPropertyWorkflow",
+    "ResumeOn" : { "$date" : { "$numberLong" : "1790843400000" } },
+    "Priority" : { "$numberInt" : "3" },
+    "ResumeTrigger" : null,
+    "RetryCount" : { "$numberInt" : "0" },
+    "RetryIntervals" : [{ "$numberInt" : "5" }, { "$numberInt" : "10" }, { "$numberInt" : "15" }, { "$numberInt" : "30" }, { "$numberInt" : "60" }],
+    "QualifiedName" : "Test.Stateless.WorkflowEngine.MongoDb.Workflows.GuidPropertyWorkflow",
+    "CurrentState" : "Start",
+    "IsComplete" : false,
+    "IsSingleInstance" : false,
+    "BasicMetaData" : "Saved by MongoDB.Driver 2.30",
+    "CorrelationId" : { "$binary" : { "base64" : "ERERESIiMzNERFVVVVVVVQ==", "subType" : "03" } },
+    "OptionalId" : { "$binary" : { "base64" : "ZmZmZnd3iIiZmaqqqqqqqg==", "subType" : "03" } },
+    "RelatedIds" : [{ "$binary" : { "base64" : "u7u7u8zM3d3u7v///////w==", "subType" : "03" } }]
+  },
+  "WorkflowType" : "Test.Stateless.WorkflowEngine.MongoDb.Workflows.GuidPropertyWorkflow, Test.Stateless.WorkflowEngine.MongoDb, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+}

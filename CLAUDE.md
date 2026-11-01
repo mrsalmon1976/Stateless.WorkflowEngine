@@ -55,7 +55,7 @@ Test projects:
 | Store | Project | Target | Key Dependency |
 |-------|---------|--------|---------------|
 | MemoryWorkflowStore | Core library | net10.0 | — |
-| MongoDbWorkflowStore | `Stateless.WorkflowEngine.MongoDb` | net10.0 | MongoDB.Driver 2.30.0 |
+| MongoDbWorkflowStore | `Stateless.WorkflowEngine.MongoDb` | net10.0 | MongoDB.Driver 3.13.0 (server 4.4+) |
 | RavenDbWorkflowStore | `Stateless.WorkflowEngine.RavenDb` | net10.0 | RavenDB.Client 7.2.2 |
 
 ### Workflow Lifecycle
@@ -84,6 +84,7 @@ Test projects:
 - **Event-driven**: `WorkflowSuspended` and `WorkflowCompleted` events on `IWorkflowServer`
 - **DI support**: `IWorkflowEngineDependencyResolver` or override `CreateWorkflowActionInstance<T>()`
 - Serialization via Newtonsoft.Json; MongoDB workflows should use `[BsonIgnoreExtraElements]` for forward compatibility
+- MongoDB Guids: driver 3 needs an explicit Guid representation. Workflow/definition ids use `MongoDbWorkflowStore.IdGuidRepresentation` (CSharpLegacy, binary subtype 3 — the format existing 2.x-era data uses) via class maps in the store's static constructor, `[BsonGuidRepresentation]` on `MongoWorkflow.Id`/`UIWorkflow.Id`, and `ToBsonId()` for raw `BsonDocument` queries. Never register a global Guid serializer from library code (the driver forbids changing it once used) — apps with Guid properties register it themselves (README "Guids"). `Fixtures/WorkflowSavedByDriver2.json` in the MongoDb tests is a real document saved by driver 2.30
 
 ## Target Framework
 

@@ -109,6 +109,32 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
         }
 
         [Test]
+        public void GetWorkflowInfoFromJson_ParsesLegacyGuidId_FromShellJson()
+        {
+            // format returned by IWorkflowStore.GetWorkflowAsJson (workflow detail)
+            var id = Guid.NewGuid();
+            string json = "{ \"_id\" : CSUUID(\"" + id + "\"), \"Workflow\" : { \"_id\" : CSUUID(\"" + id + "\"), \"Name\" : \"MyWorkflow\" } }";
+
+            var wf = _service.GetWorkflowInfoFromJson(json);
+
+            Assert.That(wf.Id, Is.EqualTo(id));
+        }
+
+        [Test]
+        public void GetWorkflowInfoFromJson_ParsesLegacyGuidId_FromRelaxedJson()
+        {
+            // format returned by IWorkflowStore.GetIncompleteWorkflowsAsJson (workflow list) - binary subtype 3 is the C#
+            // legacy representation, so the bytes are in Guid.ToByteArray() order
+            var id = Guid.NewGuid();
+            string binary = "{ \"$binary\" : { \"base64\" : \"" + Convert.ToBase64String(id.ToByteArray()) + "\", \"subType\" : \"03\" } }";
+            string json = "{ \"_id\" : " + binary + ", \"Workflow\" : { \"_id\" : " + binary + ", \"Name\" : \"MyWorkflow\" } }";
+
+            var wf = _service.GetWorkflowInfoFromJson(json);
+
+            Assert.That(wf.Id, Is.EqualTo(id));
+        }
+
+        [Test]
         public void GetWorkflowInfoFromJson_DerivesName_WhenMissing()
         {
             string json = JsonConvert.SerializeObject(new

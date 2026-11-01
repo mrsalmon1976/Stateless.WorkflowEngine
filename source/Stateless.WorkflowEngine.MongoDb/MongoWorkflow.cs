@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             this.WorkflowType = workflow.GetType().AssemblyQualifiedName;
         }
 
+        [BsonGuidRepresentation(MongoDbWorkflowStore.IdGuidRepresentation)]
         public Guid Id { get; set; }
 
         public Workflow Workflow { get; set; }

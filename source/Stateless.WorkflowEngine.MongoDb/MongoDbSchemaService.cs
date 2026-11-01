@@ -1,6 +1,5 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
-using MongoDB.Driver.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -106,7 +105,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         private bool IndexExists(IMongoCollection<MongoWorkflow> collection, string indexName, IndexKeysDefinition<MongoWorkflow> indexKeys)
         {
             IEnumerable<BsonDocument> indexDocuments = collection.Indexes.List().ToList();
-            var keysDocument = indexKeys.Render(new RenderArgs<MongoWorkflow>(collection.DocumentSerializer, collection.Settings.SerializerRegistry, LinqProvider.V3));
+            var keysDocument = indexKeys.Render(new RenderArgs<MongoWorkflow>(collection.DocumentSerializer, collection.Settings.SerializerRegistry));
 
             foreach (BsonDocument index in indexDocuments)
             {

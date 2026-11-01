@@ -18,6 +18,41 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
             _factory = new WorkflowStoreFactory(_protector);
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            _factory.Dispose();
+        }
+
+        [Test]
+        public void GetWorkflowStore_ReusesClient_ForSameConnection()
+        {
+            var connection = TestHelpers.CreateConnection();
+
+            var store1 = (MongoDbWorkflowStore)_factory.GetWorkflowStore(connection);
+            var store2 = (MongoDbWorkflowStore)_factory.GetWorkflowStore(connection);
+
+            Assert.That(store2.MongoDatabase.Client, Is.SameAs(store1.MongoDatabase.Client));
+        }
+
+        [Test]
+        public void Evict_CreatesNewClient_OnNextGetWorkflowStore()
+        {
+            var connection = TestHelpers.CreateConnection();
+            var store1 = (MongoDbWorkflowStore)_factory.GetWorkflowStore(connection);
+
+            _factory.Evict(connection.Id);
+            var store2 = (MongoDbWorkflowStore)_factory.GetWorkflowStore(connection);
+
+            Assert.That(store2.MongoDatabase.Client, Is.Not.SameAs(store1.MongoDatabase.Client));
+        }
+
+        [Test]
+        public void Evict_UnknownConnection_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => _factory.Evict(Guid.NewGuid()));
+        }
+
         [Test]
         public void GetWorkflowStore_UsesConfiguredCollections()
         {

@@ -1,4 +1,6 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using Stateless.WorkflowEngine.MongoDb;
 
 namespace Stateless.WorkflowEngine.WebConsole.Services
 {
@@ -13,6 +15,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
 
         public string? CurrentState { get; set; }
 
+        [BsonGuidRepresentation(MongoDbWorkflowStore.IdGuidRepresentation)]
         public Guid Id { get; set; }
 
         public bool IsSuspended { get; set; }
