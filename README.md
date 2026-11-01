@@ -382,7 +382,7 @@ The `IWorkflowServer` will attempt to persist workflow definitions into a `Workf
 
 # Web Console
 
-The web console is a browser-based tool for monitoring and managing workflow stores.  It is an ASP.NET Core (.NET 10) application that serves a Vue / Nuxt UI single page app, and runs as a Windows service or a Docker container.  It currently supports **MongoDb** stores only (MongoDb Server 4.4 or later).
+The web console is a browser-based tool for monitoring and managing workflow stores.  It is an ASP.NET Core (.NET 10) application that serves a Vue / Nuxt UI single page app, and runs as a Windows service or a Docker container.  It supports **MongoDb** (MongoDb Server 4.4 or later) and **RavenDb** stores.
 
 Features:
 
@@ -392,6 +392,12 @@ Features:
 * A notification when a new version of the console is available
 
 The workflow list shows the first N incomplete workflows (up to 1000) - sorting and filtering apply to the loaded rows only.  To find a specific workflow in a large store, paste its full id into the filter and it will be looked up directly.  Completed workflows are not shown.
+
+## RavenDb connections
+
+RavenDb connections need the server host, port (default 8080) and database - the collections are fixed by the store, so they are not configured.  To connect to a secured RavenDb server, which uses https and authenticates with a client certificate, set **Client certificate** to the path of the certificate (`.pfx`) file on the console's server, and **Certificate password** to its password (if any).  In Docker, put the certificate in the `/app/Data` volume, e.g. `/app/Data/certs/client.pfx`.
+
+The console doesn't have the workflow types loaded, so it works with the raw workflow documents.  Versions of the RavenDb store prior to 6.0 loaded the workflow type to suspend, unsuspend and delete a workflow - from 6.0 these patch or delete the document directly, as the MongoDb store does.
 
 ## Installing as a Windows service
 
@@ -431,11 +437,11 @@ docker build -f source/Stateless.WorkflowEngine.WebConsole/Dockerfile -t statele
 docker run -d -p 8811:8080 -v webconsole_data:/app/Data stateless-workflowengine-webconsole
 ```
 
-The `/app/Data` volume holds users, connections and the encryption keys, so it must be persisted.  Settings can be overridden with environment variables, e.g. `-e LatestVersionUrl=...`.  Note that inside a container, `localhost` refers to the container itself - connect to MongoDb using a host name reachable from the container.
+The `/app/Data` volume holds users, connections and the encryption keys, so it must be persisted.  Settings can be overridden with environment variables, e.g. `-e LatestVersionUrl=...`.  Note that inside a container, `localhost` refers to the container itself - connect to MongoDb or RavenDb using a host name reachable from the container.
 
 ## Performance on large stores
 
-Each dashboard load (and auto refresh) requests the workflow counts for every connection.  On MongoDb these use collection metadata and the partial `Workflow_IsSuspended` index (see [Default Indexes](#default-indexes)), so make sure that index exists on large stores.
+Each dashboard load (and auto refresh) requests the workflow counts for every connection.  On MongoDb these use collection metadata and the partial `Workflow_IsSuspended` index (see [Default Indexes](#default-indexes)), so make sure that index exists on large stores.  On RavenDb they use auto indexes, which RavenDB creates on the first request (see [Default Indexes](#default-indexes)) - on a large existing database the counts can be incomplete until it has finished building them.
 
 # Development
 
@@ -443,7 +449,7 @@ Each dashboard load (and auto refresh) requests the workflow counts for every co
 
 * MongoDb on `mongodb://localhost:27017`
 * RavenDb on `http://localhost:8080` (an unsecured development instance)
-* The web console on `http://localhost:8811`, built from source, with a connection to the example MongoDb database
+* The web console on `http://localhost:8811`, built from source, with connections to the example MongoDb and RavenDb databases
 
 ```powershell
 .\start.ps1            # start everything, rebuilding the console image

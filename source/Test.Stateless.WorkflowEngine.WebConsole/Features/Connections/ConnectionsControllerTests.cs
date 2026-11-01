@@ -123,6 +123,30 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         }
 
         [Test]
+        public void Add_RavenDb_SavesCertificateAndIgnoresMongoDbSettings()
+        {
+            var request = CreateRavenDbRequest(certificatePath: " C:\\certs\\client.pfx ", password: "pwd");
+            request.User = "joe";
+            request.ReplicaSet = "rs0";
+            request.ActiveCollection = "Workflows";
+            request.CompletedCollection = "CompletedWorkflows";
+            request.WorkflowDefinitionCollection = "Defs";
+
+            var result = _controller.Add(request);
+
+            Assert.That(result, Is.TypeOf<OkObjectResult>());
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x =>
+                x.WorkflowStoreType == WorkflowStoreType.RavenDb
+                && x.CertificatePath == "C:\\certs\\client.pfx"
+                && x.Password == "protected:pwd"
+                && x.User == null
+                && x.ReplicaSet == null
+                && x.ActiveCollection == null
+                && x.CompletedCollection == null
+                && x.WorkflowDefinitionCollection == null));
+        }
+
+        [Test]
         public void Add_UsesDefaultDashboard_WhenNoneSupplied()
         {
             _controller.Add(CreateRequest());
@@ -280,6 +304,46 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         }
 
         [Test]
+        public void Update_RavenDb_KeepsExistingPassword_WhenNoneSupplied()
+        {
+            var existing = TestHelpers.CreateRavenDbConnection();
+            existing.CertificatePath = "client.pfx";
+            existing.Password = "existing-cipher";
+            _userStore.GetConnection(existing.Id).Returns(existing);
+
+            _controller.Update(existing.Id, CreateRavenDbRequest(certificatePath: "client.pfx"));
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.CertificatePath == "client.pfx" && x.Password == "existing-cipher"));
+        }
+
+        [Test]
+        public void Update_RavenDb_ClearsPassword_WhenCertificateCleared()
+        {
+            var existing = TestHelpers.CreateRavenDbConnection();
+            existing.CertificatePath = "client.pfx";
+            existing.Password = "existing-cipher";
+            _userStore.GetConnection(existing.Id).Returns(existing);
+
+            _controller.Update(existing.Id, CreateRavenDbRequest());
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.CertificatePath == null && x.Password == null));
+        }
+
+        [Test]
+        public void Update_ClearsPassword_WhenStoreTypeChanged()
+        {
+            // a MongoDb password is not a certificate password
+            var existing = TestHelpers.CreateConnection();
+            existing.User = "joe";
+            existing.Password = "existing-cipher";
+            _userStore.GetConnection(existing.Id).Returns(existing);
+
+            _controller.Update(existing.Id, CreateRavenDbRequest(certificatePath: "client.pfx"));
+
+            _userStore.Received(1).SaveConnection(Arg.Is<ConnectionModel>(x => x.WorkflowStoreType == WorkflowStoreType.RavenDb && x.Password == null));
+        }
+
+        [Test]
         public void Update_EvictsCachedClientAndInfo()
         {
             var existing = TestHelpers.CreateConnection();
@@ -424,6 +488,20 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
                 CompletedCollection = "CompletedWorkflows"
             };
         }
+
+        private static ConnectionRequest CreateRavenDbRequest(string? certificatePath = null, string? password = null)
+        {
+            return new ConnectionRequest
+            {
+                WorkflowStoreType = WorkflowStoreType.RavenDb,
+                Host = "localhost",
+                Port = 8080,
+                Database = "db",
+                CertificatePath = certificatePath,
+                Password = password,
+                PasswordConfirm = password
+            };
+        }
     }
 
     [TestFixture]
@@ -451,6 +529,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
             var errors = new ConnectionValidator().Validate(request);
 
             Assert.That(errors, Is.EquivalentTo(new[] { "Host cannot be empty", "Database cannot be empty", "Active collection cannot be empty", "Completed collection cannot be empty" }));
+        }
+
+        [Test]
+        public void Validate_RavenDb_DoesNotRequireCollections()
+        {
+            var request = new ConnectionRequest { WorkflowStoreType = WorkflowStoreType.RavenDb, Host = "localhost", Port = 8080, Database = "db" };
+
+            Assert.That(new ConnectionValidator().Validate(request), Is.Empty);
         }
 
         [TestCase(null)]

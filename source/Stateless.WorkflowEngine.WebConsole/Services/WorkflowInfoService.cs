@@ -1,4 +1,5 @@
 using MongoDB.Bson.Serialization;
+using Newtonsoft.Json;
 using Stateless.WorkflowEngine.Stores;
 using Stateless.WorkflowEngine.WebConsole.Storage.Models;
 using Stateless.WorkflowEngine.WebConsole.Utils;
@@ -22,7 +23,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
 
         IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
 
-        UIWorkflow GetWorkflowInfoFromJson(string json);
+        UIWorkflow GetWorkflowInfoFromJson(WorkflowStoreType workflowStoreType, string json);
     }
 
     public class WorkflowInfoService : IWorkflowInfoService
@@ -43,7 +44,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
 
             foreach (string doc in documents)
             {
-                var wf = GetWorkflowInfoFromJson(doc);
+                var wf = GetWorkflowInfoFromJson(connectionModel.WorkflowStoreType, doc);
 
                 if (!String.IsNullOrEmpty(wf.QualifiedName))    // for backward compatibility only
                 {
@@ -65,9 +66,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
         /// Converts a JSON workflow into a UIWorkflow object.  The store's typed Get calls can't be used
         /// because the console does not have the workflow types loaded.
         /// </summary>
-        public UIWorkflow GetWorkflowInfoFromJson(string json)
+        public UIWorkflow GetWorkflowInfoFromJson(WorkflowStoreType workflowStoreType, string json)
         {
-            UIWorkflowContainer wc = BsonSerializer.Deserialize<UIWorkflowContainer>(json);
+            // RavenDb documents are plain JSON - the $type of the workflow is ignored as the type isn't loaded
+            UIWorkflowContainer wc = (workflowStoreType == WorkflowStoreType.RavenDb
+                ? JsonConvert.DeserializeObject<UIWorkflowContainer>(json)
+                : BsonSerializer.Deserialize<UIWorkflowContainer>(json)) ?? new UIWorkflowContainer();
             UIWorkflow workflow = wc.Workflow ?? new UIWorkflow();
 
             // workflows registered prior to v3.0 did not have a Name property

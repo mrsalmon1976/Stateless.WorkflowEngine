@@ -44,3 +44,14 @@ export const AutoRefreshIntervalMs = 60000
 // thresholds used to colour workflow counts on the dashboard
 export const ActiveWarningThreshold = 100
 export const ActiveErrorThreshold = 10000
+
+export const WorkflowStoreTypes = {
+  MongoDb: 'MongoDb',
+  RavenDb: 'RavenDb'
+}
+
+// must match WorkflowStoreFactory.DefaultMongoDbPort/DefaultRavenDbPort on the server
+export const DefaultPorts = {
+  [WorkflowStoreTypes.MongoDb]: 27017,
+  [WorkflowStoreTypes.RavenDb]: 8080
+}

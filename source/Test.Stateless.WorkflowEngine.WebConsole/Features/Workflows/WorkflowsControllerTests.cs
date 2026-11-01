@@ -81,7 +81,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
             var workflowId = Guid.NewGuid();
             _workflowStore.GetWorkflowAsJson(workflowId).Returns("{ json }");
             var workflow = new UIWorkflow { IsSuspended = true };
-            _workflowInfoService.GetWorkflowInfoFromJson("{ json }").Returns(workflow);
+            _workflowInfoService.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, "{ json }").Returns(workflow);
 
             var result = (OkObjectResult)_controller.Get(_connection.Id, workflowId);
 
@@ -96,7 +96,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
         {
             var workflowId = Guid.NewGuid();
             _workflowStore.GetWorkflowAsJson(workflowId).Returns("{ json }");
-            _workflowInfoService.GetWorkflowInfoFromJson("{ json }").Returns(new UIWorkflow { QualifiedName = "Test.Workflow" });
+            _workflowInfoService.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, "{ json }").Returns(new UIWorkflow { QualifiedName = "Test.Workflow" });
             _workflowStore.GetDefinitionByQualifiedName("Test.Workflow").Returns(new WorkflowDefinition { Graph = "digraph {}" });
 
             var result = (OkObjectResult)_controller.Get(_connection.Id, workflowId);

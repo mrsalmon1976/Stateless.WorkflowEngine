@@ -100,7 +100,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
                 Workflow = new { Id = id, Name = "MyWorkflow", CurrentState = "Start", IsSuspended = true, RetryCount = 3, CustomProperty = "x" }
             });
 
-            var wf = _service.GetWorkflowInfoFromJson(json);
+            var wf = _service.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, json);
 
             Assert.That(wf.Name, Is.EqualTo("MyWorkflow"));
             Assert.That(wf.CurrentState, Is.EqualTo("Start"));
@@ -115,7 +115,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
             var id = Guid.NewGuid();
             string json = "{ \"_id\" : CSUUID(\"" + id + "\"), \"Workflow\" : { \"_id\" : CSUUID(\"" + id + "\"), \"Name\" : \"MyWorkflow\" } }";
 
-            var wf = _service.GetWorkflowInfoFromJson(json);
+            var wf = _service.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, json);
 
             Assert.That(wf.Id, Is.EqualTo(id));
         }
@@ -129,7 +129,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
             string binary = "{ \"$binary\" : { \"base64\" : \"" + Convert.ToBase64String(id.ToByteArray()) + "\", \"subType\" : \"03\" } }";
             string json = "{ \"_id\" : " + binary + ", \"Workflow\" : { \"_id\" : " + binary + ", \"Name\" : \"MyWorkflow\" } }";
 
-            var wf = _service.GetWorkflowInfoFromJson(json);
+            var wf = _service.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, json);
 
             Assert.That(wf.Id, Is.EqualTo(id));
         }
@@ -143,9 +143,44 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
                 Workflow = new { CurrentState = "Start" }
             });
 
-            var wf = _service.GetWorkflowInfoFromJson(json);
+            var wf = _service.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, json);
 
             Assert.That(wf.Name, Is.EqualTo("LegacyWorkflow"));
+        }
+
+        [Test]
+        public void GetWorkflowInfoFromJson_ParsesRavenDbDocument()
+        {
+            // format returned by RavenDbWorkflowStore - the workflow type can't be loaded, so $type must be ignored
+            var id = Guid.NewGuid();
+            string json = "{ \"Id\": \"Workflow/" + id + "\", \"WorkflowType\": \"Test.MyWorkflow, Test\", "
+                + "\"Workflow\": { \"$type\": \"Test.MyWorkflow, Test\", \"Id\": \"" + id + "\", \"Name\": \"MyWorkflow\", \"CurrentState\": \"Start\", "
+                + "\"IsSuspended\": true, \"RetryCount\": 2, \"RetryIntervals\": [5, 10], \"CreatedOn\": \"2026-11-01T10:15:30.0000000Z\", \"CustomProperty\": \"x\" }, "
+                + "\"@metadata\": { \"@collection\": \"RavenWorkflows\", \"@id\": \"Workflow/" + id + "\", \"Raven-Clr-Type\": \"Stateless.WorkflowEngine.RavenDb.RavenWorkflow, Stateless.WorkflowEngine.RavenDb\" } }";
+
+            var wf = _service.GetWorkflowInfoFromJson(WorkflowStoreType.RavenDb, json);
+
+            Assert.That(wf.Id, Is.EqualTo(id));
+            Assert.That(wf.Name, Is.EqualTo("MyWorkflow"));
+            Assert.That(wf.CurrentState, Is.EqualTo("Start"));
+            Assert.That(wf.IsSuspended, Is.True);
+            Assert.That(wf.RetryCount, Is.EqualTo(2));
+            Assert.That(wf.RetryIntervals, Is.EqualTo(new[] { 5, 10 }));
+            Assert.That(wf.CreatedOn, Is.EqualTo(new DateTime(2026, 11, 1, 10, 15, 30, DateTimeKind.Utc)));
+        }
+
+        [Test]
+        public void GetIncompleteWorkflows_ParsesDocumentsForConnectionStoreType()
+        {
+            var connection = TestHelpers.CreateRavenDbConnection();
+            _workflowStoreFactory.GetWorkflowStore(connection).Returns(_workflowStore);
+            // not valid for the MongoDb parser, which treats $type as an extended json type
+            string json = "{ \"Workflow\": { \"$type\": \"Test.MyWorkflow, Test\", \"Name\": \"MyWorkflow\" } }";
+            _workflowStore.GetIncompleteWorkflowsAsJson(5).Returns(new[] { json });
+
+            var result = _service.GetIncompleteWorkflows(connection, 5).ToList();
+
+            Assert.That(result.Single().Name, Is.EqualTo("MyWorkflow"));
         }
 
         private static string CreateWorkflowJson(string name, string? qualifiedName)

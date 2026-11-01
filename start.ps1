@@ -8,7 +8,7 @@
     point at these containers by default (override with the STATELESS_MONGODB_CONNECTIONSTRING and
     STATELESS_RAVENDB_URL environment variables).
 
-    On first run, a connection to the MongoDB container's example database is added to the console.
+    On first run, connections to the MongoDB and RavenDB containers' example databases are added to the console.
 
     With -Dev, the console container is stopped and the console runs from source instead, with changes
     picked up live: the API under 'dotnet watch' (http://localhost:8811) and the client under the Vite dev
@@ -87,8 +87,8 @@ function WaitFor {
     exit 1
 }
 
-function AddExampleConnection {
-    param([string]$mongoHost)
+function AddExampleConnections {
+    param([string]$mongoHost, [string]$ravenHost)
 
     # signs in with the default admin account - if the password has been changed, add connections manually
     try {
@@ -96,26 +96,36 @@ function AddExampleConnection {
         Invoke-RestMethod -Uri "$consoleUrl/api/auth/login" -Method Post -Body $login -ContentType "application/json" -SessionVariable session | Out-Null
     }
     catch {
-        Write-Host "Skipping example connection - unable to sign in to the console as admin/admin." -ForegroundColor Yellow
+        Write-Host "Skipping example connections - unable to sign in to the console as admin/admin." -ForegroundColor Yellow
         return
     }
+
+    # inside the docker network the console reaches the databases by their service names, from source it is localhost
+    $examples = @(
+        @{
+            workflowStoreType   = "MongoDb"
+            host                = $mongoHost
+            port                = 27017
+            database            = "StatelessWorkflowExample"
+            activeCollection    = "Workflows"
+            completedCollection = "CompletedWorkflows"
+        },
+        @{
+            workflowStoreType   = "RavenDb"
+            host                = $ravenHost
+            port                = 8080
+            database            = "StatelessWorkflowExample"
+        }
+    )
 
     $connections = Invoke-RestMethod -Uri "$consoleUrl/api/connections" -WebSession $session
-    if ($connections | Where-Object { $_.host -eq $mongoHost -and $_.database -eq "StatelessWorkflowExample" }) {
-        return
+    foreach ($example in $examples) {
+        if ($connections | Where-Object { $_.workflowStoreType -eq $example.workflowStoreType -and $_.host -eq $example.host -and $_.database -eq $example.database }) {
+            continue
+        }
+        Invoke-RestMethod -Uri "$consoleUrl/api/connections" -Method Post -Body ($example | ConvertTo-Json) -ContentType "application/json" -WebSession $session | Out-Null
+        Write-Host "Added console connection to $($example.workflowStoreType) $($example.host):$($example.port)/$($example.database)." -ForegroundColor Green
     }
-
-    # inside the docker network the console reaches MongoDB by its service name, from source it is localhost
-    $connection = @{
-        workflowStoreType   = "MongoDb"
-        host                = $mongoHost
-        port                = 27017
-        database            = "StatelessWorkflowExample"
-        activeCollection    = "Workflows"
-        completedCollection = "CompletedWorkflows"
-    } | ConvertTo-Json
-    Invoke-RestMethod -Uri "$consoleUrl/api/connections" -Method Post -Body $connection -ContentType "application/json" -WebSession $session | Out-Null
-    Write-Host "Added console connection to ${mongoHost}:27017/StatelessWorkflowExample." -ForegroundColor Green
 }
 
 # 1. Ensure Docker is running
@@ -192,13 +202,13 @@ if ($Dev) {
     # the first build can take a while
     WaitFor -name "Web console API" -timeoutSeconds 300 -test { IsListening 8811 }
     WaitFor -name "Vite dev server" -timeoutSeconds 300 -test { IsListening 5173 }
-    AddExampleConnection -mongoHost "localhost"
+    AddExampleConnections -mongoHost "localhost" -ravenHost "localhost"
 }
 else {
     WaitFor -name "Web console" -test { (Invoke-WebRequest -Uri $consoleUrl -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop).StatusCode -eq 200 }
 
-    # 4. Point the console at the example database
-    AddExampleConnection -mongoHost "mongodb"
+    # 4. Point the console at the example databases
+    AddExampleConnections -mongoHost "mongodb" -ravenHost "ravendb"
 }
 
 Write-Host ""

@@ -14,6 +14,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY Stateless.WorkflowEngine/ Stateless.WorkflowEngine/
 COPY Stateless.WorkflowEngine.MongoDb/ Stateless.WorkflowEngine.MongoDb/
+COPY Stateless.WorkflowEngine.RavenDb/ Stateless.WorkflowEngine.RavenDb/
 COPY Stateless.WorkflowEngine.WebConsole/ Stateless.WorkflowEngine.WebConsole/
 COPY --from=client /src/Stateless.WorkflowEngine.WebConsole/wwwroot/ Stateless.WorkflowEngine.WebConsole/wwwroot/
 RUN dotnet publish Stateless.WorkflowEngine.WebConsole/Stateless.WorkflowEngine.WebConsole.csproj -c Release -o /app/publish -p:SkipClientBuild=true

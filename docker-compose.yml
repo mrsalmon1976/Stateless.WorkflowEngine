@@ -35,6 +35,7 @@ services:
       - webconsole_data:/app/Data
     depends_on:
       - mongodb
+      - ravendb
     restart: unless-stopped
 
 volumes:

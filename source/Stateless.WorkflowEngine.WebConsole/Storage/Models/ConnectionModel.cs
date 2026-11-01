@@ -19,7 +19,13 @@ namespace Stateless.WorkflowEngine.WebConsole.Storage.Models
         public string? User { get; set; }
 
         /// <summary>
-        /// Gets/sets the encrypted password.
+        /// Gets/sets the path, on the console's machine, of the client certificate (.pfx) used to connect to a secured
+        /// RavenDb server.  The certificate's password is stored in <see cref="Password"/>.
+        /// </summary>
+        public string? CertificatePath { get; set; }
+
+        /// <summary>
+        /// Gets/sets the encrypted password (the certificate password for RavenDb connections).
         /// </summary>
         public string? Password { get; set; }
 

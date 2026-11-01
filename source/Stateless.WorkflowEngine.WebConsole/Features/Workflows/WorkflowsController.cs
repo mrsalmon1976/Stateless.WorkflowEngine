@@ -67,7 +67,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
                 return NotFound(new { error = "No workflow found matching the supplied workflow and connection (the workflow may have completed)." });
             }
 
-            UIWorkflow wf = _workflowInfoService.GetWorkflowInfoFromJson(json);
+            UIWorkflow wf = _workflowInfoService.GetWorkflowInfoFromJson(connection.WorkflowStoreType, json);
             if (!String.IsNullOrEmpty(wf.QualifiedName))
             {
                 wf.WorkflowGraph = store.GetDefinitionByQualifiedName(wf.QualifiedName)?.Graph;

@@ -100,6 +100,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
                 Port = existing.Port,
                 Database = existing.Database,
                 User = existing.User,
+                CertificatePath = existing.CertificatePath,
                 Password = existing.Password,
                 Key = existing.Key,
                 ReplicaSet = existing.ReplicaSet,
@@ -188,7 +189,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
 
         /// <summary>
         /// Creates a connection model from a request.  If no password is supplied for an existing connection,
-        /// the stored password is retained (unless the user has been cleared).
+        /// the stored password is retained (unless the user, or certificate for RavenDb, has been cleared).
+        /// Settings that don't apply to the store type are not saved.
         /// </summary>
         private ConnectionModel ToModel(ConnectionRequest request, ConnectionModel? existing)
         {
@@ -199,19 +201,30 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
                 WorkflowStoreType = request.WorkflowStoreType,
                 Host = request.Host?.Trim(),
                 Port = request.Port,
-                Database = request.Database?.Trim(),
-                User = String.IsNullOrWhiteSpace(request.User) ? null : request.User.Trim(),
-                ReplicaSet = String.IsNullOrWhiteSpace(request.ReplicaSet) ? null : request.ReplicaSet.Trim(),
-                ActiveCollection = request.ActiveCollection?.Trim(),
-                CompletedCollection = request.CompletedCollection?.Trim(),
-                WorkflowDefinitionCollection = String.IsNullOrWhiteSpace(request.WorkflowDefinitionCollection) ? null : request.WorkflowDefinitionCollection.Trim()
+                Database = request.Database?.Trim()
             };
+
+            bool hasCredentials;
+            if (request.WorkflowStoreType == WorkflowStoreType.RavenDb)
+            {
+                model.CertificatePath = String.IsNullOrWhiteSpace(request.CertificatePath) ? null : request.CertificatePath.Trim();
+                hasCredentials = model.CertificatePath != null;
+            }
+            else
+            {
+                model.User = String.IsNullOrWhiteSpace(request.User) ? null : request.User.Trim();
+                model.ReplicaSet = String.IsNullOrWhiteSpace(request.ReplicaSet) ? null : request.ReplicaSet.Trim();
+                model.ActiveCollection = request.ActiveCollection?.Trim();
+                model.CompletedCollection = request.CompletedCollection?.Trim();
+                model.WorkflowDefinitionCollection = String.IsNullOrWhiteSpace(request.WorkflowDefinitionCollection) ? null : request.WorkflowDefinitionCollection.Trim();
+                hasCredentials = model.User != null;
+            }
 
             if (!String.IsNullOrEmpty(request.Password))
             {
                 model.Password = _passwordProtector.Protect(request.Password);
             }
-            else if (existing != null && model.User != null)
+            else if (existing != null && existing.WorkflowStoreType == model.WorkflowStoreType && hasCredentials)
             {
                 model.Password = existing.Password;
                 model.Key = existing.Key;

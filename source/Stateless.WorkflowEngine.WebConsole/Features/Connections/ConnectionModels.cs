@@ -26,6 +26,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
 
         public string? User { get; set; }
 
+        public string? CertificatePath { get; set; }
+
         public string? Password { get; set; }
 
         public string? PasswordConfirm { get; set; }
@@ -60,6 +62,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
 
         public string? User { get; set; }
 
+        public string? CertificatePath { get; set; }
+
         public bool HasPassword { get; set; }
 
         public string? ReplicaSet { get; set; }
@@ -81,6 +85,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
                 Port = model.Port,
                 Database = model.Database,
                 User = model.User,
+                CertificatePath = model.CertificatePath,
                 HasPassword = !String.IsNullOrEmpty(model.Password),
                 ReplicaSet = model.ReplicaSet,
                 ActiveCollection = model.ActiveCollection,
@@ -115,13 +120,17 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             {
                 errors.Add("Database cannot be empty");
             }
-            if (String.IsNullOrWhiteSpace(request.ActiveCollection))
+            // RavenDb collections are fixed by the store
+            if (request.WorkflowStoreType == WorkflowStoreType.MongoDb)
             {
-                errors.Add("Active collection cannot be empty");
-            }
-            if (String.IsNullOrWhiteSpace(request.CompletedCollection))
-            {
-                errors.Add("Completed collection cannot be empty");
+                if (String.IsNullOrWhiteSpace(request.ActiveCollection))
+                {
+                    errors.Add("Active collection cannot be empty");
+                }
+                if (String.IsNullOrWhiteSpace(request.CompletedCollection))
+                {
+                    errors.Add("Completed collection cannot be empty");
+                }
             }
             if ((request.Password ?? String.Empty) != (request.PasswordConfirm ?? String.Empty))
             {

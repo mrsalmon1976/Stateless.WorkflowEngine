@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.DataProtection;
+using Raven.Client.Documents;
 using Stateless.WorkflowEngine.MongoDb;
+using Stateless.WorkflowEngine.RavenDb;
 using Stateless.WorkflowEngine.WebConsole.Security;
 using Stateless.WorkflowEngine.WebConsole.Services;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Test.Stateless.WorkflowEngine.WebConsole.Services
 {
@@ -95,6 +99,69 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
             Assert.That(url.Username, Is.EqualTo("joe"));
             Assert.That(url.Password, Is.EqualTo("secret"));
             Assert.That(url.ReplicaSetName, Is.EqualTo("rs0"));
+        }
+
+        [Test]
+        public void GetWorkflowStore_RavenDb_ReusesDocumentStore_UntilEvicted()
+        {
+            var connection = TestHelpers.CreateRavenDbConnection(database: "ravendb");
+
+            var store1 = (RavenDbWorkflowStore)_factory.GetWorkflowStore(connection);
+            var documentStore1 = store1.DocumentStore;
+            var documentStore2 = ((RavenDbWorkflowStore)_factory.GetWorkflowStore(connection)).DocumentStore;
+            _factory.Evict(connection.Id);
+            var documentStore3 = ((RavenDbWorkflowStore)_factory.GetWorkflowStore(connection)).DocumentStore;
+
+            Assert.That(documentStore2, Is.SameAs(documentStore1));
+            Assert.That(documentStore3, Is.Not.SameAs(documentStore1));
+            Assert.That(documentStore1.Database, Is.EqualTo("ravendb"));
+            Assert.That(documentStore1.Urls, Is.EqualTo(new[] { "http://localhost:8080" }));
+        }
+
+        [Test]
+        public void GetRavenDbUrl_UsesHttp_WhenNoCertificate()
+        {
+            var connection = TestHelpers.CreateRavenDbConnection("raven.local");
+            connection.Port = 8081;
+
+            Assert.That(_factory.GetRavenDbUrl(connection), Is.EqualTo("http://raven.local:8081"));
+        }
+
+        [Test]
+        public void GetRavenDbUrl_UsesHttps_WhenCertificateConfigured()
+        {
+            var connection = TestHelpers.CreateRavenDbConnection("raven.local");
+            connection.Port = 443;
+            connection.CertificatePath = "client.pfx";
+
+            Assert.That(_factory.GetRavenDbUrl(connection), Is.EqualTo("https://raven.local"));
+        }
+
+        [Test]
+        public void GetWorkflowStore_RavenDb_LoadsClientCertificate()
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.pfx");
+            using (var rsa = RSA.Create(2048))
+            {
+                var request = new CertificateRequest("CN=Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1));
+                File.WriteAllBytes(path, certificate.Export(X509ContentType.Pfx, "secret"));
+            }
+            try
+            {
+                var connection = TestHelpers.CreateRavenDbConnection();
+                connection.CertificatePath = path;
+                connection.Password = _protector.Protect("secret");
+
+                var documentStore = ((RavenDbWorkflowStore)_factory.GetWorkflowStore(connection)).DocumentStore;
+
+                Assert.That(documentStore.Certificate.Subject, Is.EqualTo("CN=Test"));
+                Assert.That(documentStore.Urls, Is.EqualTo(new[] { "https://localhost:8080" }));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
     }
 }

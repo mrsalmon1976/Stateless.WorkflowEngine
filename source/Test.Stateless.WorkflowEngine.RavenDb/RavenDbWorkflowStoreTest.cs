@@ -12,6 +12,8 @@ using Raven.Client.Exceptions;
 using Raven.Client.ServerWide.Operations;
 using Raven.Client.ServerWide;
 using Raven.Client.Documents.Operations.Indexes;
+using Newtonsoft.Json.Linq;
+using Test.Stateless.WorkflowEngine.Workflows.Basic;
 
 namespace Test.Stateless.WorkflowEngine.RavenDb
 {
@@ -110,9 +112,32 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             Assert.That(indexNames, Does.Contain("Auto/RavenWorkflows/ByWorkflow.IsSuspended"));
         }
 
+        [Test]
+        public void GetWorkflowAsJson_ReturnsRawDocument()
+        {
+            // the web console reads the raw document as it doesn't have the workflow types loaded
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            workflowStore.Save(wf);
+
+            JObject doc = JObject.Parse(workflowStore.GetWorkflowAsJson(wf.Id));
+
+            Assert.That(doc["WorkflowType"].Value<string>(), Is.EqualTo(typeof(BasicWorkflow).AssemblyQualifiedName));
+            Assert.That(doc["Workflow"]["Id"].Value<string>(), Is.EqualTo(wf.Id.ToString()));
+            Assert.That(doc["@metadata"]["@id"].Value<string>(), Is.EqualTo($"Workflow/{wf.Id}"));
+        }
+
         #endregion
 
         #region Protected Methods
+
+        /// <summary>
+        /// The JSON methods return the raw RavenWorkflow document, which wraps the workflow.
+        /// </summary>
+        protected override T DeserializeJsonWorkflow<T>(string json)
+        {
+            return JObject.Parse(json)["Workflow"].ToObject<T>();
+        }
 
         /// <summary>
         /// Gets the store relevant to the test.

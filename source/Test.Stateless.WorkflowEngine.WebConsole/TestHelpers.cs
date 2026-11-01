@@ -31,6 +31,17 @@ namespace Test.Stateless.WorkflowEngine.WebConsole
             };
         }
 
+        public static ConnectionModel CreateRavenDbConnection(string host = "localhost", string database = "db")
+        {
+            return new ConnectionModel
+            {
+                WorkflowStoreType = WorkflowStoreType.RavenDb,
+                Host = host,
+                Port = 8080,
+                Database = database
+            };
+        }
+
         /// <summary>
         /// Sets the controller up with a signed in user.
         /// </summary>

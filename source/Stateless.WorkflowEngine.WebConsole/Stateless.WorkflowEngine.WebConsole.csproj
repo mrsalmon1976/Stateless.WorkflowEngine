@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Stateless.WorkflowEngine\Stateless.WorkflowEngine.csproj" />
     <ProjectReference Include="..\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" />
+    <ProjectReference Include="..\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" />
   </ItemGroup>
 
   <ItemGroup>

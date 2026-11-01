@@ -4,7 +4,10 @@ using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using Raven.Client.Documents;
+using Raven.Client.Documents.Commands.Batches;
+using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Session;
+using Sparrow.Json;
 using Raven.Client.Exceptions;
 using Raven.Client.Exceptions.Database;
 using Raven.Client.ServerWide;
@@ -19,6 +22,13 @@ namespace Stateless.WorkflowEngine.RavenDb
     public class RavenDbWorkflowStore : WorkflowStore
     {
         private readonly IDocumentStore _documentStore;
+
+        private string WorkflowCollection => _documentStore.Conventions.FindCollectionName(typeof(RavenWorkflow));
+
+        /// <summary>
+        /// Gets the document store associated with the store.
+        /// </summary>
+        public IDocumentStore DocumentStore => _documentStore;
 
         /// <summary>
         /// 
@@ -87,9 +97,8 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (IDocumentSession session = this.OpenSession())
             {
-                string fid = RavenDbIdUtility.FormatWorkflowId(id);
-                RavenWorkflow wf = session.Load<RavenWorkflow>(fid);
-                session.Delete<RavenWorkflow>(wf);
+                // deleted by id so the workflow type doesn't need to be loaded (e.g. by the web console)
+                session.Delete(RavenDbIdUtility.FormatWorkflowId(id));
                 session.SaveChanges();
             }
         }
@@ -102,9 +111,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         {
             using (var session = this.OpenAsyncSession())
             {
-                string fid = RavenDbIdUtility.FormatWorkflowId(id);
-                RavenWorkflow wf = await session.LoadAsync<RavenWorkflow>(fid);
-                session.Delete(wf);
+                session.Delete(RavenDbIdUtility.FormatWorkflowId(id));
                 await session.SaveChangesAsync();
             }
         }
@@ -307,6 +314,41 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .Customize(x => x.WaitForNonStaleResults())
                              select s.WorkflowDefinition;
                 return result.ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows as raw JSON documents.  The documents are not deserialized,
+        /// so the workflow types don't need to be loaded (e.g. by the web console).
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override IEnumerable<string> GetIncompleteWorkflowsAsJson(int count)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                // the documents belong to the session, so they must be converted before it is disposed
+                return session.Advanced.RawQuery<BlittableJsonReaderObject>($"from '{WorkflowCollection}'")
+                    .NoTracking()
+                    .Take(count)
+                    .ToList()
+                    .Select(x => x.ToString())
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets an active workflow as a raw JSON document, or null if it does not exist.  The document is not
+        /// deserialized, so the workflow type doesn't need to be loaded (e.g. by the web console).
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override string GetWorkflowAsJson(Guid id)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                BlittableJsonReaderObject doc = session.Load<BlittableJsonReaderObject>(RavenDbIdUtility.FormatWorkflowId(id));
+                return doc?.ToString();
             }
         }
 
@@ -580,9 +622,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="id"></param>
         public override void SuspendWorkflow(Guid id)
         {
-            Workflow w = this.Get(id);
-            w.IsSuspended = true;
-            this.Save(w);
+            PatchWorkflow(id, SuspendScript, null);
         }
 
         /// <summary>
@@ -591,13 +631,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="id"></param>
         public override async Task SuspendWorkflowAsync(Guid id)
         {
-            Workflow w = await this.GetOrDefaultAsync(id);
-            if (w == null)
-            {
-                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
-            }
-            w.IsSuspended = true;
-            await this.SaveAsync(w);
+            await PatchWorkflowAsync(id, SuspendScript, null);
         }
 
         /// <summary>
@@ -607,11 +641,7 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="id"></param>
         public override void UnsuspendWorkflow(Guid id)
         {
-            Workflow w = this.Get(id);
-            w.IsSuspended = false;
-            w.RetryCount = 0;
-            w.ResumeOn = DateTime.UtcNow;
-            this.Save(w);
+            PatchWorkflow(id, UnsuspendScript, new Dictionary<string, object> { { "resumeOn", DateTime.UtcNow } });
         }
 
         /// <summary>
@@ -621,15 +651,45 @@ namespace Stateless.WorkflowEngine.RavenDb
         /// <param name="id"></param>
         public override async Task UnsuspendWorkflowAsync(Guid id)
         {
-            Workflow w = await this.GetOrDefaultAsync(id);
-            if (w == null)
+            await PatchWorkflowAsync(id, UnsuspendScript, new Dictionary<string, object> { { "resumeOn", DateTime.UtcNow } });
+        }
+
+        private const string SuspendScript = "this.Workflow.IsSuspended = true;";
+
+        private const string UnsuspendScript = "this.Workflow.IsSuspended = false; this.Workflow.RetryCount = 0; this.Workflow.ResumeOn = args.resumeOn;";
+
+        /// <summary>
+        /// Patches the raw workflow document, so the workflow type doesn't need to be loaded (e.g. by the web console).
+        /// </summary>
+        private void PatchWorkflow(Guid id, string script, Dictionary<string, object> values)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            using (IDocumentSession session = this.OpenSession())
             {
-                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                if (!session.Advanced.Exists(fid))
+                {
+                    throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                }
+                session.Advanced.Defer(new PatchCommandData(fid, null, new PatchRequest { Script = script, Values = values ?? new Dictionary<string, object>() }));
+                session.SaveChanges();
             }
-            w.IsSuspended = false;
-            w.RetryCount = 0;
-            w.ResumeOn = DateTime.UtcNow;
-            await this.SaveAsync(w);
+        }
+
+        /// <summary>
+        /// Patches the raw workflow document, so the workflow type doesn't need to be loaded (e.g. by the web console).
+        /// </summary>
+        private async Task PatchWorkflowAsync(Guid id, string script, Dictionary<string, object> values)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            using (var session = this.OpenAsyncSession())
+            {
+                if (!await session.Advanced.ExistsAsync(fid))
+                {
+                    throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                }
+                session.Advanced.Defer(new PatchCommandData(fid, null, new PatchRequest { Script = script, Values = values ?? new Dictionary<string, object>() }));
+                await session.SaveChangesAsync();
+            }
         }
 
 
