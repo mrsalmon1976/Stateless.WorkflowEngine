@@ -14,5 +14,10 @@ namespace Stateless.WorkflowEngine.MongoDb
         /// Partial index containing only suspended workflows.
         /// </summary>
         public const string Workflow_IsSuspended = "Workflow_IsSuspended";
+
+        /// <summary>
+        /// Partial index containing only workflows locked by a workflow server node.
+        /// </summary>
+        public const string Workflow_LockedBy = "Workflow_LockedBy";
     }
 }

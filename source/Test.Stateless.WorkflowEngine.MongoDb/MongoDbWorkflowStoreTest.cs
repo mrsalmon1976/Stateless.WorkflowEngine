@@ -11,6 +11,7 @@ using Stateless.WorkflowEngine.MongoDb;
 using NSubstitute;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson;
+using Test.Stateless.WorkflowEngine.Workflows.Basic;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb
 {
@@ -135,10 +136,66 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
             schemaService.Received(1).EnsureCompletedIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Initialise_AutoCreateIndexTrue_LockedByIndexIsCreated(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            workflowStore.Initialise(autoCreateTables, true, false);
+
+            schemaService.Received(1).EnsureLockedByIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionNodes);
+        }
+
+        [Test]
+        public void Save_UnlockedWorkflow_LockFieldsNotStored()
+        {
+            // the partial LockedBy index relies on unlocked workflows not storing the lock fields at all
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflowStore.Save(workflow);
+
+            BsonDocument unlocked = GetRawWorkflow(workflowStore, workflow.Id);
+            Assert.That(unlocked.Contains("LockedBy"), Is.False);
+            Assert.That(unlocked.Contains("LockedOn"), Is.False);
+
+            workflowStore.ClaimNext("node1");
+            BsonDocument locked = GetRawWorkflow(workflowStore, workflow.Id);
+            Assert.That(locked["LockedBy"].AsString, Is.EqualTo("node1"));
+            Assert.That(locked["LockedOn"].IsValidDateTime, Is.True);
+
+            workflowStore.ReleaseLocks("node1");
+            BsonDocument released = GetRawWorkflow(workflowStore, workflow.Id);
+            Assert.That(released.Contains("LockedBy"), Is.False);
+            Assert.That(released.Contains("LockedOn"), Is.False);
+        }
+
+        [Test]
+        public void ClaimNext_LockedByStoredAsNull_WorkflowClaimed()
+        {
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflowStore.Save(workflow);
+            _database.GetCollection<BsonDocument>(workflowStore.CollectionActive).UpdateOne(
+                new BsonDocument(),
+                new BsonDocument("$set", new BsonDocument("Workflow.LockedBy", BsonNull.Value)));
+
+            Assert.That(workflowStore.ClaimNext("node1")?.Id, Is.EqualTo(workflow.Id));
+        }
+
 
         #endregion
 
         #region Private Methods
+
+        private BsonDocument GetRawWorkflow(MongoDbWorkflowStore workflowStore, Guid id)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", new BsonBinaryData(id, MongoDbWorkflowStore.IdGuidRepresentation));
+            return _database.GetCollection<BsonDocument>(workflowStore.CollectionActive).Find(filter).Single()["Workflow"].AsBsonDocument;
+        }
 
         private void DeleteTestCollections()
         {

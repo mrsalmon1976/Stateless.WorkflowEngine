@@ -313,5 +313,139 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         /// <param name="id"></param>
         Task UnsuspendWorkflowAsync(Guid id);
+
+        /// <summary>
+        /// Atomically claims the next available workflow (not suspended, due for resumption and not locked), ordered by
+        /// Priority DESC, RetryCount DESC and then CreatedOn, by setting <c>LockedBy</c> to the supplied node id.  This is
+        /// the method used by the workflow server to fetch workflows - no two nodes can claim the same workflow.
+        /// </summary>
+        /// <param name="nodeId">The id of the node claiming the workflow.</param>
+        /// <returns>The claimed workflow, or null if no workflows are available.</returns>
+        Workflow ClaimNext(string nodeId);
+
+        /// <summary>
+        /// Atomically claims the next available workflow (not suspended, due for resumption and not locked), ordered by
+        /// Priority DESC, RetryCount DESC and then CreatedOn, by setting <c>LockedBy</c> to the supplied node id.  This is
+        /// the method used by the workflow server to fetch workflows - no two nodes can claim the same workflow.
+        /// </summary>
+        /// <param name="nodeId">The id of the node claiming the workflow.</param>
+        /// <returns>The claimed workflow, or null if no workflows are available.</returns>
+        Task<Workflow> ClaimNextAsync(string nodeId);
+
+        /// <summary>
+        /// Saves a workflow claimed by a node.  The save only happens if the stored workflow is still locked by the node,
+        /// or is not locked at all.  The <c>LockedBy</c> value of the workflow is persisted, so clearing it before the
+        /// save releases the lock in the same write.
+        /// </summary>
+        /// <returns>False if the workflow is now locked by another node (or no longer exists), in which case nothing is saved.</returns>
+        bool SaveClaimed(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Saves a workflow claimed by a node.  The save only happens if the stored workflow is still locked by the node,
+        /// or is not locked at all.  The <c>LockedBy</c> value of the workflow is persisted, so clearing it before the
+        /// save releases the lock in the same write.
+        /// </summary>
+        /// <returns>False if the workflow is now locked by another node (or no longer exists), in which case nothing is saved.</returns>
+        Task<bool> SaveClaimedAsync(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, moving it into the completed store.  The archive only happens if the
+        /// stored workflow is still locked by the node, or is not locked at all.
+        /// </summary>
+        /// <returns>False if the workflow is now locked by another node (or no longer exists), in which case nothing is archived.</returns>
+        bool ArchiveClaimed(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, moving it into the completed store.  The archive only happens if the
+        /// stored workflow is still locked by the node, or is not locked at all.
+        /// </summary>
+        /// <returns>False if the workflow is now locked by another node (or no longer exists), in which case nothing is archived.</returns>
+        Task<bool> ArchiveClaimedAsync(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        void ReleaseLocks(string nodeId);
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        Task ReleaseLocksAsync(string nodeId);
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.  Used by
+        /// a node to release locks it holds on workflows it is no longer executing (e.g. after a failed save).
+        /// </summary>
+        void ReleaseStaleLocks(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds);
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.  Used by
+        /// a node to release locks it holds on workflows it is no longer executing (e.g. after a failed save).
+        /// </summary>
+        Task ReleaseStaleLocksAsync(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds);
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        IEnumerable<string> GetLockOwners();
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        Task<IEnumerable<string>> GetLockOwnersAsync();
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        void RegisterNode(WorkflowNode node);
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        Task RegisterNodeAsync(WorkflowNode node);
+
+        /// <summary>
+        /// Updates the heartbeat of a node.  The node is not re-created if it no longer exists.
+        /// </summary>
+        /// <returns>False if the node no longer exists (it was removed by another node).</returns>
+        bool Heartbeat(string nodeId);
+
+        /// <summary>
+        /// Updates the heartbeat of a node.  The node is not re-created if it no longer exists.
+        /// </summary>
+        /// <returns>False if the node no longer exists (it was removed by another node).</returns>
+        Task<bool> HeartbeatAsync(string nodeId);
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        IEnumerable<WorkflowNode> GetNodes();
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        Task<IEnumerable<WorkflowNode>> GetNodesAsync();
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        void RemoveNode(string nodeId);
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        Task RemoveNodeAsync(string nodeId);
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.
+        /// </summary>
+        /// <returns>The number of nodes removed.</returns>
+        long RemoveStaleNodes(TimeSpan timeout);
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.
+        /// </summary>
+        /// <returns>The number of nodes removed.</returns>
+        Task<long> RemoveStaleNodesAsync(TimeSpan timeout);
     }
 }

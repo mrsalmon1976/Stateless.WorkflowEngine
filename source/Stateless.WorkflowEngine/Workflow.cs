@@ -146,6 +146,18 @@ namespace Stateless.WorkflowEngine
         public virtual bool IsSingleInstance { get; set; }
 
         /// <summary>
+        /// Gets/sets the id of the workflow server node that has claimed the workflow for execution, or null if the
+        /// workflow is available to be claimed.  This is managed by the workflow server and should not be set manually.
+        /// </summary>
+        public virtual string LockedBy { get; set; }
+
+        /// <summary>
+        /// Gets/sets the UTC date/time the workflow was claimed by the node in <c>LockedBy</c>, or null if it is not
+        /// locked.  This is managed by the workflow server and should not be set manually.
+        /// </summary>
+        public virtual DateTime? LockedOn { get; set; }
+
+        /// <summary>
         /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
         /// own DI framework to create the actions.
         /// </summary>

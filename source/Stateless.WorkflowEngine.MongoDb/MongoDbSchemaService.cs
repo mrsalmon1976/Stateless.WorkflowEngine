@@ -16,6 +16,8 @@ namespace Stateless.WorkflowEngine.MongoDb
         void EnsureCompletedIndexExists(IMongoDatabase database, string collectionName);
 
         void EnsureSuspendedIndexExists(IMongoDatabase database, string collectionName);
+
+        void EnsureLockedByIndexExists(IMongoDatabase database, string collectionName);
     }
 
     internal class MongoDbSchemaService : IMongoDbSchemaService
@@ -97,6 +99,33 @@ namespace Stateless.WorkflowEngine.MongoDb
             var indexOptions = new CreateIndexOptions<MongoWorkflow>();
             indexOptions.Name = IndexNames.Workflow_IsSuspended;
             indexOptions.PartialFilterExpression = Builders<MongoWorkflow>.Filter.Eq(wf => wf.Workflow.IsSuspended, true);
+
+            var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
+            collection.Indexes.CreateOne(indexModel);
+        }
+
+        /// <summary>
+        /// Creates a partial index containing only locked workflows.  The lock fields are only stored while a workflow
+        /// is locked, so the index only contains the workflows currently being executed, and keeps the lock owner and
+        /// lock release queries that the workflow server nodes run on every heartbeat cheap.
+        /// </summary>
+        public void EnsureLockedByIndexExists(IMongoDatabase database, string collectionName)
+        {
+            var collection = database.GetCollection<MongoWorkflow>(collectionName);
+
+            var indexKeys = Builders<MongoWorkflow>
+                .IndexKeys
+                .Ascending(wf => wf.Workflow.LockedBy);
+
+            bool indexExists = IndexExists(collection, IndexNames.Workflow_LockedBy, indexKeys);
+            if (indexExists)
+            {
+                return;
+            }
+
+            var indexOptions = new CreateIndexOptions<MongoWorkflow>();
+            indexOptions.Name = IndexNames.Workflow_LockedBy;
+            indexOptions.PartialFilterExpression = Builders<MongoWorkflow>.Filter.Exists(wf => wf.Workflow.LockedBy);
 
             var indexModel = new CreateIndexModel<MongoWorkflow>(indexKeys, indexOptions);
             collection.Indexes.CreateOne(indexModel);

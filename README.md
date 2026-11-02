@@ -13,7 +13,7 @@ The engine supports multiple data stores:
  2. MongoDbStore - a store using a MongoDb database.
  3. RavenDb - a store using a RavenDb database.
  
-All stores will use two collections: Workflows and CompletedWorkflows.  When a workflow is registered via the server or client, it is persisted in the Workflows collection.  The workflow will then move through various states until completion, in which case it will be moved to the CompletedWorkflows collection.  This store is never read by the workflow engine, it is purely for archiving purposes.
+All stores will use two collections: Workflows and CompletedWorkflows.  When a workflow is registered via the server or client, it is persisted in the Workflows collection.  The workflow will then move through various states until completion, in which case it will be moved to the CompletedWorkflows collection.  This store is never read by the workflow engine, it is purely for archiving purposes.  A third collection, WorkflowNodes, holds the workflow servers that are currently running (see [Running Multiple Servers](#running-multiple-servers)).
 
 ## Version Info
 
@@ -51,6 +51,7 @@ There is a full example console application in the source code, in the `source/E
 2. execute these workflows with an `IWorkflowServer`: each writes 10 files to the "C:\Temp" folder, then deletes all the files.  
 3. create and execute 1000 workflows using async methods with contrived exceptions to show the retry mechanism of the engine
 4. same as previous, except using sync methods 
+5. the multi-node stress test, which runs several workflow servers against the same store and proves that no workflow step is ever executed by two servers at the same time - see [Multi-node stress test](#multi-node-stress-test)
 
 The examples connect to MongoDb on `mongodb://localhost:27017` and RavenDb on `http://localhost:8080` - the containers started by `start.ps1` (see [Development](#development)).  These can be overridden with the `STATELESS_MONGODB_CONNECTIONSTRING` and `STATELESS_RAVENDB_URL` environment variables, or in `AppSettings.cs`.
 
@@ -281,8 +282,8 @@ The `failure` command restarts the service if it crashes.  By default the servic
 
 Things to keep in mind:
 
-* **Run one WorkflowServer per workflow store.**  Workflows are not locked while they execute, so two servers polling the same store could run the same workflow at the same time.  Use `maxConcurrent` to process more workflows in parallel instead.
-* The `WorkflowServer` should be a **singleton** - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).
+* **You can run as many WorkflowServers against one store as you like** (e.g. several instances of the service, or containers) - each workflow is locked by the server executing it.  See [Running Multiple Servers](#running-multiple-servers).
+* The `WorkflowServer` should be a **singleton** - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).  It is disposed by the host when the service stops, which releases its workflows straight away for the other servers.
 * Call `RegisterWorkflowType<T>()` for every workflow type.  This registers the type with the store (required for MongoDb), and saves the workflow's definition so the web console can show its graph.
 * Workflow actions are resolved from the root service provider, so register them as transient or singleton - not scoped.  To use scoped services (e.g. an Entity Framework `DbContext`), create a scope in the action with `IServiceScopeFactory`.
 * Make actions safe to retry: if an action fails part-way through, it runs again from the start.
@@ -303,6 +304,7 @@ The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the
 - `AutoCreateTables` - for workflow stores where tables must be explicitly created, if set to `true` this option will result in the server creating the tables if they do not exist.  Defaults to `true`.
 - `AutoCreateIndexes` - if set to `true` this option will result in the server creating basic indexes (see below for more details).  Defaults to `true`.
 - `PersistWorkflowDefinitions` - if set to true, workflow definitions will be inspected and stored if possible.  Defaults to `true`.
+- `NodeId`, `NodeName`, `HeartbeatInterval` and `NodeTimeout` - control how the server locks workflows and detects servers that have stopped.  See [Running Multiple Servers](#running-multiple-servers).
 
 ### Executing a Single Workflow
 
@@ -313,18 +315,18 @@ The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the
 | `void ExecuteWorkflow(Workflow workflow)` | Synchronous. Fires the workflow's current trigger and saves state. |
 | `Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default)` | Asynchronous equivalent. The cancellation token is forwarded through to the workflow's `FireAsync` call and into any `IWorkflowActionAsync` actions. |
 
-You would typically use these methods only when you have a specific workflow instance already in hand (e.g. in tests or when reprocessing a suspended workflow). The batch methods below are the normal production path.
+You would typically use these methods only when you have a specific workflow instance already in hand (e.g. in tests or when reprocessing a suspended workflow). The batch methods below are the normal production path.  Note that these methods don't lock the workflow, so they shouldn't be used on workflows that a server may be executing.
 
 ### Executing Workflows in Bulk
 
-`IWorkflowServer` provides batch execution methods that load workflows from the store and execute them, with optional concurrency control:
+`IWorkflowServer` provides batch execution methods that claim workflows from the store and execute them, with optional concurrency control:
 
 | Method | Description |
 |--------|-------------|
-| `int ExecuteWorkflows(int count, int? maxConcurrent = null)` | Synchronous. Loads up to `count` workflows and executes them using `Parallel.ForEach`, with no more than `maxConcurrent` running at once. |
-| `Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` | Asynchronous. Loads up to `count` workflows and executes them using a `SemaphoreSlim` to cap concurrency at `maxConcurrent`. Supports cancellation — already-dispatched tasks run to completion before the method returns. |
+| `int ExecuteWorkflows(int count, int? maxConcurrent = null)` | Synchronous. Claims and executes up to `count` workflows, with no more than `maxConcurrent` running at once. |
+| `Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` | Asynchronous equivalent. Supports cancellation — already-dispatched workflows run to completion before the method returns. |
 
-Both methods load workflows ordered by **Priority DESC**, then **CreatedOn ASC**.
+Workflows are claimed **one at a time, as execution slots free up**: a workflow is only locked once there is a slot to run it in, so a server never holds locks on workflows it hasn't started, and each claim picks the workflow that is first in line at that moment - ordered by **Priority DESC**, then **RetryCount DESC**, then **CreatedOn ASC** - including workflows registered while the batch is running.
 
 The following code loads up to 100 workflows and processes them 10 at a time:
 
@@ -346,6 +348,37 @@ while (true)
 #### Cancellation
 
 `ExecuteWorkflowsAsync` accepts a `CancellationToken`. Cancelling it stops new workflows from being dispatched but allows any already-running workflows to finish cleanly. The token is also forwarded into each `ExecuteWorkflowAsync` call, and from there into `workflow.FireAsync` and any `IWorkflowActionAsync` actions, so long-running async actions can observe it directly.
+
+### Running Multiple Servers
+
+Any number of `WorkflowServer`s - in different processes, on different machines or in containers - can execute workflows from the same store at the same time.  Each server is a **node**:
+
+* **Claiming** - `ExecuteWorkflows` and `ExecuteWorkflowsAsync` claim workflows one at a time.  A claim is a single atomic operation in the store that picks the next available workflow and stamps it with the node's id (`Workflow.LockedBy`), so two nodes can never claim the same workflow.  The workflow stays locked while it executes - including any steps that run straight after each other - and the lock is cleared in the same write that saves the workflow after its last step.
+* **Heartbeats** - each node registers itself in the `WorkflowNodes` collection when it first executes workflows, and a background task updates its heartbeat every `HeartbeatInterval`.  Locks belong to the node rather than having a time limit, so an action can run for as long as it needs while its node is alive.
+* **Recovery** - on every heartbeat, each node removes the nodes that haven't heartbeated within `NodeTimeout`, and releases the workflows locked by nodes that no longer exist.  If a node crashes, its workflows are picked up by the other nodes (or by the node itself when it restarts) after `NodeTimeout`.  A node also releases its own locks on workflows it is no longer executing (e.g. a save failed because the database was briefly unavailable), once they are older than `NodeTimeout`.
+* **Self-fencing** - a node that hasn't been able to heartbeat for half of `NodeTimeout` stops claiming workflows, well before the other nodes can consider it dead.  If it is removed anyway (e.g. after a long GC pause or a network partition), it raises `NodeEvicted` and re-registers with a new id.  A node's saves only succeed if the workflow hasn't been claimed by another node since - otherwise the server raises `WorkflowLockLost` and leaves the workflow to the node that now owns it.
+
+The options that control this are set on `WorkflowServerOptions`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `NodeId` | a new Guid per server instance | The id stored in `Workflow.LockedBy`.  If you set it, it must be unique across all servers using the store.  Available on `IWorkflowServer.NodeId`. |
+| `NodeName` | the machine name | A display label only - it doesn't need to be unique.  In Kubernetes the machine name is the pod name, and in Docker it is the container id (unless `hostname` is set, or the container uses host networking, in which case containers share a name). |
+| `HeartbeatInterval` | 10 seconds | How often the node heartbeats and checks for nodes that have stopped. |
+| `NodeTimeout` | 60 seconds | How long a node can go without a heartbeat before the other nodes remove it and release its workflows.  Must be at least 3 x `HeartbeatInterval`.  Make it comfortably longer than any GC pause, network blip or database failover you expect - the trade-off is that the workflows of a node that crashes wait this long before another node picks them up. |
+
+Things to keep in mind:
+
+* **Dispose the server when your application stops.**  It stops claiming workflows, waits (up to `NodeTimeout`) for the workflows it is executing to finish, then releases its locks and removes its node, so the other nodes don't have to wait for the timeout.  A server registered as a singleton in a host's service provider is disposed automatically.
+* **Make actions idempotent.**  The engine guarantees that a step never runs on two nodes at the same time - not that it runs exactly once.  If a node crashes after an action finishes but before the workflow is saved, the step runs again on another node.  (This was already true for a single server that crashes and restarts.)
+* **Upgrade every server together.**  Servers older than 6.0 don't lock workflows, so stop all of them before starting 6.0 servers on the same store.  Existing workflows don't need migrating - workflows without lock fields are treated as unlocked.
+* **RavenDb clusters** - see the [RavenDb caveats](#ravendb-caveats) below.
+* `ExecuteWorkflow`/`ExecuteWorkflowAsync` (a single workflow) don't claim or lock the workflow - use the bulk methods to process workflows.
+
+#### RavenDb caveats
+
+* RavenDB has no atomic find-and-modify, so a RavenDb claim reads candidate workflows from an index and claims one with a conditional patch, which RavenDB applies atomically, and saves use optimistic concurrency.  These guarantees only hold when **all workflow servers write to the same RavenDB server**.  In a multi-server RavenDB cluster, keep the client's default `ReadBalanceBehavior.None` and don't spread writes across cluster nodes with a load balance behavior: if two workflow servers claim the same workflow on different database servers, both will run it, and RavenDB only resolves the conflict afterwards.  The [stress test](#multi-node-stress-test) runs against a single RavenDB server, so it can't detect this.
+* RavenDb node heartbeats are compared using the clocks of the workflow servers (MongoDb uses the database server's clock), so keep server clocks in sync (e.g. with NTP), and keep `NodeTimeout` much larger than any clock difference.
 
 ## Creating a WorkflowClient
 
@@ -512,10 +545,14 @@ action.
 
 ### WorkflowServer
 
-The `IWorkflowServer` interface exposes two events:
+The `IWorkflowServer` interface exposes the following events:
 
-1.` WorkflowSuspended` - this event is raised by the WorkflowServer when a workflow suspends.  This means that a workflow has errored repeatedly until the maximum number of retries (RetryCount) defined for the workflow has been exceeded.  The workflow goes into a suspended state and will not be picked up again by the WorkflowEngine until the problems have been resolved.  
+1. `WorkflowSuspended` - this event is raised by the WorkflowServer when a workflow suspends.  This means that a workflow has errored repeatedly until the maximum number of retries (RetryCount) defined for the workflow has been exceeded.  The workflow goes into a suspended state and will not be picked up again by the WorkflowEngine until the problems have been resolved.  
 2. `WorkflowCompleted` - this event is raised when a workflow completes.  The event is fired AFTER the workflow is archived and the workflow.OnComplete() method is called.  
+3. `WorkflowClaimed` - raised when the server claims a workflow, just before executing it (e.g. to log or count the workflows each server picks up).  Exceptions thrown by handlers are ignored, as the claimed workflow must still be executed.
+4. `WorkflowLockLost` - raised when the server can't save a workflow it executed, because another server has claimed it since (or it was deleted).  The workflow isn't saved and the server stops executing it.  This only happens if the server was considered dead by the other servers - see [Running Multiple Servers](#running-multiple-servers) - so log it as an error.
+5. `NodeEvicted` - raised when the server finds it was removed by the other servers (it couldn't heartbeat within `NodeTimeout`) and has re-registered with a new node id.
+6. `NodeMonitorError` - raised when the server's background heartbeat fails (e.g. the database is unavailable).  The server keeps running, but stops claiming workflows if it can't heartbeat for half of `NodeTimeout`.
 
 ### Workflow
 
@@ -556,7 +593,10 @@ The following indexes are created by default:
 
 * Workflows: Priority descending, RetryCount descending, CreatedOn ascending
 * Workflows: IsSuspended - a partial index containing only suspended workflows, used for suspended and active counts
+* Workflows: LockedBy - a partial index containing only the workflows currently locked by a server, used by the lock checks every server runs on each heartbeat
 * CompletedWorkflows: CreatedOn descending
+
+The `WorkflowNodes` collection is also created.  Workflows only store the `LockedBy` and `LockedOn` fields while they are locked, which keeps the LockedBy index small.  Node heartbeats are set and compared using the database server's clock, so they aren't affected by clock differences between the workflow servers.
 
 The active workflow count (`GetActiveCount`) is calculated as the estimated size of the Workflows collection less the suspended count, rather than by scanning the collection.  Like the incomplete and completed counts, it is an estimate - it can be slightly out after an unclean shutdown or when orphaned documents exist in a sharded cluster.
 
@@ -565,6 +605,8 @@ The active workflow count (`GetActiveCount`) is calculated as the estimated size
 No indexes are created - `Initialise()` only creates the database.  The store uses dynamic queries, which RavenDB always answers from **auto indexes**: it creates one for each query shape the first time it runs (e.g. `Auto/RavenWorkflows/ByWorkflow.IsSuspended`), and keeps it up to date from then on.  Note that on an existing large database, results from a newly created auto index can be incomplete until RavenDB has finished building it.
 
 Versions prior to 6.0 deployed two static indexes, `WorkflowIndex/Priority/RetryCount/CreatedOn` and `CompletedWorkflowIndex/CreatedOn`.  No query ever used them, so they only added indexing and storage overhead.  They are no longer created, and existing copies can safely be deleted from the database in the RavenDB Studio (Indexes > List of Indexes).
+
+Running servers are stored in the `WorkflowNodes` collection.  When running more than one workflow server against a RavenDB cluster, read the [RavenDb caveats](#ravendb-caveats) - claims are only atomic when every workflow server writes to the same RavenDB server.
 
 ## Manually creating indexes: MongoDb
 
@@ -584,6 +626,12 @@ On the Workflows collection, a small partial index of suspended workflows (recom
 
 ```csharp
 db.Workflows.createIndex({ "Workflow.IsSuspended" : 1 }, { name : "Workflow_IsSuspended", partialFilterExpression : { "Workflow.IsSuspended" : true } })
+```
+
+On the Workflows collection, a small partial index of locked workflows (recommended - every server queries locks on each heartbeat):
+
+```csharp
+db.Workflows.createIndex({ "Workflow.LockedBy" : 1 }, { name : "Workflow_LockedBy", partialFilterExpression : { "Workflow.LockedBy" : { $exists : true } } })
 ```
 
 ## Serialisation
@@ -765,3 +813,49 @@ cd source\Stateless.WorkflowEngine.WebConsole.Client; npm install; npm run dev  
 ```
 
 Building a release (`deployment\build.ps1`) requires the .NET 10 SDK and Node.js, as publishing the console builds the client app.
+
+## Multi-node stress test
+
+`test-multinode.ps1` in the repository root proves that several workflow servers running against the same store never execute the same workflow step at the same time, and that no workflow is left behind when a server crashes.  For each store (MongoDb, then RavenDb - pick one with `-Store mongo` or `-Store raven`) it seeds 2000 workflows, starts 3 servers (alternating sync and async) and a fourth server that is killed part way through, each in its own window (`-Hidden` to hide them), restarts the killed server, waits for everything to finish and runs a report:
+
+```powershell
+.\start.ps1                                     # MongoDb and RavenDb must be running
+.\test-multinode.ps1                            # both stores
+.\test-multinode.ps1 -Store mongo -Count 500 -Nodes 5
+```
+
+Each workflow has three steps that write and read files, sleep for a random time, occasionally run for longer than the node timeout (to prove long actions keep their lock), and throw a small number of random exceptions (to exercise retries).  Every step execution is recorded in an execution ledger in MongoDb (database `StatelessMultiNodeLedger_mongo`/`_raven`), which is independent of the store being tested.  The report fails if:
+
+* any step ran on two servers at the same time (checked from the ledger, and live by the servers themselves)
+* any step succeeded twice, other than the expected re-run of a step whose server was killed after the step finished but before the workflow was saved
+* any workflow didn't complete, was suspended or is still locked, or any step never finished on a server that wasn't killed
+
+Output from a run (the numbers vary from run to run - ExpectedReexecutions is only non-zero when the killed server had finished a step but not yet saved the workflow):
+
+```
+=== Summary ===
+Store Result Seeded Completed Active Suspended LockedByNodes StepExecutions Overlaps DuplicateSuccesses Unfinished ExpectedReexecutions
+----- ------ ------ --------- ------ --------- ------------- -------------- -------- ------------------ ---------- --------------------
+mongo PASS     2000      2000      0         0             0           6122        0                  0          0                    0
+raven PASS     2000      2000      0         0             0           6131        0                  0          0                    0
+```
+
+The individual commands can also be run by hand, e.g. to run nodes on several machines or in containers against the same store (the options are listed in `source/Example/MultiNode/MultiNodeExample.cs`):
+
+Build once, then run each command from the built DLL - don't use `dotnet run` for nodes, as it rebuilds the project every time, which fails while another node (or a debug session) has the DLLs open.  The Release build also keeps the nodes clear of the Debug output that Visual Studio uses:
+
+```powershell
+dotnet build source\Example -c Release
+$example = "source\Example\bin\Release\net10.0\Example.dll"
+
+dotnet $example multinode reset  --store mongo
+dotnet $example multinode seed   --store mongo --count 2000
+dotnet $example multinode node   --store mongo --name A --concurrency 10              # one per window
+dotnet $example multinode node   --store mongo --name B --concurrency 10 --async
+dotnet $example multinode node   --store mongo --name C --crash-after 20              # killed after 20 seconds
+dotnet $example multinode report --store mongo
+```
+
+Each node exits once the store is empty (it keeps polling while workflows are locked by a killed node, until they are released after the node timeout).  Other node options: `--batch 200`, `--node-timeout 20`, `--error-rate 0.02`, `--io-kb 256`, `--slow-rate 0.005` and `--max-minutes 30`.
+
+Node logs and the report summaries are written to the `logs` folder.

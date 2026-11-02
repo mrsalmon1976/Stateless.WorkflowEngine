@@ -7,11 +7,15 @@ using System.Threading.Tasks;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
 using System.Threading;
+using System.Runtime.ExceptionServices;
 
 namespace Stateless.WorkflowEngine
 {
     public class WorkflowServer : IWorkflowServer
     {
+        private readonly object _nodeMonitorLock = new object();
+        private WorkflowNodeMonitor _nodeMonitor;
+
         public WorkflowServer(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowServerOptions())
         {
         }
@@ -37,6 +41,29 @@ namespace Stateless.WorkflowEngine
         public event EventHandler<WorkflowEventArgs> WorkflowCompleted;
 
         /// <summary>
+        /// Event raised when a workflow executed by this server could not be saved because another node has claimed it
+        /// since (or it no longer exists).  The workflow is not saved, and execution of it stops.
+        /// </summary>
+        public event EventHandler<WorkflowLockLostEventArgs> WorkflowLockLost;
+
+        /// <summary>
+        /// Event raised when this server claims a workflow for execution, just before it is executed.  Exceptions thrown by
+        /// handlers are ignored, as the workflow is already locked and must still be executed.
+        /// </summary>
+        public event EventHandler<WorkflowClaimedEventArgs> WorkflowClaimed;
+
+        /// <summary>
+        /// Event raised when this server finds that it was removed by another node (it could not heartbeat within the
+        /// node timeout), and has re-registered with a new node id.
+        /// </summary>
+        public event EventHandler<NodeEvictedEventArgs> NodeEvicted;
+
+        /// <summary>
+        /// Event raised when the background heartbeat/monitoring of this server fails.
+        /// </summary>
+        public event EventHandler<NodeMonitorErrorEventArgs> NodeMonitorError;
+
+        /// <summary>
         /// Gets/sets the workflow registration service
         /// </summary>
         internal IWorkflowRegistrationService WorkflowRegistrationService { get; set; }
@@ -47,11 +74,41 @@ namespace Stateless.WorkflowEngine
         internal IWorkflowExceptionHandler WorkflowExceptionHandler { get; set; }
 
         /// <summary>
+        /// Gets the monitor that registers this server as a node and keeps its heartbeat up to date.  It is created on
+        /// first use, and only registers the node once workflows are executed.
+        /// </summary>
+        internal WorkflowNodeMonitor NodeMonitor
+        {
+            get
+            {
+                if (_nodeMonitor == null)
+                {
+                    lock (_nodeMonitorLock)
+                    {
+                        if (_nodeMonitor == null)
+                        {
+                            WorkflowNodeMonitor nodeMonitor = new WorkflowNodeMonitor(this.WorkflowStore, this.Options);
+                            nodeMonitor.NodeEvicted += (sender, e) => this.NodeEvicted?.Invoke(this, e);
+                            nodeMonitor.NodeMonitorError += (sender, e) => this.NodeMonitorError?.Invoke(this, e);
+                            _nodeMonitor = nodeMonitor;
+                        }
+                    }
+                }
+                return _nodeMonitor;
+            }
+        }
+
+        /// <summary>
         /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
-        /// This defaults to null, in which case classes are created with reflection.  Setting this property 
+        /// This defaults to null, in which case classes are created with reflection.  Setting this property
         /// to your own resolver will allow you to control how workflow actions are created.
         /// </summary>
         public IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+
+        /// <summary>
+        /// Gets the id of this server's node, used to lock the workflows it claims.  This changes if the node is evicted.
+        /// </summary>
+        public string NodeId => this.NodeMonitor.NodeId;
 
         /// <summary>
         /// Gets/sets the options applicable to the workflow server.
@@ -64,10 +121,32 @@ namespace Stateless.WorkflowEngine
         public IWorkflowStore WorkflowStore { get; set; }
 
         /// <summary>
-        /// Executes a workflow.
+        /// Executes a workflow.  Note that the workflow is saved without checking whether it is locked by another node -
+        /// use ExecuteWorkflows to execute workflows when more than one workflow server uses the same store.
         /// </summary>
         /// <param name="workflow"></param>
         public void ExecuteWorkflow(Workflow workflow)
+        {
+            this.ExecuteWorkflow(workflow, null);
+        }
+
+        /// <summary>
+        /// Executes a workflow.  Note that the workflow is saved without checking whether it is locked by another node -
+        /// use ExecuteWorkflowsAsync to execute workflows when more than one workflow server uses the same store.
+        /// </summary>
+        /// <param name="workflow"></param>
+        public async Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default)
+        {
+            await this.ExecuteWorkflowAsync(workflow, null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Executes a workflow.
+        /// </summary>
+        /// <param name="workflow"></param>
+        /// <param name="ownerNodeId">The node that claimed the workflow, or null if it was not claimed.  Saves of
+        /// claimed workflows only succeed while the workflow is not locked by another node.</param>
+        private void ExecuteWorkflow(Workflow workflow, string ownerNodeId)
         {
             if (workflow == null)
             {
@@ -77,11 +156,14 @@ namespace Stateless.WorkflowEngine
             // set the dependency resolver on the workflow to allow for dependency injection
             workflow.DependencyResolver = this.DependencyResolver;
             int priorityBeforeFire = workflow.Priority;
+            bool continueExecution = false;
 
             // if the workflow is marked as complete, don't attempt to run it
             if (!workflow.IsComplete)
             {
                 string initialState = workflow.CurrentState;
+                bool hasError = false;
+                bool isSaved = false;
                 try
                 {
                     workflow.LastException = null;
@@ -91,6 +173,7 @@ namespace Stateless.WorkflowEngine
                 }
                 catch (Exception ex)
                 {
+                    hasError = true;
                     workflow.CurrentState = initialState;
                     this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
 
@@ -107,23 +190,29 @@ namespace Stateless.WorkflowEngine
                             suspendedHandler(this, new WorkflowEventArgs(workflow));
                         }
                     }
-
-                    // exit out, nothing else to do here
-                    return;
                 }
                 finally
                 {
                     // the workflow should always save, no matter what happens
-                    this.WorkflowStore.Save(workflow);
+                    continueExecution = !hasError && this.CanContinueExecution(workflow, priorityBeforeFire);
+                    isSaved = this.SaveWorkflow(workflow, ownerNodeId, keepLock: continueExecution || (!hasError && workflow.IsComplete));
                 }
 
+                // exit out on an error or if the workflow has been claimed by another node, nothing else to do here
+                if (hasError || !isSaved)
+                {
+                    return;
+                }
             }
 
             // if the workflow is complete, finish off - this is NOT an else (workflow coule have completed in the fire action)
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
-                this.WorkflowStore.Archive(workflow);
+                if (!this.ArchiveWorkflow(workflow, ownerNodeId))
+                {
+                    return;
+                }
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
@@ -135,9 +224,9 @@ namespace Stateless.WorkflowEngine
 
             // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
             // hits - but if the priority has changed then rather allow for another poll
-            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
+            if (continueExecution)
             {
-                this.ExecuteWorkflow(workflow);
+                this.ExecuteWorkflow(workflow, ownerNodeId);
             }
         }
 
@@ -145,7 +234,9 @@ namespace Stateless.WorkflowEngine
         /// Executes a workflow.
         /// </summary>
         /// <param name="workflow"></param>
-        public async Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default)
+        /// <param name="ownerNodeId">The node that claimed the workflow, or null if it was not claimed.  Saves of
+        /// claimed workflows only succeed while the workflow is not locked by another node.</param>
+        private async Task ExecuteWorkflowAsync(Workflow workflow, string ownerNodeId, CancellationToken cancellationToken)
         {
             if (workflow == null)
             {
@@ -155,11 +246,14 @@ namespace Stateless.WorkflowEngine
             // set the dependency resolver on the workflow to allow for dependency injection
             workflow.DependencyResolver = this.DependencyResolver;
             int priorityBeforeFire = workflow.Priority;
+            bool continueExecution = false;
 
             // if the workflow is marked as complete, don't attempt to run it
             if (!workflow.IsComplete)
             {
                 string initialState = workflow.CurrentState;
+                bool hasError = false;
+                bool isSaved = false;
                 try
                 {
                     workflow.LastException = null;
@@ -169,6 +263,7 @@ namespace Stateless.WorkflowEngine
                 }
                 catch (Exception ex)
                 {
+                    hasError = true;
                     workflow.CurrentState = initialState;
                     this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
 
@@ -185,23 +280,29 @@ namespace Stateless.WorkflowEngine
                             suspendedHandler(this, new WorkflowEventArgs(workflow));
                         }
                     }
-
-                    // exit out, nothing else to do here
-                    return;
                 }
                 finally
                 {
                     // the workflow should always save, no matter what happens
-                    await this.WorkflowStore.SaveAsync(workflow);
+                    continueExecution = !hasError && this.CanContinueExecution(workflow, priorityBeforeFire);
+                    isSaved = await this.SaveWorkflowAsync(workflow, ownerNodeId, keepLock: continueExecution || (!hasError && workflow.IsComplete));
                 }
 
+                // exit out on an error or if the workflow has been claimed by another node, nothing else to do here
+                if (hasError || !isSaved)
+                {
+                    return;
+                }
             }
 
             // if the workflow is complete, finish off - this is NOT an else (workflow coule have completed in the fire action)
             if (workflow.IsComplete)
             {
                 workflow.CompletedOn = DateTime.UtcNow;
-                await this.WorkflowStore.ArchiveAsync(workflow);
+                if (!await this.ArchiveWorkflowAsync(workflow, ownerNodeId))
+                {
+                    return;
+                }
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
@@ -213,17 +314,19 @@ namespace Stateless.WorkflowEngine
 
             // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
             // hits - but if the priority has changed then rather allow for another poll
-            if (!workflow.IsSuspended && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger) && workflow.ResumeOn <= DateTime.UtcNow && workflow.Priority == priorityBeforeFire)
+            if (continueExecution)
             {
-                await this.ExecuteWorkflowAsync(workflow, cancellationToken);
+                await this.ExecuteWorkflowAsync(workflow, ownerNodeId, cancellationToken);
             }
         }
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
-        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
+        /// Claims and executes up to <c>count</c> workflows from the registered store, ordered by Priority DESC, RetryCount
+        /// DESC, and then by CreationDate.  Workflows are claimed one at a time as execution slots become free, so no more
+        /// than <c>maxConcurrent</c> workflows are locked by this server at once, and multiple servers can safely
+        /// execute workflows from the same store.
         /// </summary>
-        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="count">The maximum number of workflows to execute.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
         public int ExecuteWorkflows(int count, int? maxConcurrent = null)
@@ -234,24 +337,73 @@ namespace Stateless.WorkflowEngine
             }
 
             int concurrent = (maxConcurrent ?? count);
-            List<Workflow> workflows = this.WorkflowStore.GetActive(count).ToList();
-            int workflowCount = workflows.Count;
+            List<Task> tasks = new List<Task>();
+            ExceptionDispatchInfo claimError = null;
+            WorkflowNodeMonitor nodeMonitor = this.NodeMonitor;
+            nodeMonitor.EnsureStarted();
 
-            for (int i=0; i < workflowCount; i += concurrent)
+            using (SemaphoreSlim semaphore = new SemaphoreSlim(concurrent))
             {
-                List<Workflow> workflowsToProcess = workflows.GetRange(i, Math.Min(concurrent, workflowCount - i));
-                Parallel.ForEach(workflowsToProcess, ExecuteWorkflow);
+                while (tasks.Count < count)
+                {
+                    semaphore.Wait();
 
+                    if (!nodeMonitor.CanClaim)
+                    {
+                        semaphore.Release();
+                        break;
+                    }
+
+                    string nodeId = nodeMonitor.NodeId;
+                    Workflow workflow;
+                    try
+                    {
+                        workflow = this.WorkflowStore.ClaimNext(nodeId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // wait for the workflows already running before raising the error
+                        semaphore.Release();
+                        claimError = ExceptionDispatchInfo.Capture(ex);
+                        break;
+                    }
+
+                    if (workflow == null)
+                    {
+                        semaphore.Release();
+                        break;
+                    }
+
+                    nodeMonitor.Track(workflow.Id);
+                    OnWorkflowClaimed(workflow, nodeId);
+                    tasks.Add(Task.Run(() =>
+                    {
+                        try
+                        {
+                            this.ExecuteWorkflow(workflow, nodeId);
+                        }
+                        finally
+                        {
+                            nodeMonitor.Untrack(workflow.Id);
+                            semaphore.Release();
+                        }
+                    }));
+                }
+
+                Task.WaitAll(tasks.ToArray());
             }
 
-            return workflowCount;
+            claimError?.Throw();
+            return tasks.Count;
         }
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then 
-        /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
+        /// Claims and executes up to <c>count</c> workflows from the registered store, ordered by Priority DESC, RetryCount
+        /// DESC, and then by CreationDate.  Workflows are claimed one at a time as execution slots become free, so no more
+        /// than <c>maxConcurrent</c> workflows are locked by this server at once, and multiple servers can safely
+        /// execute workflows from the same store.
         /// </summary>
-        /// <param name="count">The number of active workflows to be loaded for processing.</param>
+        /// <param name="count">The maximum number of workflows to execute.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
         public async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)
@@ -264,12 +416,13 @@ namespace Stateless.WorkflowEngine
             int concurrent = (maxConcurrent ?? count);
             List<Task> tasks = new List<Task>();
             CancellationToken ct = cancellationToken ?? CancellationToken.None;
+            ExceptionDispatchInfo claimError = null;
+            WorkflowNodeMonitor nodeMonitor = this.NodeMonitor;
+            nodeMonitor.EnsureStarted();
 
             using (SemaphoreSlim semaphore = new SemaphoreSlim(concurrent))
             {
-                IEnumerable<Workflow> workflows = await this.WorkflowStore.GetActiveAsync(count);
-
-                foreach (Workflow wf in workflows)
+                while (tasks.Count < count)
                 {
                     try
                     {
@@ -280,27 +433,54 @@ namespace Stateless.WorkflowEngine
                         break;
                     }
 
-                    if (ct.IsCancellationRequested)
+                    if (ct.IsCancellationRequested || !nodeMonitor.CanClaim)
                     {
+                        semaphore.Release();
                         break;
                     }
 
-                    Task t = Task.Run(async () =>
+                    string nodeId = nodeMonitor.NodeId;
+                    Workflow workflow;
+                    try
+                    {
+                        workflow = await this.WorkflowStore.ClaimNextAsync(nodeId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // wait for the workflows already running before raising the error
+                        semaphore.Release();
+                        claimError = ExceptionDispatchInfo.Capture(ex);
+                        break;
+                    }
+
+                    if (workflow == null)
+                    {
+                        semaphore.Release();
+                        break;
+                    }
+
+                    // the token is not passed to Task.Run: a claimed workflow must always run (and save), or it would stay
+                    // locked until the node's stale locks are released
+                    nodeMonitor.Track(workflow.Id);
+                    OnWorkflowClaimed(workflow, nodeId);
+                    tasks.Add(Task.Run(async () =>
                     {
                         try
                         {
-                            await ExecuteWorkflowAsync(wf, ct);
+                            await this.ExecuteWorkflowAsync(workflow, nodeId, ct);
                         }
                         finally
                         {
+                            nodeMonitor.Untrack(workflow.Id);
                             semaphore.Release();
                         }
-                    }, ct);
-                    tasks.Add(t);
+                    }));
                 }
 
                 await Task.WhenAll(tasks);
             }
+
+            claimError?.Throw();
             return tasks.Count;
         }
 
@@ -361,7 +541,7 @@ namespace Stateless.WorkflowEngine
                     Workflow workflow = Activator.CreateInstance(workflowType) as Workflow;
                     string graph = workflow.GetGraph();
 
-                    // check to see if the definition already exists 
+                    // check to see if the definition already exists
                     WorkflowDefinition workflowDefinition = this.WorkflowStore.GetDefinitionByQualifiedName(workflowType.FullName);
                     if (workflowDefinition == null)
                     {
@@ -377,6 +557,147 @@ namespace Stateless.WorkflowEngine
                 {
                     throw new WorkflowException("Unable to generate workflow definition graph - ensure the WorkflowDefinitions configuration is correct or remove definitions from server options", ex);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Stops the server from claiming workflows, waits (up to the node timeout) for workflows it is executing to
+        /// finish, and then releases its locks and removes its node so that other servers can pick up its workflows
+        /// immediately.  Call this when the application shuts down.
+        /// </summary>
+        public void Dispose()
+        {
+            _nodeMonitor?.Dispose();
+        }
+
+        /// <summary>
+        /// Checks whether a workflow that has just been fired can be executed again immediately.
+        /// </summary>
+        private bool CanContinueExecution(Workflow workflow, int priorityBeforeFire)
+        {
+            return !workflow.IsComplete
+                && !workflow.IsSuspended
+                && !String.IsNullOrWhiteSpace(workflow.ResumeTrigger)
+                && workflow.ResumeOn <= DateTime.UtcNow
+                && workflow.Priority == priorityBeforeFire;
+        }
+
+        /// <summary>
+        /// Saves a workflow.  Claimed workflows are released in the same write unless <c>keepLock</c> is true (the
+        /// workflow will continue executing or be archived), and are only saved if they are not locked by another node.
+        /// </summary>
+        /// <returns>False if the workflow has been claimed by another node.</returns>
+        private bool SaveWorkflow(Workflow workflow, string ownerNodeId, bool keepLock)
+        {
+            if (ownerNodeId == null)
+            {
+                this.WorkflowStore.Save(workflow);
+                return true;
+            }
+
+            if (!keepLock)
+            {
+                ClearLock(workflow);
+            }
+            if (this.WorkflowStore.SaveClaimed(workflow, ownerNodeId))
+            {
+                return true;
+            }
+            OnWorkflowLockLost(workflow, ownerNodeId);
+            return false;
+        }
+
+        /// <summary>
+        /// Saves a workflow.  Claimed workflows are released in the same write unless <c>keepLock</c> is true (the
+        /// workflow will continue executing or be archived), and are only saved if they are not locked by another node.
+        /// </summary>
+        /// <returns>False if the workflow has been claimed by another node.</returns>
+        private async Task<bool> SaveWorkflowAsync(Workflow workflow, string ownerNodeId, bool keepLock)
+        {
+            if (ownerNodeId == null)
+            {
+                await this.WorkflowStore.SaveAsync(workflow);
+                return true;
+            }
+
+            if (!keepLock)
+            {
+                ClearLock(workflow);
+            }
+            if (await this.WorkflowStore.SaveClaimedAsync(workflow, ownerNodeId))
+            {
+                return true;
+            }
+            OnWorkflowLockLost(workflow, ownerNodeId);
+            return false;
+        }
+
+        /// <summary>
+        /// Archives a completed workflow.  Claimed workflows are only archived if they are not locked by another node.
+        /// </summary>
+        /// <returns>False if the workflow has been claimed by another node.</returns>
+        private bool ArchiveWorkflow(Workflow workflow, string ownerNodeId)
+        {
+            if (ownerNodeId == null)
+            {
+                this.WorkflowStore.Archive(workflow);
+                return true;
+            }
+
+            ClearLock(workflow);
+            if (this.WorkflowStore.ArchiveClaimed(workflow, ownerNodeId))
+            {
+                return true;
+            }
+            OnWorkflowLockLost(workflow, ownerNodeId);
+            return false;
+        }
+
+        /// <summary>
+        /// Archives a completed workflow.  Claimed workflows are only archived if they are not locked by another node.
+        /// </summary>
+        /// <returns>False if the workflow has been claimed by another node.</returns>
+        private async Task<bool> ArchiveWorkflowAsync(Workflow workflow, string ownerNodeId)
+        {
+            if (ownerNodeId == null)
+            {
+                await this.WorkflowStore.ArchiveAsync(workflow);
+                return true;
+            }
+
+            ClearLock(workflow);
+            if (await this.WorkflowStore.ArchiveClaimedAsync(workflow, ownerNodeId))
+            {
+                return true;
+            }
+            OnWorkflowLockLost(workflow, ownerNodeId);
+            return false;
+        }
+
+        private static void ClearLock(Workflow workflow)
+        {
+            workflow.LockedBy = null;
+            workflow.LockedOn = null;
+        }
+
+        private void OnWorkflowClaimed(Workflow workflow, string nodeId)
+        {
+            try
+            {
+                this.WorkflowClaimed?.Invoke(this, new WorkflowClaimedEventArgs(workflow, nodeId));
+            }
+            catch
+            {
+                // the workflow is locked by this node, so it must be executed (and released) whatever the handler does
+            }
+        }
+
+        private void OnWorkflowLockLost(Workflow workflow, string ownerNodeId)
+        {
+            var lockLostHandler = this.WorkflowLockLost;
+            if (lockLostHandler != null)
+            {
+                lockLostHandler(this, new WorkflowLockLostEventArgs(workflow, ownerNodeId));
             }
         }
 

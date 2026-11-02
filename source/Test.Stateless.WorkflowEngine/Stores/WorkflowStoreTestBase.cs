@@ -11,6 +11,7 @@ using Test.Stateless.WorkflowEngine.Workflows.SimpleTwoState;
 using Test.Stateless.WorkflowEngine.Workflows.SingleInstance;
 using Newtonsoft.Json;
 using Test.Stateless.WorkflowEngine.Workflows.Broken;
+using Test.Stateless.WorkflowEngine.Workflows.Counting;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -1432,6 +1433,537 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region ClaimNext Tests
+
+        [Test]
+        public void ClaimNext_NoWorkflows_ReturnsNull()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.That(store.ClaimNext("node1"), Is.Null);
+        }
+
+        [Test]
+        public void ClaimNext_WorkflowAvailable_LocksAndReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow workflow = CreateClaimableWorkflow();
+            store.Save(workflow);
+
+            DateTime beforeClaim = DateTime.UtcNow;
+            Workflow claimed = store.ClaimNext("node1");
+
+            Assert.That(claimed.Id, Is.EqualTo(workflow.Id));
+            Assert.That(claimed.LockedBy, Is.EqualTo("node1"));
+            Assert.That(claimed.LockedOn, Is.GreaterThan(beforeClaim.AddSeconds(-1)));
+            Assert.That(store.GetOrDefault(workflow.Id).LockedBy, Is.EqualTo("node1"));
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node1" }));
+        }
+
+        [Test]
+        public void ClaimNext_WorkflowAlreadyClaimed_NotReturned()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+
+            Assert.That(store.ClaimNext("node1"), Is.Not.Null);
+            Assert.That(store.ClaimNext("node2"), Is.Null);
+        }
+
+        [Test]
+        public void ClaimNext_SuspendedAndFutureWorkflows_NotReturned()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow suspended = CreateClaimableWorkflow();
+            suspended.IsSuspended = true;
+            BasicWorkflow future = CreateClaimableWorkflow();
+            future.ResumeOn = DateTime.UtcNow.AddMinutes(5);
+            BasicWorkflow available = CreateClaimableWorkflow();
+            store.Save(new[] { suspended, future, available });
+
+            Assert.That(store.ClaimNext("node1").Id, Is.EqualTo(available.Id));
+            Assert.That(store.ClaimNext("node1"), Is.Null);
+        }
+
+        [Test]
+        public void ClaimNext_MultipleWorkflows_ClaimedByPriorityThenRetryCountThenCreatedOn()
+        {
+            DateTime baseDate = DateTime.UtcNow.AddMinutes(-10);
+            Func<int, int, int, BasicWorkflow> createWorkflow = (priority, retryCount, createdMinutes) =>
+            {
+                BasicWorkflow wf = CreateClaimableWorkflow();
+                wf.Priority = priority;
+                wf.RetryCount = retryCount;
+                wf.CreatedOn = baseDate.AddMinutes(createdMinutes);
+                return wf;
+            };
+
+            BasicWorkflow workflow1 = createWorkflow(1, 0, 1);
+            BasicWorkflow workflow2 = createWorkflow(2, 0, 2);
+            BasicWorkflow workflow3 = createWorkflow(2, 1, 3);
+            BasicWorkflow workflow4 = createWorkflow(1, 0, 0);
+
+            IWorkflowStore store = GetStore();
+            store.Save(new[] { workflow1, workflow2, workflow3, workflow4 });
+
+            Guid[] claimOrder = Enumerable.Range(0, 4).Select(x => store.ClaimNext("node1").Id).ToArray();
+            Assert.That(claimOrder, Is.EqualTo(new[] { workflow3.Id, workflow2.Id, workflow4.Id, workflow1.Id }));
+        }
+
+        [Test]
+        public void ClaimNext_ConcurrentNodes_EachWorkflowClaimedOnce()
+        {
+            const int WorkflowCount = 40;
+            IWorkflowStore store = GetStore();
+            store.Save(Enumerable.Range(0, WorkflowCount).Select(x => CreateClaimableWorkflow()).ToList());
+
+            System.Collections.Concurrent.ConcurrentBag<Guid> claimedIds = new System.Collections.Concurrent.ConcurrentBag<Guid>();
+            Parallel.For(0, 4, nodeIndex =>
+            {
+                Workflow claimed;
+                while ((claimed = store.ClaimNext("node" + nodeIndex)) != null)
+                {
+                    claimedIds.Add(claimed.Id);
+                }
+            });
+
+            Assert.That(claimedIds.Count, Is.EqualTo(WorkflowCount));
+            Assert.That(claimedIds.Distinct().Count(), Is.EqualTo(WorkflowCount));
+        }
+
+        [Test]
+        public async Task ClaimNextAsync_WorkflowAvailable_LocksAndReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow workflow = CreateClaimableWorkflow();
+            store.Save(workflow);
+
+            Workflow claimed = await store.ClaimNextAsync("node1");
+
+            Assert.That(claimed.Id, Is.EqualTo(workflow.Id));
+            Assert.That(claimed.LockedBy, Is.EqualTo("node1"));
+            Assert.That(await store.ClaimNextAsync("node2"), Is.Null);
+        }
+
+        #endregion
+
+        #region SaveClaimed Tests
+
+        [Test]
+        public void SaveClaimed_LockedByNode_SavesAndReleasesLock()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            BasicWorkflow claimed = (BasicWorkflow)store.ClaimNext("node1");
+
+            claimed.BasicMetaData = "updated";
+            claimed.LockedBy = null;
+            claimed.LockedOn = null;
+            bool result = store.SaveClaimed(claimed, "node1");
+
+            Assert.That(result, Is.True);
+            BasicWorkflow saved = store.Get<BasicWorkflow>(claimed.Id);
+            Assert.That(saved.BasicMetaData, Is.EqualTo("updated"));
+            Assert.That(saved.LockedBy, Is.Null);
+            Assert.That(saved.LockedOn, Is.Null);
+            Assert.That(store.GetLockOwners(), Is.Empty);
+            Assert.That(store.ClaimNext("node2"), Is.Not.Null);
+        }
+
+        [Test]
+        public void SaveClaimed_LockKept_WorkflowStaysLocked()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+
+            Assert.That(store.SaveClaimed(claimed, "node1"), Is.True);
+
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node1" }));
+            Assert.That(store.ClaimNext("node2"), Is.Null);
+        }
+
+        [Test]
+        public void SaveClaimed_LockReleasedButNotReclaimed_Saves()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            BasicWorkflow claimed = (BasicWorkflow)store.ClaimNext("node1");
+            store.ReleaseLocks("node1");
+
+            claimed.BasicMetaData = "updated";
+            claimed.LockedBy = null;
+            Assert.That(store.SaveClaimed(claimed, "node1"), Is.True);
+            Assert.That(store.Get<BasicWorkflow>(claimed.Id).BasicMetaData, Is.EqualTo("updated"));
+        }
+
+        [Test]
+        public void SaveClaimed_LockedByAnotherNode_NotSaved()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+            store.ReleaseLocks("node1");
+            store.ClaimNext("node2");
+
+            Assert.That(store.SaveClaimed(claimed, "node1"), Is.False);
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node2" }));
+        }
+
+        [Test]
+        public void SaveClaimed_WorkflowDeleted_ReturnsFalse()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+            store.Delete(claimed.Id);
+
+            Assert.That(store.SaveClaimed(claimed, "node1"), Is.False);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Null);
+        }
+
+        [Test]
+        public async Task SaveClaimedAsync_LockedByNode_Saves()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            BasicWorkflow claimed = (BasicWorkflow)await store.ClaimNextAsync("node1");
+
+            claimed.BasicMetaData = "updated";
+            claimed.LockedBy = null;
+            Assert.That(await store.SaveClaimedAsync(claimed, "node1"), Is.True);
+            Assert.That(store.Get<BasicWorkflow>(claimed.Id).BasicMetaData, Is.EqualTo("updated"));
+            Assert.That(store.GetLockOwners(), Is.Empty);
+        }
+
+        [Test]
+        public async Task SaveClaimedAsync_LockedByAnotherNode_NotSaved()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = await store.ClaimNextAsync("node1");
+            await store.ReleaseLocksAsync("node1");
+            await store.ClaimNextAsync("node2");
+
+            Assert.That(await store.SaveClaimedAsync(claimed, "node1"), Is.False);
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node2" }));
+        }
+
+        #endregion
+
+        #region ArchiveClaimed Tests
+
+        [Test]
+        public void ArchiveClaimed_LockedByNode_Archived()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+            claimed.LockedBy = null;
+
+            Assert.That(store.ArchiveClaimed(claimed, "node1"), Is.True);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Null);
+            Assert.That(store.GetCompletedOrDefault(claimed.Id), Is.Not.Null);
+            Assert.That(store.GetLockOwners(), Is.Empty);
+        }
+
+        [Test]
+        public void ArchiveClaimed_LockedByAnotherNode_NotArchived()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+            store.ReleaseLocks("node1");
+            store.ClaimNext("node2");
+
+            Assert.That(store.ArchiveClaimed(claimed, "node1"), Is.False);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Not.Null);
+            Assert.That(store.GetCompletedOrDefault(claimed.Id), Is.Null);
+        }
+
+        [Test]
+        public async Task ArchiveClaimedAsync_LockedByNode_Archived()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = await store.ClaimNextAsync("node1");
+
+            Assert.That(await store.ArchiveClaimedAsync(claimed, "node1"), Is.True);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Null);
+            Assert.That(store.GetCompletedOrDefault(claimed.Id), Is.Not.Null);
+        }
+
+        [Test]
+        public async Task ArchiveClaimedAsync_LockedByAnotherNode_NotArchived()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = await store.ClaimNextAsync("node1");
+            await store.ReleaseLocksAsync("node1");
+            await store.ClaimNextAsync("node2");
+
+            Assert.That(await store.ArchiveClaimedAsync(claimed, "node1"), Is.False);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Not.Null);
+        }
+
+        #endregion
+
+        #region ReleaseLocks Tests
+
+        [Test]
+        public void ReleaseLocks_MultipleNodes_OnlyReleasesNodesLocks()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(Enumerable.Range(0, 3).Select(x => CreateClaimableWorkflow()).ToList());
+            store.ClaimNext("node1");
+            store.ClaimNext("node1");
+            store.ClaimNext("node2");
+
+            store.ReleaseLocks("node1");
+
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node2" }));
+            Assert.That(store.ClaimNext("node3"), Is.Not.Null);
+            Assert.That(store.ClaimNext("node3"), Is.Not.Null);
+            Assert.That(store.ClaimNext("node3"), Is.Null);
+        }
+
+        [Test]
+        public async Task ReleaseLocksAsync_NodeHasLocks_LocksReleased()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+
+            await store.ReleaseLocksAsync("node1");
+
+            Assert.That(store.GetLockOwners(), Is.Empty);
+            Workflow released = store.GetOrDefault(claimed.Id);
+            Assert.That(released.LockedBy, Is.Null);
+            Assert.That(released.LockedOn, Is.Null);
+        }
+
+        [Test]
+        public void ReleaseStaleLocks_OnlyOlderLocksNotExcludedAreReleased()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(Enumerable.Range(0, 3).Select(x => CreateClaimableWorkflow()).ToList());
+            Workflow claimed1 = store.ClaimNext("node1");
+            Workflow claimed2 = store.ClaimNext("node1");
+            Workflow claimed3 = store.ClaimNext("node1");
+
+            // the locks were taken after this time, so nothing is released
+            store.ReleaseStaleLocks("node1", DateTime.UtcNow.AddMinutes(-1), new Guid[0]);
+            Assert.That(store.ClaimNext("node2"), Is.Null);
+
+            store.ReleaseStaleLocks("node1", DateTime.UtcNow.AddMinutes(1), new[] { claimed2.Id });
+            Assert.That(store.GetOrDefault(claimed1.Id).LockedBy, Is.Null);
+            Assert.That(store.GetOrDefault(claimed2.Id).LockedBy, Is.EqualTo("node1"));
+            Assert.That(store.GetOrDefault(claimed3.Id).LockedBy, Is.Null);
+        }
+
+        [Test]
+        public async Task ReleaseStaleLocksAsync_OnlyOlderLocksNotExcludedAreReleased()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(Enumerable.Range(0, 2).Select(x => CreateClaimableWorkflow()).ToList());
+            Workflow claimed1 = store.ClaimNext("node1");
+            Workflow claimed2 = store.ClaimNext("node1");
+
+            await store.ReleaseStaleLocksAsync("node1", DateTime.UtcNow.AddMinutes(1), new[] { claimed2.Id });
+
+            Assert.That(store.GetOrDefault(claimed1.Id).LockedBy, Is.Null);
+            Assert.That(store.GetOrDefault(claimed2.Id).LockedBy, Is.EqualTo("node1"));
+        }
+
+        [Test]
+        public void ReleaseStaleLocks_OtherNodesLocks_NotReleased()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            store.ClaimNext("node2");
+
+            store.ReleaseStaleLocks("node1", DateTime.UtcNow.AddMinutes(1), new Guid[0]);
+
+            Assert.That(store.GetLockOwners(), Is.EqualTo(new[] { "node2" }));
+        }
+
+        [Test]
+        public async Task GetLockOwnersAsync_LocksHeld_ReturnsDistinctOwners()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.That(await store.GetLockOwnersAsync(), Is.Empty);
+
+            store.Save(Enumerable.Range(0, 3).Select(x => CreateClaimableWorkflow()).ToList());
+            store.ClaimNext("node1");
+            store.ClaimNext("node1");
+            store.ClaimNext("node2");
+
+            Assert.That((await store.GetLockOwnersAsync()).OrderBy(x => x), Is.EqualTo(new[] { "node1", "node2" }));
+        }
+
+        #endregion
+
+        #region Node Tests
+
+        [Test]
+        public void RegisterNode_NewNode_NodeReturnedByGetNodes()
+        {
+            IWorkflowStore store = GetStore();
+            DateTime beforeRegister = DateTime.UtcNow.AddSeconds(-5);
+
+            store.RegisterNode(new WorkflowNode() { Id = "node1", Name = "Server One", StartedOn = DateTime.UtcNow });
+
+            WorkflowNode node = store.GetNodes().Single();
+            Assert.That(node.Id, Is.EqualTo("node1"));
+            Assert.That(node.Name, Is.EqualTo("Server One"));
+            Assert.That(node.LastHeartbeat, Is.GreaterThan(beforeRegister));
+        }
+
+        [Test]
+        public async Task RegisterNodeAsync_NewNode_NodeReturnedByGetNodesAsync()
+        {
+            IWorkflowStore store = GetStore();
+            await store.RegisterNodeAsync(new WorkflowNode() { Id = "node1", Name = "Server One", StartedOn = DateTime.UtcNow });
+            await store.RegisterNodeAsync(new WorkflowNode() { Id = "node2", Name = "Server Two", StartedOn = DateTime.UtcNow });
+
+            Assert.That((await store.GetNodesAsync()).Select(x => x.Id).OrderBy(x => x), Is.EqualTo(new[] { "node1", "node2" }));
+        }
+
+        [Test]
+        public async Task Heartbeat_NodeExists_ReturnsTrueAndUpdatesHeartbeat()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+            DateTime registeredHeartbeat = store.GetNodes().Single().LastHeartbeat;
+            await Task.Delay(50);
+
+            Assert.That(store.Heartbeat("node1"), Is.True);
+            Assert.That(store.GetNodes().Single().LastHeartbeat, Is.GreaterThan(registeredHeartbeat));
+            Assert.That(await store.HeartbeatAsync("node1"), Is.True);
+        }
+
+        [Test]
+        public async Task Heartbeat_NodeRemoved_ReturnsFalseAndDoesNotRecreateNode()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+            store.RemoveNode("node1");
+
+            Assert.That(store.Heartbeat("node1"), Is.False);
+            Assert.That(await store.HeartbeatAsync("node1"), Is.False);
+            Assert.That(store.GetNodes(), Is.Empty);
+        }
+
+        [Test]
+        public async Task RemoveNodeAsync_NodeExists_NodeRemoved()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+            store.RegisterNode(new WorkflowNode() { Id = "node2", StartedOn = DateTime.UtcNow });
+
+            await store.RemoveNodeAsync("node1");
+
+            Assert.That(store.GetNodes().Select(x => x.Id), Is.EqualTo(new[] { "node2" }));
+        }
+
+        [Test]
+        public async Task RemoveStaleNodes_RecentHeartbeat_NotRemoved()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+
+            Assert.That(store.RemoveStaleNodes(TimeSpan.FromMinutes(1)), Is.EqualTo(0));
+            Assert.That(await store.RemoveStaleNodesAsync(TimeSpan.FromMinutes(1)), Is.EqualTo(0));
+            Assert.That(store.GetNodes().Count(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task RemoveStaleNodes_HeartbeatOlderThanTimeout_Removed()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+            await Task.Delay(1500);
+            store.RegisterNode(new WorkflowNode() { Id = "node2", StartedOn = DateTime.UtcNow });
+
+            Assert.That(store.RemoveStaleNodes(TimeSpan.FromSeconds(1)), Is.EqualTo(1));
+            Assert.That(store.GetNodes().Select(x => x.Id), Is.EqualTo(new[] { "node2" }));
+        }
+
+        [Test]
+        public async Task RemoveStaleNodesAsync_HeartbeatOlderThanTimeout_Removed()
+        {
+            IWorkflowStore store = GetStore();
+            store.RegisterNode(new WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+            await Task.Delay(1500);
+
+            Assert.That(await store.RemoveStaleNodesAsync(TimeSpan.FromSeconds(1)), Is.EqualTo(1));
+            Assert.That(store.GetNodes(), Is.Empty);
+        }
+
+        #endregion
+
+        #region Multiple Server Tests
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_MultipleServersSharingStore_EachStepExecutedOnce(bool isAsync)
+        {
+            const int WorkflowCount = 100;
+            IWorkflowStore store = GetStore();
+            List<Guid> workflowIds = new List<Guid>();
+            List<Workflow> workflows = new List<Workflow>();
+            for (int i = 0; i < WorkflowCount; i++)
+            {
+                CountingWorkflow workflow = new CountingWorkflow();
+                workflow.Priority = i % 3;
+                workflows.Add(workflow);
+                workflowIds.Add(workflow.Id);
+            }
+            store.Save(workflows);
+
+            List<WorkflowServer> servers = Enumerable.Range(0, 3).Select(x =>
+            {
+                WorkflowServer server = new WorkflowServer(store, new WorkflowServerOptions() { PersistWorkflowDefinitions = false });
+                server.RegisterWorkflowType<CountingWorkflow>();
+                return server;
+            }).ToList();
+            try
+            {
+                List<string> lostLocks = new List<string>();
+                servers.ForEach(s => s.WorkflowLockLost += (sender, e) => lostLocks.Add(e.NodeId));
+
+                Task[] tasks = servers.Select(server => Task.Run(async () =>
+                {
+                    while ((isAsync ? await server.ExecuteWorkflowsAsync(10, 4) : server.ExecuteWorkflows(10, 4)) > 0)
+                    {
+                    }
+                })).ToArray();
+                Task.WaitAll(tasks);
+
+                Assert.That(lostLocks, Is.Empty);
+                Assert.That(store.GetActive(WorkflowCount), Is.Empty);
+                Assert.That(store.GetLockOwners(), Is.Empty);
+                foreach (Guid id in workflowIds)
+                {
+                    Assert.That(store.GetCompletedOrDefault(id), Is.Not.Null);
+                    Assert.That(CountingWorkflow.GetExecutionCount(id, CountingWorkflow.State.StepOne), Is.EqualTo(1));
+                    Assert.That(CountingWorkflow.GetExecutionCount(id, CountingWorkflow.State.StepTwo), Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                servers.ForEach(s => s.Dispose());
+            }
+        }
+
+        #endregion
+
+        private static BasicWorkflow CreateClaimableWorkflow()
+        {
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            workflow.ResumeOn = DateTime.UtcNow.AddMinutes(-1);
+            return workflow;
+        }
 
     }
 }

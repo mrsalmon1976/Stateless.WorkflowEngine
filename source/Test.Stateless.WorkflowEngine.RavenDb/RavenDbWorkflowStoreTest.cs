@@ -127,6 +127,50 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             Assert.That(doc["@metadata"]["@id"].Value<string>(), Is.EqualTo($"Workflow/{wf.Id}"));
         }
 
+        [Test]
+        public void ClaimNext_DocumentWithoutLockFields_WorkflowClaimed()
+        {
+            // documents saved before multi-node support don't have the lock fields at all
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflowStore.Save(wf);
+            _documentStore.Operations.Send(new PatchOperation($"Workflow/{wf.Id}", null, new Raven.Client.Documents.Operations.PatchRequest
+            {
+                Script = "delete this.Workflow.LockedBy; delete this.Workflow.LockedOn;"
+            }));
+            JObject doc = JObject.Parse(workflowStore.GetWorkflowAsJson(wf.Id));
+            Assert.That(((JObject)doc["Workflow"]).ContainsKey("LockedBy"), Is.False);
+
+            Assert.That(workflowStore.ClaimNext("node1")?.Id, Is.EqualTo(wf.Id));
+        }
+
+        [Test]
+        public void ClaimNext_WorkflowNotYetDue_PatchDoesNotClaim()
+        {
+            // the candidate query can be stale, so the claim patch itself checks the workflow is still due
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            wf.ResumeOn = DateTime.UtcNow.AddMinutes(5);
+            workflowStore.Save(wf);
+
+            Assert.That(workflowStore.ClaimNext("node1"), Is.Null);
+            Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+        }
+
+        [Test]
+        public void RegisterNode_NodeStoredInWorkflowNodesCollection()
+        {
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            workflowStore.RegisterNode(new global::Stateless.WorkflowEngine.WorkflowNode() { Id = "node1", StartedOn = DateTime.UtcNow });
+
+            using (var session = _documentStore.OpenSession())
+            {
+                var node = session.Load<global::Stateless.WorkflowEngine.WorkflowNode>("node1");
+                Assert.That(node, Is.Not.Null);
+                Assert.That(session.Advanced.GetMetadataFor(node)["@collection"], Is.EqualTo("WorkflowNodes"));
+            }
+        }
+
         #endregion
 
         #region Protected Methods

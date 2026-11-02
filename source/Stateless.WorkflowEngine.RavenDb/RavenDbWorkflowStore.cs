@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
+using Raven.Client;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Commands.Batches;
 using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Session;
+using Raven.Client.Documents.Linq;
+using Raven.Client.Documents.Queries;
 using Sparrow.Json;
 using Raven.Client.Exceptions;
 using Raven.Client.Exceptions.Database;
@@ -24,6 +27,18 @@ namespace Stateless.WorkflowEngine.RavenDb
         private readonly IDocumentStore _documentStore;
 
         private string WorkflowCollection => _documentStore.Conventions.FindCollectionName(typeof(RavenWorkflow));
+
+        private string NodeCollection => _documentStore.Conventions.FindCollectionName(typeof(WorkflowNode));
+
+        /// <summary>
+        /// The number of candidate workflows fetched per claim attempt.  Candidates come from an index that may be stale,
+        /// so some may already be claimed - the conditional patch skips them.
+        /// </summary>
+        private const int ClaimCandidateCount = 25;
+
+        private const int MaxConcurrencyRetries = 3;
+
+        private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Gets the document store associated with the store.
@@ -690,6 +705,518 @@ namespace Stateless.WorkflowEngine.RavenDb
                 session.Advanced.Defer(new PatchCommandData(fid, null, new PatchRequest { Script = script, Values = values ?? new Dictionary<string, object>() }));
                 await session.SaveChangesAsync();
             }
+        }
+
+        // Claims a workflow only if it is still available.  Patches run atomically per document on the server, so if two
+        // nodes patch the same document, only the first one changes it - the second gets PatchStatus.NotModified.  Dates
+        // are compared as strings, which works as RavenDB stores them in a sortable ISO 8601 format.
+        private const string ClaimScript = @"
+if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflow.ResumeOn <= args.now) {
+    this.Workflow.LockedBy = args.node;
+    this.Workflow.LockedOn = args.now;
+}";
+
+        private const string HeartbeatScript = "this.LastHeartbeat = args.now;";
+
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.  RavenDB has no find-and-modify, so candidates are
+        /// read from the (possibly stale) index, and claimed with a conditional patch that only succeeds if the workflow
+        /// is still available.
+        /// </summary>
+        public override Workflow ClaimNext(string nodeId)
+        {
+            Workflow workflow = TryClaim(nodeId, waitForNonStaleResults: false, out bool retry);
+            if (workflow == null && retry)
+            {
+                // the index was behind (all the candidates were already claimed, or recently released workflows were
+                // missing), so try again against an up-to-date index
+                workflow = TryClaim(nodeId, waitForNonStaleResults: true, out retry);
+            }
+            return workflow;
+        }
+
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.  RavenDB has no find-and-modify, so candidates are
+        /// read from the (possibly stale) index, and claimed with a conditional patch that only succeeds if the workflow
+        /// is still available.
+        /// </summary>
+        public override async Task<Workflow> ClaimNextAsync(string nodeId)
+        {
+            var result = await TryClaimAsync(nodeId, waitForNonStaleResults: false);
+            if (result.Workflow == null && result.Retry)
+            {
+                // the index was behind (all the candidates were already claimed, or recently released workflows were
+                // missing), so try again against an up-to-date index
+                result = await TryClaimAsync(nodeId, waitForNonStaleResults: true);
+            }
+            return result.Workflow;
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.  Optimistic
+        /// concurrency ensures the workflow isn't claimed by another node between the check and the save.
+        /// </summary>
+        public override bool SaveClaimed(Workflow workflow, string nodeId)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+            for (int attempt = 1; ; attempt++)
+            {
+                using (IDocumentSession session = this.OpenSession())
+                {
+                    session.Advanced.UseOptimisticConcurrency = true;
+                    RavenWorkflow stored = session.Load<RavenWorkflow>(fid);
+                    if (!IsClaimable(stored, nodeId))
+                    {
+                        return false;
+                    }
+                    stored.Workflow = workflow;
+                    stored.WorkflowType = workflow.GetType().AssemblyQualifiedName;
+                    try
+                    {
+                        session.SaveChanges();
+                        return true;
+                    }
+                    catch (ConcurrencyException) when (attempt < MaxConcurrencyRetries)
+                    {
+                        // the document changed after it was loaded - check the lock again
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.  Optimistic
+        /// concurrency ensures the workflow isn't claimed by another node between the check and the save.
+        /// </summary>
+        public override async Task<bool> SaveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+            for (int attempt = 1; ; attempt++)
+            {
+                using (var session = this.OpenAsyncSession())
+                {
+                    session.Advanced.UseOptimisticConcurrency = true;
+                    RavenWorkflow stored = await session.LoadAsync<RavenWorkflow>(fid);
+                    if (!IsClaimable(stored, nodeId))
+                    {
+                        return false;
+                    }
+                    stored.Workflow = workflow;
+                    stored.WorkflowType = workflow.GetType().AssemblyQualifiedName;
+                    try
+                    {
+                        await session.SaveChangesAsync();
+                        return true;
+                    }
+                    catch (ConcurrencyException) when (attempt < MaxConcurrencyRetries)
+                    {
+                        // the document changed after it was loaded - check the lock again
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.  The delete and
+        /// the insert into the completed collection are saved in a single transaction.
+        /// </summary>
+        public override bool ArchiveClaimed(Workflow workflow, string nodeId)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+            for (int attempt = 1; ; attempt++)
+            {
+                using (IDocumentSession session = this.OpenSession())
+                {
+                    session.Advanced.UseOptimisticConcurrency = true;
+                    RavenWorkflow stored = session.Load<RavenWorkflow>(fid);
+                    if (!IsClaimable(stored, nodeId))
+                    {
+                        return false;
+                    }
+                    session.Delete(stored);
+                    session.Store(new RavenCompletedWorkflow(workflow));
+                    try
+                    {
+                        session.SaveChanges();
+                        return true;
+                    }
+                    catch (ConcurrencyException) when (attempt < MaxConcurrencyRetries)
+                    {
+                        // the document changed after it was loaded - check the lock again
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.  The delete and
+        /// the insert into the completed collection are saved in a single transaction.
+        /// </summary>
+        public override async Task<bool> ArchiveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(workflow.Id);
+            for (int attempt = 1; ; attempt++)
+            {
+                using (var session = this.OpenAsyncSession())
+                {
+                    session.Advanced.UseOptimisticConcurrency = true;
+                    RavenWorkflow stored = await session.LoadAsync<RavenWorkflow>(fid);
+                    if (!IsClaimable(stored, nodeId))
+                    {
+                        return false;
+                    }
+                    session.Delete(stored);
+                    await session.StoreAsync(new RavenCompletedWorkflow(workflow));
+                    try
+                    {
+                        await session.SaveChangesAsync();
+                        return true;
+                    }
+                    catch (ConcurrencyException) when (attempt < MaxConcurrencyRetries)
+                    {
+                        // the document changed after it was loaded - check the lock again
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override void ReleaseLocks(string nodeId)
+        {
+            Operation operation = _documentStore.Operations.Send(ReleaseLocksOperation(nodeId, null, null));
+            operation.WaitForCompletion(OperationTimeout);
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override async Task ReleaseLocksAsync(string nodeId)
+        {
+            Operation operation = await _documentStore.Operations.SendAsync(ReleaseLocksOperation(nodeId, null, null));
+            await operation.WaitForCompletionAsync(OperationTimeout);
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override void ReleaseStaleLocks(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            Operation operation = _documentStore.Operations.Send(ReleaseLocksOperation(nodeId, lockedBefore, excludeIds));
+            operation.WaitForCompletion(OperationTimeout);
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override async Task ReleaseStaleLocksAsync(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            Operation operation = await _documentStore.Operations.SendAsync(ReleaseLocksOperation(nodeId, lockedBefore, excludeIds));
+            await operation.WaitForCompletionAsync(OperationTimeout);
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.  This waits for the index to be up to date.
+        /// </summary>
+        public override IEnumerable<string> GetLockOwners()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<RavenWorkflow>()
+                    .Customize(x => x.WaitForNonStaleResults(OperationTimeout))
+                    .Where(x => x.Workflow.LockedBy != null)
+                    .Select(x => x.Workflow.LockedBy)
+                    .Distinct()
+                    .ToList()
+                    .Where(x => x != null)
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.  This waits for the index to be up to date.
+        /// </summary>
+        public override async Task<IEnumerable<string>> GetLockOwnersAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                List<string> owners = await session.Query<RavenWorkflow>()
+                    .Customize(x => x.WaitForNonStaleResults(OperationTimeout))
+                    .Where(x => x.Workflow.LockedBy != null)
+                    .Select(x => x.Workflow.LockedBy)
+                    .Distinct()
+                    .ToListAsync();
+
+                // documents saved before multi-node support have no LockedBy field, which RavenDB treats as not null
+                return owners.Where(x => x != null).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.  The session waits for indexes,
+        /// so the node is visible to GetNodes before the node claims any workflows.
+        /// </summary>
+        public override void RegisterNode(WorkflowNode node)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                node.LastHeartbeat = DateTime.UtcNow;
+                session.Store(node, node.Id);
+                session.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.  The session waits for indexes,
+        /// so the node is visible to GetNodes before the node claims any workflows.
+        /// </summary>
+        public override async Task RegisterNodeAsync(WorkflowNode node)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                node.LastHeartbeat = DateTime.UtcNow;
+                await session.StoreAsync(node, node.Id);
+                await session.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public override bool Heartbeat(string nodeId)
+        {
+            PatchStatus status = _documentStore.Operations.Send(HeartbeatOperation(nodeId));
+            return status != PatchStatus.DocumentDoesNotExist;
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public override async Task<bool> HeartbeatAsync(string nodeId)
+        {
+            PatchStatus status = await _documentStore.Operations.SendAsync(HeartbeatOperation(nodeId));
+            return status != PatchStatus.DocumentDoesNotExist;
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.  This waits for the index to be up to date, as a node missing from the results
+        /// would have its locks released.
+        /// </summary>
+        public override IEnumerable<WorkflowNode> GetNodes()
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                return session.Query<WorkflowNode>()
+                    .Customize(x => x.WaitForNonStaleResults(OperationTimeout))
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.  This waits for the index to be up to date, as a node missing from the results
+        /// would have its locks released.
+        /// </summary>
+        public override async Task<IEnumerable<WorkflowNode>> GetNodesAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                return await session.Query<WorkflowNode>()
+                    .Customize(x => x.WaitForNonStaleResults(OperationTimeout))
+                    .ToListAsync();
+            }
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override void RemoveNode(string nodeId)
+        {
+            using (IDocumentSession session = this.OpenSession())
+            {
+                session.Delete(nodeId);
+                session.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override async Task RemoveNodeAsync(string nodeId)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                session.Delete(nodeId);
+                await session.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.  Heartbeats are set from the clocks of
+        /// the workflow servers, so these need to be kept in sync.
+        /// </summary>
+        public override long RemoveStaleNodes(TimeSpan timeout)
+        {
+            Operation operation = _documentStore.Operations.Send(RemoveStaleNodesOperation(timeout));
+            return operation.WaitForCompletion<BulkOperationResult>(OperationTimeout).Total;
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.  Heartbeats are set from the clocks of
+        /// the workflow servers, so these need to be kept in sync.
+        /// </summary>
+        public override async Task<long> RemoveStaleNodesAsync(TimeSpan timeout)
+        {
+            Operation operation = await _documentStore.Operations.SendAsync(RemoveStaleNodesOperation(timeout));
+            BulkOperationResult result = await operation.WaitForCompletionAsync<BulkOperationResult>(OperationTimeout);
+            return result.Total;
+        }
+
+        private static bool IsClaimable(RavenWorkflow stored, string nodeId)
+        {
+            return stored != null && (stored.Workflow.LockedBy == null || stored.Workflow.LockedBy == nodeId);
+        }
+
+        /// <summary>
+        /// Tries to claim one of the top candidate workflows.  <c>retry</c> is set if nothing was claimed but an
+        /// up-to-date index might return a different result.
+        /// </summary>
+        private Workflow TryClaim(string nodeId, bool waitForNonStaleResults, out bool retry)
+        {
+            DateTime now = DateTime.UtcNow;
+            List<string> candidateIds;
+            QueryStatistics stats;
+            using (IDocumentSession session = this.OpenSession())
+            {
+                var query = session.Advanced.RawQuery<ClaimCandidate>(ClaimCandidatesQuery())
+                    .AddParameter("now", now)
+                    .Statistics(out stats);
+                if (waitForNonStaleResults)
+                {
+                    query = query.WaitForNonStaleResults(TimeSpan.FromSeconds(5));
+                }
+                candidateIds = query.ToList().Select(x => x.Id).ToList();
+            }
+            retry = candidateIds.Count > 0 || stats.IsStale;
+
+            foreach (string id in candidateIds)
+            {
+                PatchStatus status = _documentStore.Operations.Send(ClaimOperation(id, nodeId, now));
+                if (status == PatchStatus.Patched)
+                {
+                    using (IDocumentSession session = this.OpenSession())
+                    {
+                        return session.Load<RavenWorkflow>(id)?.Workflow;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Tries to claim one of the top candidate workflows.  <c>Retry</c> is set if nothing was claimed but an
+        /// up-to-date index might return a different result.
+        /// </summary>
+        private async Task<(Workflow Workflow, bool Retry)> TryClaimAsync(string nodeId, bool waitForNonStaleResults)
+        {
+            DateTime now = DateTime.UtcNow;
+            List<string> candidateIds;
+            QueryStatistics stats;
+            using (var session = this.OpenAsyncSession())
+            {
+                var query = session.Advanced.AsyncRawQuery<ClaimCandidate>(ClaimCandidatesQuery())
+                    .AddParameter("now", now)
+                    .Statistics(out stats);
+                if (waitForNonStaleResults)
+                {
+                    query = query.WaitForNonStaleResults(TimeSpan.FromSeconds(5));
+                }
+                candidateIds = (await query.ToListAsync()).Select(x => x.Id).ToList();
+            }
+
+            foreach (string id in candidateIds)
+            {
+                PatchStatus status = await _documentStore.Operations.SendAsync(ClaimOperation(id, nodeId, now));
+                if (status == PatchStatus.Patched)
+                {
+                    using (var session = this.OpenAsyncSession())
+                    {
+                        RavenWorkflow claimed = await session.LoadAsync<RavenWorkflow>(id);
+                        return (claimed?.Workflow, true);
+                    }
+                }
+            }
+            return (null, candidateIds.Count > 0 || stats.IsStale);
+        }
+
+        /// <summary>
+        /// Gets the RQL for the top unlocked workflows that are due.  Documents saved before multi-node support have no
+        /// LockedBy field at all, which RavenDB does not treat as null, so these are matched with "not exists".  This is
+        /// written in RQL as the LINQ provider has no way of expressing it.
+        /// </summary>
+        private string ClaimCandidatesQuery()
+        {
+            return $@"from '{WorkflowCollection}'
+where Workflow.IsSuspended = false and Workflow.ResumeOn <= $now and (Workflow.LockedBy = null or (true and not exists(Workflow.LockedBy)))
+order by Workflow.Priority as long desc, Workflow.RetryCount as long desc, Workflow.CreatedOn
+select id() as Id
+limit {ClaimCandidateCount}";
+        }
+
+        private class ClaimCandidate
+        {
+            public string Id { get; set; }
+        }
+
+        private static PatchOperation ClaimOperation(string id, string nodeId, DateTime now)
+        {
+            return new PatchOperation(id, null, new PatchRequest
+            {
+                Script = ClaimScript,
+                Values = new Dictionary<string, object> { { "node", nodeId }, { "now", now } }
+            });
+        }
+
+        private static PatchOperation HeartbeatOperation(string nodeId)
+        {
+            return new PatchOperation(nodeId, null, new PatchRequest
+            {
+                Script = HeartbeatScript,
+                Values = new Dictionary<string, object> { { "now", DateTime.UtcNow } }
+            });
+        }
+
+        /// <summary>
+        /// Creates a patch-by-query operation that releases a node's locks.  If <c>lockedBefore</c> is supplied, only locks
+        /// taken before that time are released, and workflows in <c>excludeIds</c> are skipped.
+        /// </summary>
+        private PatchByQueryOperation ReleaseLocksOperation(string nodeId, DateTime? lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            string condition = "this.Workflow.LockedBy === $node";
+            Parameters parameters = new Parameters { { "node", nodeId } };
+            if (lockedBefore.HasValue)
+            {
+                condition += " && this.Workflow.LockedOn < $before && $exclude.indexOf(id(this)) < 0";
+                parameters.Add("before", lockedBefore.Value);
+                parameters.Add("exclude", (excludeIds ?? Enumerable.Empty<Guid>()).Select(RavenDbIdUtility.FormatWorkflowId).ToArray());
+            }
+
+            IndexQuery query = new IndexQuery
+            {
+                Query = $"from '{WorkflowCollection}' where Workflow.LockedBy = $node update {{ if ({condition}) {{ this.Workflow.LockedBy = null; this.Workflow.LockedOn = null; }} }}",
+                QueryParameters = parameters
+            };
+            return new PatchByQueryOperation(query, new QueryOperationOptions { AllowStale = false, StaleTimeout = OperationTimeout });
+        }
+
+        private DeleteByQueryOperation RemoveStaleNodesOperation(TimeSpan timeout)
+        {
+            IndexQuery query = new IndexQuery
+            {
+                Query = $"from '{NodeCollection}' where LastHeartbeat < $cutoff",
+                QueryParameters = new Parameters { { "cutoff", DateTime.UtcNow.Subtract(timeout) } }
+            };
+            return new DeleteByQueryOperation(query, new QueryOperationOptions { AllowStale = false, StaleTimeout = OperationTimeout });
         }
 
 

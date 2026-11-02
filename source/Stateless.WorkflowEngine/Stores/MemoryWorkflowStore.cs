@@ -14,6 +14,11 @@ namespace Stateless.WorkflowEngine.Stores
         private readonly Dictionary<Guid, Workflow> _activeWorkflows = new Dictionary<Guid, Workflow>();
         private readonly Dictionary<Guid, Workflow> _completedWorkflows = new Dictionary<Guid, Workflow>();
         private readonly List<WorkflowDefinition> _workflowDefinitions = new List<WorkflowDefinition>();
+        private readonly Dictionary<string, WorkflowNode> _nodes = new Dictionary<string, WorkflowNode>();
+
+        // the workflow objects are shared with the callers, so lock ownership is tracked separately from the
+        // Workflow.LockedBy property, which an executing workflow server changes before saving
+        private readonly Dictionary<Guid, string> _locks = new Dictionary<Guid, string>();
         private readonly object syncLock = new object();
 
         /// <summary>
@@ -25,6 +30,7 @@ namespace Stateless.WorkflowEngine.Stores
             lock (syncLock)
             {
                 _activeWorkflows.Remove(workflow.Id);
+                _locks.Remove(workflow.Id);
                 _completedWorkflows.Add(workflow.Id, workflow);
             }
         }
@@ -48,6 +54,7 @@ namespace Stateless.WorkflowEngine.Stores
             lock (syncLock)
             {
                 _activeWorkflows.Remove(id);
+                _locks.Remove(id);
             }
         }
 
@@ -365,6 +372,7 @@ namespace Stateless.WorkflowEngine.Stores
                 {
                     _activeWorkflows.Add(workflow.Id, workflow);
                 }
+                SetLock(workflow);
             }
         }
 
@@ -475,6 +483,293 @@ namespace Stateless.WorkflowEngine.Stores
         {
             await Task.FromResult(0);
             UnsuspendWorkflow(id);
+        }
+
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.
+        /// </summary>
+        public override Workflow ClaimNext(string nodeId)
+        {
+            lock (syncLock)
+            {
+                Workflow workflow = _activeWorkflows.Values
+                    .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow && !_locks.ContainsKey(x.Id))
+                    .OrderByDescending(x => x.Priority)
+                    .ThenByDescending(x => x.RetryCount)
+                    .ThenBy(x => x.CreatedOn)
+                    .FirstOrDefault();
+                if (workflow != null)
+                {
+                    workflow.LockedBy = nodeId;
+                    workflow.LockedOn = DateTime.UtcNow;
+                    _locks[workflow.Id] = nodeId;
+                }
+                return workflow;
+            }
+        }
+
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.
+        /// </summary>
+        public override async Task<Workflow> ClaimNextAsync(string nodeId)
+        {
+            return await Task.FromResult(ClaimNext(nodeId));
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override bool SaveClaimed(Workflow workflow, string nodeId)
+        {
+            lock (syncLock)
+            {
+                if (!IsClaimable(workflow.Id, nodeId))
+                {
+                    return false;
+                }
+                _activeWorkflows[workflow.Id] = workflow;
+                SetLock(workflow);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override async Task<bool> SaveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            return await Task.FromResult(SaveClaimed(workflow, nodeId));
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override bool ArchiveClaimed(Workflow workflow, string nodeId)
+        {
+            lock (syncLock)
+            {
+                if (!IsClaimable(workflow.Id, nodeId))
+                {
+                    return false;
+                }
+                Archive(workflow);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override async Task<bool> ArchiveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            return await Task.FromResult(ArchiveClaimed(workflow, nodeId));
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override void ReleaseLocks(string nodeId)
+        {
+            lock (syncLock)
+            {
+                Release(_locks.Where(x => x.Value == nodeId).Select(x => x.Key).ToList());
+            }
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override async Task ReleaseLocksAsync(string nodeId)
+        {
+            await Task.FromResult(0);
+            ReleaseLocks(nodeId);
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override void ReleaseStaleLocks(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            lock (syncLock)
+            {
+                HashSet<Guid> exclude = new HashSet<Guid>(excludeIds);
+                Release(_locks
+                    .Where(x => x.Value == nodeId && !exclude.Contains(x.Key))
+                    .Where(x => _activeWorkflows.TryGetValue(x.Key, out Workflow w) && w.LockedOn < lockedBefore)
+                    .Select(x => x.Key)
+                    .ToList());
+            }
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override async Task ReleaseStaleLocksAsync(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            await Task.FromResult(0);
+            ReleaseStaleLocks(nodeId, lockedBefore, excludeIds);
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public override IEnumerable<string> GetLockOwners()
+        {
+            lock (syncLock)
+            {
+                return _locks.Values.Distinct().ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public override async Task<IEnumerable<string>> GetLockOwnersAsync()
+        {
+            return await Task.FromResult(GetLockOwners());
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        public override void RegisterNode(WorkflowNode node)
+        {
+            lock (syncLock)
+            {
+                node.LastHeartbeat = DateTime.UtcNow;
+                _nodes[node.Id] = node;
+            }
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        public override async Task RegisterNodeAsync(WorkflowNode node)
+        {
+            await Task.FromResult(0);
+            RegisterNode(node);
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public override bool Heartbeat(string nodeId)
+        {
+            lock (syncLock)
+            {
+                if (!_nodes.TryGetValue(nodeId, out WorkflowNode node))
+                {
+                    return false;
+                }
+                node.LastHeartbeat = DateTime.UtcNow;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public override async Task<bool> HeartbeatAsync(string nodeId)
+        {
+            return await Task.FromResult(Heartbeat(nodeId));
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public override IEnumerable<WorkflowNode> GetNodes()
+        {
+            lock (syncLock)
+            {
+                return _nodes.Values.ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public override async Task<IEnumerable<WorkflowNode>> GetNodesAsync()
+        {
+            return await Task.FromResult(GetNodes());
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override void RemoveNode(string nodeId)
+        {
+            lock (syncLock)
+            {
+                _nodes.Remove(nodeId);
+            }
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override async Task RemoveNodeAsync(string nodeId)
+        {
+            await Task.FromResult(0);
+            RemoveNode(nodeId);
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout, returning the number removed.
+        /// </summary>
+        public override long RemoveStaleNodes(TimeSpan timeout)
+        {
+            lock (syncLock)
+            {
+                DateTime cutoff = DateTime.UtcNow.Subtract(timeout);
+                List<string> staleIds = _nodes.Values.Where(x => x.LastHeartbeat < cutoff).Select(x => x.Id).ToList();
+                foreach (string id in staleIds)
+                {
+                    _nodes.Remove(id);
+                }
+                return staleIds.Count;
+            }
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout, returning the number removed.
+        /// </summary>
+        public override async Task<long> RemoveStaleNodesAsync(TimeSpan timeout)
+        {
+            return await Task.FromResult(RemoveStaleNodes(timeout));
+        }
+
+        private bool IsClaimable(Guid workflowId, string nodeId)
+        {
+            if (!_activeWorkflows.ContainsKey(workflowId))
+            {
+                return false;
+            }
+            return !_locks.TryGetValue(workflowId, out string owner) || owner == nodeId;
+        }
+
+        private void Release(IEnumerable<Guid> workflowIds)
+        {
+            foreach (Guid id in workflowIds)
+            {
+                _locks.Remove(id);
+                if (_activeWorkflows.TryGetValue(id, out Workflow workflow))
+                {
+                    workflow.LockedBy = null;
+                    workflow.LockedOn = null;
+                }
+            }
+        }
+
+        private void SetLock(Workflow workflow)
+        {
+            if (workflow.LockedBy == null)
+            {
+                _locks.Remove(workflow.Id);
+            }
+            else
+            {
+                _locks[workflow.Id] = workflow.LockedBy;
+            }
         }
 
     }

@@ -61,7 +61,7 @@ namespace Example.Server
 
             Console.WriteLine();
 
-            IWorkflowServer workflowServer = CreateWorkflowServer(inputStoreType);
+            using IWorkflowServer workflowServer = CreateWorkflowServer(inputStoreType);
             // NOTE: register any types - this is currently only necessary for MongoDb
             workflowServer.RegisterWorkflowType<FileCreationWorkflow>();
 

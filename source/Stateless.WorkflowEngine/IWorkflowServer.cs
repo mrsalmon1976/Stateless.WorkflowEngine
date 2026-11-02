@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine
 {
-    public interface IWorkflowServer
+    public interface IWorkflowServer : IDisposable
     {
         /// <summary>
         /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
@@ -25,6 +25,10 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         IWorkflowStore WorkflowStore { get; set; }
 
+        /// <summary>
+        /// Gets the id of this server's node, used to lock the workflows it claims.  This changes if the node is evicted.
+        /// </summary>
+        string NodeId { get; }
 
         /// <summary>
         /// Executes a workflow.
@@ -39,7 +43,7 @@ namespace Stateless.WorkflowEngine
         Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then
+        /// Claims and executes up to <c>count</c> workflows in the registered store (one at a time as execution slots free up), ordered by Priority DESC, RetryCount DESC, and then
         /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
@@ -48,7 +52,7 @@ namespace Stateless.WorkflowEngine
         int ExecuteWorkflows(int count, int? maxConcurrent = null);
 
         /// <summary>
-        /// Executes the first <c>count</c> workflows in the registered store, ordered by Priority DESC, RetryCount DESC, and then
+        /// Claims and executes up to <c>count</c> workflows in the registered store (one at a time as execution slots free up), ordered by Priority DESC, RetryCount DESC, and then
         /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
@@ -99,6 +103,29 @@ namespace Stateless.WorkflowEngine
         /// Event raised when a workflow completes.
         /// </summary>
         event EventHandler<WorkflowEventArgs> WorkflowCompleted;
+
+        /// <summary>
+        /// Event raised when a workflow executed by this server could not be saved because another node has claimed it
+        /// since (or it no longer exists).  The workflow is not saved, and execution of it stops.
+        /// </summary>
+        event EventHandler<WorkflowLockLostEventArgs> WorkflowLockLost;
+
+        /// <summary>
+        /// Event raised when this server claims a workflow for execution, just before it is executed.  Exceptions thrown by
+        /// handlers are ignored, as the workflow is already locked and must still be executed.
+        /// </summary>
+        event EventHandler<WorkflowClaimedEventArgs> WorkflowClaimed;
+
+        /// <summary>
+        /// Event raised when this server finds that it was removed by another node (it could not heartbeat within the
+        /// node timeout), and has re-registered with a new node id.
+        /// </summary>
+        event EventHandler<NodeEvictedEventArgs> NodeEvicted;
+
+        /// <summary>
+        /// Event raised when the background heartbeat/monitoring of this server fails.
+        /// </summary>
+        event EventHandler<NodeMonitorErrorEventArgs> NodeMonitorError;
 
     }
 }

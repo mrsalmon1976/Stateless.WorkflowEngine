@@ -15,6 +15,7 @@ using Test.Stateless.WorkflowEngine.Workflows.Broken;
 using Test.Stateless.WorkflowEngine.Workflows.DecreasingPriority;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Test.Stateless.WorkflowEngine.Workflows.Counting;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -881,7 +882,7 @@ namespace Test.Stateless.WorkflowEngine
                 BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
                 workflows.Add(workflow);
             }
-            workflowStore.GetActiveAsync(Arg.Any<int>()).Returns(Task.FromResult(workflows.AsEnumerable()));
+            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflows[0], workflows.Skip(1).ToArray());
 
             CancellationToken cancellationToken = new CancellationToken(true);
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
@@ -889,9 +890,9 @@ namespace Test.Stateless.WorkflowEngine
             // execute
             int result = await workflowServer.ExecuteWorkflowsAsync(10, 100, cancellationToken);
 
-            // assert - only 'executeCount' workflows should have been executed and move out of the Start state
+            // assert - nothing should have been claimed, as claims would leave workflows locked
             Assert.That(result, Is.EqualTo(0));
-            await workflowStore.Received(1).GetActiveAsync(10);
+            await workflowStore.DidNotReceive().ClaimNextAsync(Arg.Any<string>());
 
         }
 
@@ -915,16 +916,17 @@ namespace Test.Stateless.WorkflowEngine
                 CreateBasicWorkflow(),
                 CreateBasicWorkflow()
             };
-            workflowStore.GetActiveAsync(Arg.Any<int>()).Returns(Task.FromResult(workflows.AsEnumerable()));
+            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflows[0], workflows[1]);
 
-            // SaveAsync cancels the token synchronously then delays, keeping the task in-flight
+            // SaveClaimedAsync cancels the token synchronously then delays, keeping the task in-flight
             // long enough that it would hit semaphore.Release() on a disposed semaphore under the old code
-            workflowStore.SaveAsync(Arg.Any<Workflow>()).Returns(async (callInfo) =>
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(async (callInfo) =>
             {
                 cts.Cancel();
                 await Task.Delay(100);
+                return true;
             });
-            workflowStore.ArchiveAsync(Arg.Any<Workflow>()).Returns(Task.CompletedTask);
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
 
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
 
@@ -933,8 +935,8 @@ namespace Test.Stateless.WorkflowEngine
 
             // Only the first workflow was dispatched before cancellation stopped the loop
             Assert.That(result, Is.EqualTo(1));
-            // SaveAsync was called, proving the in-flight task ran to completion inside WhenAll
-            await workflowStore.Received().SaveAsync(Arg.Any<Workflow>());
+            // SaveClaimedAsync was called, proving the in-flight task ran to completion inside WhenAll
+            await workflowStore.Received().SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>());
         }
 
         [TestCase(true, 3, 1)]
@@ -1030,6 +1032,304 @@ namespace Test.Stateless.WorkflowEngine
 
         #endregion
 
+        #region Multi-node Tests
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_OnFirstExecution_NodeIsRegistered(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            WorkflowServerOptions options = new WorkflowServerOptions() { NodeName = "TestNode" };
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, options))
+            {
+                Assert.That(workflowStore.GetNodes(), Is.Empty);
+
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                Assert.That(result, Is.EqualTo(0));
+                WorkflowNode node = workflowStore.GetNodes().Single();
+                Assert.That(node.Id, Is.EqualTo(workflowServer.NodeId));
+                Assert.That(node.Name, Is.EqualTo("TestNode"));
+            }
+        }
+
+        [Test]
+        public void NodeId_NodeIdSetInOptions_UsesOption()
+        {
+            WorkflowServerOptions options = new WorkflowServerOptions() { NodeId = "my-node" };
+            using (WorkflowServer workflowServer = new WorkflowServer(new MemoryWorkflowStore(), options))
+            {
+                Assert.That(workflowServer.NodeId, Is.EqualTo("my-node"));
+            }
+        }
+
+        [Test]
+        public void NodeId_TwoServers_HaveDifferentIds()
+        {
+            WorkflowServerOptions options = new WorkflowServerOptions();
+            using (WorkflowServer workflowServer1 = new WorkflowServer(new MemoryWorkflowStore(), options))
+            using (WorkflowServer workflowServer2 = new WorkflowServer(new MemoryWorkflowStore(), options))
+            {
+                Assert.That(workflowServer1.NodeId, Is.Not.EqualTo(workflowServer2.NodeId));
+            }
+        }
+
+        [Test]
+        public void ExecuteWorkflows_NodeTimeoutTooShort_ThrowsException()
+        {
+            WorkflowServerOptions options = new WorkflowServerOptions()
+            {
+                HeartbeatInterval = TimeSpan.FromSeconds(10),
+                NodeTimeout = TimeSpan.FromSeconds(29)
+            };
+            using (WorkflowServer workflowServer = new WorkflowServer(new MemoryWorkflowStore(), options))
+            {
+                Assert.Throws<global::Stateless.WorkflowEngine.Exceptions.WorkflowException>(() => workflowServer.ExecuteWorkflows(1));
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowWaitsForNextStep_LockReleasedInSave(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            DelayedWorkflow workflow = new DelayedWorkflow(DelayedWorkflow.State.Start);
+            workflow.ResumeTrigger = DelayedWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                Assert.That(result, Is.EqualTo(1));
+                Workflow saved = workflowStore.Get(workflow.Id);
+                Assert.That(saved.CurrentState, Is.EqualTo(DelayedWorkflow.State.DoingStuff.ToString()));
+                Assert.That(saved.LockedBy, Is.Null);
+                Assert.That(saved.LockedOn, Is.Null);
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_ActionThrowsException_LockReleasedInSave(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            DependencyInjectionWorkflow workflow = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
+            workflow.ResumeTrigger = DependencyInjectionWorkflow.Trigger.DoStuff.ToString();
+            workflowStore.Save(workflow);
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(workflow.RetryCount, Is.EqualTo(1));
+                Assert.That(workflow.LockedBy, Is.Null);
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowContinuesExecuting_LockKeptUntilArchived(bool isAsync)
+        {
+            BasicWorkflow workflow = CreateBasicWorkflow();
+            List<string> lockedByOnSave = new List<string>();
+            string lockedByOnArchive = "not archived";
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return workflow; }, x => null);
+            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return workflow; }, x => null);
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnSave.Add(x.ArgAt<Workflow>(0).LockedBy); return true; });
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnSave.Add(x.ArgAt<Workflow>(0).LockedBy); return true; });
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnArchive = x.ArgAt<Workflow>(0).LockedBy; return true; });
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnArchive = x.ArgAt<Workflow>(0).LockedBy; return true; });
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                // the lock is kept for both steps (the second runs immediately, and the workflow then completes), and is
+                // cleared on the archived copy
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(lockedByOnSave, Is.EqualTo(new[] { workflowServer.NodeId, workflowServer.NodeId }));
+                Assert.That(lockedByOnArchive, Is.Null);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowClaimedByAnotherNode_RaisesWorkflowLockLostAndStops(bool isAsync)
+        {
+            BasicWorkflow workflow = CreateBasicWorkflow();
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>()).Returns(workflow, (Workflow)null);
+            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflow, (Workflow)null);
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                List<WorkflowLockLostEventArgs> events = new List<WorkflowLockLostEventArgs>();
+                workflowServer.WorkflowLockLost += (sender, e) => events.Add(e);
+
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(events.Count, Is.EqualTo(1));
+                Assert.That(events[0].Workflow, Is.SameAs(workflow));
+                Assert.That(events[0].NodeId, Is.EqualTo(workflowServer.NodeId));
+
+                // the first step's save failed, so the second step must not run
+                if (isAsync)
+                {
+                    workflowStore.Received(1).SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>());
+                    workflowStore.DidNotReceive().ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>());
+                }
+                else
+                {
+                    workflowStore.Received(1).SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>());
+                    workflowStore.DidNotReceive().ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>());
+                }
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowsClaimed_RaisesWorkflowClaimedBeforeExecution(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            BasicWorkflow workflow1 = CreateBasicWorkflow();
+            BasicWorkflow workflow2 = CreateBasicWorkflow();
+            workflowStore.Save(new[] { workflow1, workflow2 });
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                List<WorkflowClaimedEventArgs> events = new List<WorkflowClaimedEventArgs>();
+                List<string> statesWhenClaimed = new List<string>();
+                workflowServer.WorkflowClaimed += (sender, e) =>
+                {
+                    lock (events)
+                    {
+                        events.Add(e);
+                        statesWhenClaimed.Add(e.Workflow.CurrentState);
+                    }
+                };
+
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(10).Result : workflowServer.ExecuteWorkflows(10));
+
+                Assert.That(result, Is.EqualTo(2));
+                Assert.That(events.Select(x => x.Workflow.Id), Is.EquivalentTo(new[] { workflow1.Id, workflow2.Id }));
+                Assert.That(events.Select(x => x.NodeId).Distinct(), Is.EqualTo(new[] { workflowServer.NodeId }));
+                Assert.That(statesWhenClaimed, Is.All.EqualTo(BasicWorkflow.State.Start.ToString()));
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowClaimedHandlerThrows_WorkflowStillExecutedAndReleased(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            BasicWorkflow workflow = CreateBasicWorkflow();
+            workflowStore.Save(workflow);
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                workflowServer.WorkflowClaimed += (sender, e) => throw new InvalidOperationException("handler failed");
+
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(10).Result : workflowServer.ExecuteWorkflows(10));
+
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(workflowStore.GetCompletedOrDefault(workflow.Id), Is.Not.Null);
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_ServerDisposed_NoWorkflowsClaimed(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            WorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflows(1);
+            workflowServer.Dispose();
+
+            BasicWorkflow workflow = CreateBasicWorkflow();
+            workflowStore.Save(workflow);
+
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+            Assert.That(result, Is.EqualTo(0));
+            Assert.That(workflowStore.Get(workflow.Id).LockedBy, Is.Null);
+        }
+
+        [Test]
+        public void Dispose_NodeHoldsLocks_LocksReleasedAndNodeRemoved()
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            WorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            workflowServer.ExecuteWorkflows(1);
+
+            // a lock left behind by the node (e.g. a save failed)
+            BasicWorkflow workflow = CreateBasicWorkflow();
+            workflowStore.Save(workflow);
+            workflowStore.ClaimNext(workflowServer.NodeId);
+
+            workflowServer.Dispose();
+
+            Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+            Assert.That(workflowStore.GetNodes(), Is.Empty);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_MultipleServersSharingStore_EachStepExecutedOnce(bool isAsync)
+        {
+            const int WorkflowCount = 300;
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            List<Guid> workflowIds = new List<Guid>();
+            for (int i = 0; i < WorkflowCount; i++)
+            {
+                CountingWorkflow workflow = new CountingWorkflow();
+                workflow.Priority = i % 3;
+                workflowStore.Save(workflow);
+                workflowIds.Add(workflow.Id);
+            }
+
+            List<WorkflowServer> servers = Enumerable.Range(0, 4).Select(x => new WorkflowServer(workflowStore)).ToList();
+            try
+            {
+                List<string> lostLocks = new List<string>();
+                servers.ForEach(s => s.WorkflowLockLost += (sender, e) => lostLocks.Add(e.NodeId));
+
+                Task[] tasks = servers.Select(server => Task.Run(async () =>
+                {
+                    while ((isAsync ? await server.ExecuteWorkflowsAsync(20, 5) : server.ExecuteWorkflows(20, 5)) > 0)
+                    {
+                    }
+                })).ToArray();
+                Task.WaitAll(tasks);
+
+                Assert.That(lostLocks, Is.Empty);
+                Assert.That(workflowStore.GetIncompleteCount(), Is.EqualTo(0));
+                Assert.That(workflowStore.GetCompletedCount(), Is.EqualTo(WorkflowCount));
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+                foreach (Guid id in workflowIds)
+                {
+                    Assert.That(CountingWorkflow.GetExecutionCount(id, CountingWorkflow.State.StepOne), Is.EqualTo(1));
+                    Assert.That(CountingWorkflow.GetExecutionCount(id, CountingWorkflow.State.StepTwo), Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                servers.ForEach(s => s.Dispose());
+            }
+        }
+
+        #endregion
+
         #region IsSingleInstanceWorkflowRegistered Tests
 
         [Test]
@@ -1080,7 +1380,9 @@ namespace Test.Stateless.WorkflowEngine
 
             // set up the workflow store
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetActive(Arg.Any<int>()).Returns(new Workflow[] { basicWorkflow, decreasingPriorityWorkflow, delayedWorkflow });
+            workflowStore.ClaimNext(Arg.Any<string>()).Returns(basicWorkflow, decreasingPriorityWorkflow, delayedWorkflow, null);
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
 
             // execute
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
@@ -1090,9 +1392,9 @@ namespace Test.Stateless.WorkflowEngine
             //  2 for the basic workflow as it will execute both steps
             //  1 for the DecreasingPriorityWorkflow which will change priority and not move on
             //  1 for the Delayed workflow which will change resume time
-            workflowStore.Received(2).Save(basicWorkflow);
-            workflowStore.Received(1).Save(decreasingPriorityWorkflow);
-            workflowStore.Received(1).Save(delayedWorkflow);
+            workflowStore.Received(2).SaveClaimed(basicWorkflow, Arg.Any<string>());
+            workflowStore.Received(1).SaveClaimed(decreasingPriorityWorkflow, Arg.Any<string>());
+            workflowStore.Received(1).SaveClaimed(delayedWorkflow, Arg.Any<string>());
 
         }
         #endregion

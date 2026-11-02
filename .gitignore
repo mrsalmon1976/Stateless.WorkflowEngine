@@ -20,3 +20,6 @@ obj/
 
 source/Stateless.WorkflowEngine.WebConsole/wwwroot/
 source/Stateless.WorkflowEngine.WebConsole/Data/
+
+# multi-node stress test logs and reports (test-multinode.ps1)
+/logs/

@@ -11,19 +11,20 @@ namespace Example.Volume
 {
     internal class VolumeExample
     {
-        static bool _isComplete = false;
+        static volatile bool _isComplete = false;
 
         static ExampleDbType _dbType;
 
         public static void Run(ExampleDbType dbType, bool runAsync)
         {
             _dbType = dbType;
+            _isComplete = false;
             const int TestRecordCount = 1000;
             var mongoClient = new MongoClient(AppSettings.MongoDbConnectionString);
             var database = mongoClient.GetDatabase(AppSettings.VolumeExampleMongoDbName);
             IWorkflowStore workflowStore = new MongoDbWorkflowStore(database);
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore);
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            using IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
             workflowServer.RegisterWorkflowType<VolumeWorkflow>();
 
             VolumeDbMigrator.Run(dbType);
@@ -35,9 +36,13 @@ namespace Example.Volume
             processWorker.RunWorkerAsync();
             processWorker.RunWorkerCompleted += ProcessWorker_RunWorkerCompleted;
 
+            // read whole lines, so nothing is left in the input buffer for the next menu
             while (!_isComplete)
             {
-                Console.Read();
+                if (Console.ReadLine() == null)
+                {
+                    break;
+                }
             }
 
         }

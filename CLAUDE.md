@@ -45,9 +45,9 @@ Test projects:
 ### Core Components
 
 - **`Workflow`** (`Stateless.WorkflowEngine/Workflow.cs`) — abstract base class. Custom workflows override `Initialise(initialState)` to configure Stateless states/triggers. Custom properties are serialized and persist across executions.
-- **`WorkflowServer`** — processes queued workflows. Fetches by Priority DESC, then CreatedOn ASC. Supports concurrent execution via `maxConcurrent` parameter. Should be a singleton.
+- **`WorkflowServer`** — processes queued workflows. Claims them one at a time as concurrency slots free up (`IWorkflowStore.ClaimNext`, Priority DESC, RetryCount DESC, CreatedOn ASC). Supports concurrent execution via `maxConcurrent` parameter. Should be a singleton, and is `IDisposable` (dispose releases its locks). Multiple servers (nodes) can share a store — see "Multi-node locking".
 - **`WorkflowClient`** — registers workflows for processing by the server.
-- **`IWorkflowStore`** — persistence abstraction. Two collections: `Workflows` (active) and `CompletedWorkflows` (archived).
+- **`IWorkflowStore`** — persistence abstraction. Collections: `Workflows` (active), `CompletedWorkflows` (archived) and `WorkflowNodes` (running servers). Every store method has a sync and an async version.
 - **`IWorkflowAction`** — interface for actions executed at each workflow step.
 
 ### Store Implementations
@@ -61,15 +61,23 @@ Test projects:
 ### Workflow Lifecycle
 
 1. Custom workflow registered via `WorkflowClient.Register()`
-2. `WorkflowServer` picks it up and calls `ExecuteWorkflow()`
+2. `WorkflowServer.ExecuteWorkflows*` claims it atomically (`ClaimNext` sets `Workflow.LockedBy` = node id) and executes it
 3. Gets next action, fires Stateless trigger, action executes
-4. On completion → archived to `CompletedWorkflows`
-5. On error → retry with configurable intervals (default: 5, 10, 15, 30, 60 seconds)
-6. After max retries → workflow suspends
+4. Saved with `SaveClaimed` (only succeeds if not locked by another node); the lock is cleared in that same save unless the next step runs immediately or the workflow completes
+5. On completion → archived to `CompletedWorkflows` (`ArchiveClaimed`)
+6. On error → retry with configurable intervals (default: 5, 10, 15, 30, 60 seconds)
+7. After max retries → workflow suspends
+
+### Multi-node locking
+
+- Locks are per node, not time-limited. `Services/WorkflowNodeMonitor` registers the node (`WorkflowNodes` collection) before the first claim, then every `HeartbeatInterval`: heartbeats, removes nodes stale for `NodeTimeout`, releases locks of owners with no node (owners MUST be read before nodes), and releases the node's own locks older than `NodeTimeout` that aren't in flight. `CanClaim` is false once the last heartbeat is older than `NodeTimeout / 2` (self-fencing). A removed node re-registers with a new id (`NodeEvicted`).
+- Public `ExecuteWorkflow(workflow)` does not claim/lock (unconditional `Save`/`Archive`); only the bulk methods use the claimed path.
+- Store specifics: Mongo claims with `FindOneAndUpdate`, doesn't store null lock fields (`SetIgnoreIfNull`, partial `Workflow_LockedBy` index on `$exists`), and uses server time for heartbeats (`$currentDate`/`$$NOW`). Raven queries candidates in RQL (documents saved before v6 have no `LockedBy` field, which Raven doesn't treat as null), claims with a conditional patch, saves with optimistic concurrency, and is only atomic against a single Raven server. Memory tracks locks in a dictionary separate from the shared workflow objects.
+- `test-multinode.ps1` (repo root) runs the Example `multinode` stress test against both stores; the execution ledger is in MongoDB.
 
 ### Workflow Event Hooks
 
-`OnActionExecuting()`, `OnActionExecuted()`, `OnError()`, `OnSuspend()`, `OnComplete()`
+`OnActionExecuting()`, `OnActionExecuted()`, `OnError()`, `OnSuspend()`, `OnComplete()`. Server events: `WorkflowSuspended`, `WorkflowCompleted`, `WorkflowClaimed`, `WorkflowLockLost`, `NodeEvicted`, `NodeMonitorError`.
 
 ### Other Projects
 
@@ -81,7 +89,7 @@ Test projects:
 
 - **Strategy pattern** for store implementations (all implement `IWorkflowStore`)
 - **Template method** for workflow configuration (override `Initialise()`)
-- **Event-driven**: `WorkflowSuspended` and `WorkflowCompleted` events on `IWorkflowServer`
+- **Event-driven**: `WorkflowSuspended`, `WorkflowCompleted`, `WorkflowClaimed`, `WorkflowLockLost`, `NodeEvicted` and `NodeMonitorError` events on `IWorkflowServer`
 - **DI support**: `IWorkflowEngineDependencyResolver` or override `CreateWorkflowActionInstance<T>()`
 - Serialization via Newtonsoft.Json; MongoDB workflows should use `[BsonIgnoreExtraElements]` for forward compatibility
 - MongoDB Guids: driver 3 needs an explicit Guid representation. Workflow/definition ids use `MongoDbWorkflowStore.IdGuidRepresentation` (CSharpLegacy, binary subtype 3 — the format existing 2.x-era data uses) via class maps in the store's static constructor, `[BsonGuidRepresentation]` on `MongoWorkflow.Id`/`UIWorkflow.Id`, and `ToBsonId()` for raw `BsonDocument` queries. Never register a global Guid serializer from library code (the driver forbids changing it once used) — apps with Guid properties register it themselves (README "Guids"). `Fixtures/WorkflowSavedByDriver2.json` in the MongoDb tests is a real document saved by driver 2.30

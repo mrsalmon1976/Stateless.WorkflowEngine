@@ -394,6 +394,116 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         public abstract Task UnsuspendWorkflowAsync(Guid id);
 
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.  See <see cref="IWorkflowStore.ClaimNext"/>.
+        /// </summary>
+        public abstract Workflow ClaimNext(string nodeId);
+
+        /// <summary>
+        /// Atomically claims the next available workflow for a node.  See <see cref="IWorkflowStore.ClaimNextAsync"/>.
+        /// </summary>
+        public abstract Task<Workflow> ClaimNextAsync(string nodeId);
+
+        /// <summary>
+        /// Saves a workflow claimed by a node.  See <see cref="IWorkflowStore.SaveClaimed"/>.
+        /// </summary>
+        public abstract bool SaveClaimed(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Saves a workflow claimed by a node.  See <see cref="IWorkflowStore.SaveClaimedAsync"/>.
+        /// </summary>
+        public abstract Task<bool> SaveClaimedAsync(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Archives a workflow claimed by a node.  See <see cref="IWorkflowStore.ArchiveClaimed"/>.
+        /// </summary>
+        public abstract bool ArchiveClaimed(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Archives a workflow claimed by a node.  See <see cref="IWorkflowStore.ArchiveClaimedAsync"/>.
+        /// </summary>
+        public abstract Task<bool> ArchiveClaimedAsync(Workflow workflow, string nodeId);
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public abstract void ReleaseLocks(string nodeId);
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public abstract Task ReleaseLocksAsync(string nodeId);
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public abstract void ReleaseStaleLocks(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds);
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public abstract Task ReleaseStaleLocksAsync(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds);
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public abstract IEnumerable<string> GetLockOwners();
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public abstract Task<IEnumerable<string>> GetLockOwnersAsync();
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        public abstract void RegisterNode(WorkflowNode node);
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current time.
+        /// </summary>
+        public abstract Task RegisterNodeAsync(WorkflowNode node);
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public abstract bool Heartbeat(string nodeId);
+
+        /// <summary>
+        /// Updates the heartbeat of a node, returning false if the node no longer exists.
+        /// </summary>
+        public abstract Task<bool> HeartbeatAsync(string nodeId);
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public abstract IEnumerable<WorkflowNode> GetNodes();
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public abstract Task<IEnumerable<WorkflowNode>> GetNodesAsync();
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public abstract void RemoveNode(string nodeId);
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public abstract Task RemoveNodeAsync(string nodeId);
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout, returning the number removed.
+        /// </summary>
+        public abstract long RemoveStaleNodes(TimeSpan timeout);
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout, returning the number removed.
+        /// </summary>
+        public abstract Task<long> RemoveStaleNodesAsync(TimeSpan timeout);
+
 
     }
     

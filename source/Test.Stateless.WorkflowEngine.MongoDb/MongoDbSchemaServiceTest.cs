@@ -298,6 +298,65 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
         #endregion
 
+        #region EnsureLockedByIndexExists Tests
+
+        [Test]
+        public void EnsureLockedByIndexExists_WhenCalledOnce_PartialIndexIsCreated()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureLockedByIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            var index = indexes.Single(x => x.GetValue("name").AsString == IndexNames.Workflow_LockedBy);
+            Assert.That(index["partialFilterExpression"], Is.EqualTo(new BsonDocument("Workflow.LockedBy", new BsonDocument("$exists", true))));
+        }
+
+        [Test]
+        public void EnsureLockedByIndexExists_WhenCalledMultipleTimes_IndexIsCreatedOnce()
+        {
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            mongoDbSchemaService.EnsureLockedByIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureLockedByIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var indexes = GetIndexList(MongoDbWorkflowStore.DefaultCollectionActive);
+
+            Assert.That(indexes.Count, Is.EqualTo(2));
+            Assert.That(IndexExists(indexes, IndexNames.Workflow_LockedBy), Is.True);
+        }
+
+        [TestCase("{ \"Workflow.LockedBy\" : \"node1\" }")]
+        [TestCase("{ \"Workflow.LockedBy\" : { \"$exists\" : true } }")]
+        public void EnsureLockedByIndexExists_LockQueriesUseIndex(string filter)
+        {
+            // the lock owner (exists) and lock release (equality) queries run on every heartbeat of every node, so they
+            // must use the partial index rather than scanning the collection
+            IMongoDbSchemaService mongoDbSchemaService = new MongoDbSchemaService();
+            mongoDbSchemaService.EnsureCollectionExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+            mongoDbSchemaService.EnsureLockedByIndexExists(_database, MongoDbWorkflowStore.DefaultCollectionActive);
+
+            var explain = _database.RunCommand<BsonDocument>(new BsonDocument
+            {
+                { "explain", new BsonDocument
+                    {
+                        { "find", MongoDbWorkflowStore.DefaultCollectionActive },
+                        { "filter", BsonDocument.Parse(filter) }
+                    }
+                },
+                { "verbosity", "queryPlanner" }
+            });
+
+            string plan = explain.ToJson();
+            Assert.That(plan, Does.Contain(IndexNames.Workflow_LockedBy));
+            Assert.That(plan, Does.Not.Contain("COLLSCAN"));
+        }
+
+        #endregion
+
         #region Private Methods
 
         private void DeleteTestCollections()

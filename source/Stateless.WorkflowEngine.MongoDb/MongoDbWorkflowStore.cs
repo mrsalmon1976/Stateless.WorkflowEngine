@@ -22,6 +22,7 @@ namespace Stateless.WorkflowEngine.MongoDb
         public const string DefaultCollectionActive = "Workflows";
         public const string DefaultCollectionCompleted = "CompletedWorkflows";
         public const string DefaultCollectionDefinitions = "WorkflowDefinitions";
+        public const string DefaultCollectionNodes = "WorkflowNodes";
 
         /// <summary>
         /// The representation used for workflow and definition ids.  Version 3 of the MongoDb driver requires the Guid
@@ -40,6 +41,10 @@ namespace Stateless.WorkflowEngine.MongoDb
             {
                 cm.AutoMap();
                 cm.GetMemberMap(w => w.Id).SetSerializer(new GuidSerializer(IdGuidRepresentation));
+
+                // unlocked workflows don't store the lock fields, so the partial LockedBy index only contains locked workflows
+                cm.GetMemberMap(w => w.LockedBy).SetIgnoreIfNull(true);
+                cm.GetMemberMap(w => w.LockedOn).SetIgnoreIfNull(true);
             });
             BsonClassMap.TryRegisterClassMap<WorkflowDefinition>(cm =>
             {
@@ -82,6 +87,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             this.CollectionActive = activeCollectionName ?? DefaultCollectionActive;
             this.CollectionCompleted = completedCollectionName ?? DefaultCollectionCompleted;
             this.CollectionDefinitions = workflowDefinitionCollectionName ?? DefaultCollectionDefinitions;
+            this.CollectionNodes = DefaultCollectionNodes;
 
             this.SchemaService = new MongoDbSchemaService();
         }
@@ -104,6 +110,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public string CollectionDefinitions { get; set; }
 
         /// <summary>
+        /// Gets/sets the name of the MongoDb collection holding the registered workflow server nodes.  Defaults to "WorkflowNodes".
+        /// </summary>
+        public string CollectionNodes { get; set; }
+
+        /// <summary>
         /// Gets/sets the mongo database associated with the store.
         /// </summary>
         public IMongoDatabase MongoDatabase { get; set; }
@@ -121,6 +132,11 @@ namespace Stateless.WorkflowEngine.MongoDb
         public IMongoCollection<WorkflowDefinition> GetDefinitionCollection()
         {
             return this.MongoDatabase.GetCollection<WorkflowDefinition>(this.CollectionDefinitions);
+        }
+
+        public IMongoCollection<WorkflowNode> GetNodeCollection()
+        {
+            return this.MongoDatabase.GetCollection<WorkflowNode>(this.CollectionNodes);
         }
 
         /// <summary>
@@ -535,6 +551,8 @@ namespace Stateless.WorkflowEngine.MongoDb
                 this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionCompleted);
 
+                this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionNodes);
+
                 if (persistWorkflowDefinitions)
                 {
                     this.SchemaService.EnsureCollectionExists(this.MongoDatabase, this.CollectionDefinitions);
@@ -546,6 +564,7 @@ namespace Stateless.WorkflowEngine.MongoDb
             {
                 this.SchemaService.EnsureActiveIndexExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureSuspendedIndexExists(this.MongoDatabase, this.CollectionActive);
+                this.SchemaService.EnsureLockedByIndexExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureCompletedIndexExists(this.MongoDatabase, this.CollectionCompleted);
             }
         }
@@ -731,7 +750,283 @@ namespace Stateless.WorkflowEngine.MongoDb
             }
         }
 
+        /// <summary>
+        /// Atomically claims the next available workflow for a node, using a single findAndModify so that no two nodes
+        /// can claim the same workflow.
+        /// </summary>
+        public override Workflow ClaimNext(string nodeId)
+        {
+            var collection = GetCollection();
+            DateTime now = DateTime.UtcNow;
+            MongoWorkflow mongoWorkflow = collection.FindOneAndUpdate(ClaimFilter(now), ClaimUpdate(nodeId, now), ClaimOptions());
+            return mongoWorkflow?.Workflow;
+        }
 
+        /// <summary>
+        /// Atomically claims the next available workflow for a node, using a single findAndModify so that no two nodes
+        /// can claim the same workflow.
+        /// </summary>
+        public override async Task<Workflow> ClaimNextAsync(string nodeId)
+        {
+            var collection = GetCollection();
+            DateTime now = DateTime.UtcNow;
+            MongoWorkflow mongoWorkflow = await collection.FindOneAndUpdateAsync(ClaimFilter(now), ClaimUpdate(nodeId, now), ClaimOptions());
+            return mongoWorkflow?.Workflow;
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override bool SaveClaimed(Workflow workflow, string nodeId)
+        {
+            var coll = GetCollection();
+            var result = coll.ReplaceOne(ClaimedFilter(workflow.Id, nodeId), new MongoWorkflow(workflow), new ReplaceOptions() { IsUpsert = false });
+            return result.MatchedCount == 1;
+        }
+
+        /// <summary>
+        /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override async Task<bool> SaveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            var coll = GetCollection();
+            var result = await coll.ReplaceOneAsync(ClaimedFilter(workflow.Id, nodeId), new MongoWorkflow(workflow), new ReplaceOptions() { IsUpsert = false });
+            return result.MatchedCount == 1;
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override bool ArchiveClaimed(Workflow workflow, string nodeId)
+        {
+            var coll = GetCollection();
+            var result = coll.DeleteOne(ClaimedFilter(workflow.Id, nodeId));
+            if (result.DeletedCount == 0)
+            {
+                return false;
+            }
+
+            var collCompleted = GetCompletedCollection();
+            collCompleted.InsertOne(new MongoWorkflow(workflow));
+            return true;
+        }
+
+        /// <summary>
+        /// Archives a workflow claimed by a node, if it is still locked by the node or not locked at all.
+        /// </summary>
+        public override async Task<bool> ArchiveClaimedAsync(Workflow workflow, string nodeId)
+        {
+            var coll = GetCollection();
+            var result = await coll.DeleteOneAsync(ClaimedFilter(workflow.Id, nodeId));
+            if (result.DeletedCount == 0)
+            {
+                return false;
+            }
+
+            var collCompleted = GetCompletedCollection();
+            await collCompleted.InsertOneAsync(new MongoWorkflow(workflow));
+            return true;
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override void ReleaseLocks(string nodeId)
+        {
+            GetCollection().UpdateMany(x => x.Workflow.LockedBy == nodeId, ReleaseUpdate());
+        }
+
+        /// <summary>
+        /// Releases all workflows locked by a node.
+        /// </summary>
+        public override async Task ReleaseLocksAsync(string nodeId)
+        {
+            await GetCollection().UpdateManyAsync(x => x.Workflow.LockedBy == nodeId, ReleaseUpdate());
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override void ReleaseStaleLocks(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            GetCollection().UpdateMany(StaleLocksFilter(nodeId, lockedBefore, excludeIds), ReleaseUpdate());
+        }
+
+        /// <summary>
+        /// Releases workflows locked by a node before <c>lockedBefore</c>, excluding the supplied workflow ids.
+        /// </summary>
+        public override async Task ReleaseStaleLocksAsync(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            await GetCollection().UpdateManyAsync(StaleLocksFilter(nodeId, lockedBefore, excludeIds), ReleaseUpdate());
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public override IEnumerable<string> GetLockOwners()
+        {
+            return GetCollection().Distinct<string>(LockedByField, LockedFilter()).ToList().Where(x => x != null).ToList();
+        }
+
+        /// <summary>
+        /// Gets the distinct ids of the nodes that currently hold locks on workflows.
+        /// </summary>
+        public override async Task<IEnumerable<string>> GetLockOwnersAsync()
+        {
+            var cursor = await GetCollection().DistinctAsync<string>(LockedByField, LockedFilter());
+            return (await cursor.ToListAsync()).Where(x => x != null).ToList();
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current (server) time.
+        /// </summary>
+        public override void RegisterNode(WorkflowNode node)
+        {
+            GetNodeCollection().UpdateOne(x => x.Id == node.Id, RegisterNodeUpdate(node), new UpdateOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Registers a workflow server node, setting its heartbeat to the current (server) time.
+        /// </summary>
+        public override async Task RegisterNodeAsync(WorkflowNode node)
+        {
+            await GetNodeCollection().UpdateOneAsync(x => x.Id == node.Id, RegisterNodeUpdate(node), new UpdateOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node to the current (server) time, returning false if the node no longer exists.
+        /// </summary>
+        public override bool Heartbeat(string nodeId)
+        {
+            var result = GetNodeCollection().UpdateOne(x => x.Id == nodeId, Builders<WorkflowNode>.Update.CurrentDate(x => x.LastHeartbeat));
+            return result.MatchedCount == 1;
+        }
+
+        /// <summary>
+        /// Updates the heartbeat of a node to the current (server) time, returning false if the node no longer exists.
+        /// </summary>
+        public override async Task<bool> HeartbeatAsync(string nodeId)
+        {
+            var result = await GetNodeCollection().UpdateOneAsync(x => x.Id == nodeId, Builders<WorkflowNode>.Update.CurrentDate(x => x.LastHeartbeat));
+            return result.MatchedCount == 1;
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public override IEnumerable<WorkflowNode> GetNodes()
+        {
+            return GetNodeCollection().Find(_ => true).ToList();
+        }
+
+        /// <summary>
+        /// Gets all registered nodes.
+        /// </summary>
+        public override async Task<IEnumerable<WorkflowNode>> GetNodesAsync()
+        {
+            return await GetNodeCollection().Find(_ => true).ToListAsync();
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override void RemoveNode(string nodeId)
+        {
+            GetNodeCollection().DeleteOne(x => x.Id == nodeId);
+        }
+
+        /// <summary>
+        /// Removes a node.
+        /// </summary>
+        public override async Task RemoveNodeAsync(string nodeId)
+        {
+            await GetNodeCollection().DeleteOneAsync(x => x.Id == nodeId);
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.  The heartbeats are compared to the
+        /// server's current time, so this is not affected by clock differences between the workflow servers.
+        /// </summary>
+        public override long RemoveStaleNodes(TimeSpan timeout)
+        {
+            return GetNodeCollection().DeleteMany(StaleNodesFilter(timeout)).DeletedCount;
+        }
+
+        /// <summary>
+        /// Removes all nodes that have not sent a heartbeat within the timeout.  The heartbeats are compared to the
+        /// server's current time, so this is not affected by clock differences between the workflow servers.
+        /// </summary>
+        public override async Task<long> RemoveStaleNodesAsync(TimeSpan timeout)
+        {
+            var result = await GetNodeCollection().DeleteManyAsync(StaleNodesFilter(timeout));
+            return result.DeletedCount;
+        }
+
+        private const string LockedByField = "Workflow.LockedBy";
+
+        private static FilterDefinition<MongoWorkflow> ClaimFilter(DateTime now)
+        {
+            return Builders<MongoWorkflow>.Filter.Where(x => x.Workflow.IsSuspended == false && x.Workflow.ResumeOn <= now && x.Workflow.LockedBy == null);
+        }
+
+        private static UpdateDefinition<MongoWorkflow> ClaimUpdate(string nodeId, DateTime now)
+        {
+            return Builders<MongoWorkflow>.Update
+                .Set(x => x.Workflow.LockedBy, nodeId)
+                .Set(x => x.Workflow.LockedOn, now);
+        }
+
+        private static FindOneAndUpdateOptions<MongoWorkflow> ClaimOptions()
+        {
+            return new FindOneAndUpdateOptions<MongoWorkflow>()
+            {
+                Sort = Builders<MongoWorkflow>.Sort
+                    .Descending(x => x.Workflow.Priority)
+                    .Descending(x => x.Workflow.RetryCount)
+                    .Ascending(x => x.Workflow.CreatedOn),
+                ReturnDocument = ReturnDocument.After
+            };
+        }
+
+        private static FilterDefinition<MongoWorkflow> ClaimedFilter(Guid id, string nodeId)
+        {
+            return Builders<MongoWorkflow>.Filter.Where(x => x.Id == id && (x.Workflow.LockedBy == nodeId || x.Workflow.LockedBy == null));
+        }
+
+        private static FilterDefinition<MongoWorkflow> LockedFilter()
+        {
+            return Builders<MongoWorkflow>.Filter.Exists(LockedByField);
+        }
+
+        private static FilterDefinition<MongoWorkflow> StaleLocksFilter(string nodeId, DateTime lockedBefore, IEnumerable<Guid> excludeIds)
+        {
+            var builder = Builders<MongoWorkflow>.Filter;
+            return builder.Eq(x => x.Workflow.LockedBy, nodeId)
+                & builder.Lt(x => x.Workflow.LockedOn, lockedBefore)
+                & builder.Nin(x => x.Id, excludeIds);
+        }
+
+        private static UpdateDefinition<MongoWorkflow> ReleaseUpdate()
+        {
+            return Builders<MongoWorkflow>.Update
+                .Unset(x => x.Workflow.LockedBy)
+                .Unset(x => x.Workflow.LockedOn);
+        }
+
+        private static UpdateDefinition<WorkflowNode> RegisterNodeUpdate(WorkflowNode node)
+        {
+            return Builders<WorkflowNode>.Update
+                .Set(x => x.Name, node.Name)
+                .Set(x => x.StartedOn, node.StartedOn)
+                .CurrentDate(x => x.LastHeartbeat);
+        }
+
+        private static FilterDefinition<WorkflowNode> StaleNodesFilter(TimeSpan timeout)
+        {
+            // { $expr: { $lt: [ "$LastHeartbeat", { $subtract: [ "$$NOW", timeoutMs ] } ] } }
+            BsonDocument cutoff = new BsonDocument("$subtract", new BsonArray { "$$NOW", (long)timeout.TotalMilliseconds });
+            return new BsonDocument("$expr", new BsonDocument("$lt", new BsonArray { "$LastHeartbeat", cutoff }));
+        }
 
     }
 }
