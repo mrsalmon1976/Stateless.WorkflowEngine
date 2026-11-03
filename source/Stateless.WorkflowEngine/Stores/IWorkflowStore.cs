@@ -333,6 +333,28 @@ namespace Stateless.WorkflowEngine.Stores
         Task<Workflow> ClaimNextAsync(string nodeId);
 
         /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows (not suspended, due for resumption and
+        /// not locked), ordered by Priority DESC, RetryCount DESC and then CreatedOn, by setting <c>LockedBy</c> to the
+        /// supplied node id.  This is the method used by the workflow server to fetch workflows - each workflow is
+        /// claimed atomically, so no two nodes can claim the same workflow.
+        /// </summary>
+        /// <param name="nodeId">The id of the node claiming the workflows.</param>
+        /// <param name="count">The maximum number of workflows to claim.</param>
+        /// <returns>The claimed workflows in claim order - fewer than <c>count</c> (or none) if no more are available.</returns>
+        IEnumerable<Workflow> ClaimNext(string nodeId, int count);
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows (not suspended, due for resumption and
+        /// not locked), ordered by Priority DESC, RetryCount DESC and then CreatedOn, by setting <c>LockedBy</c> to the
+        /// supplied node id.  This is the method used by the workflow server to fetch workflows - each workflow is
+        /// claimed atomically, so no two nodes can claim the same workflow.
+        /// </summary>
+        /// <param name="nodeId">The id of the node claiming the workflows.</param>
+        /// <param name="count">The maximum number of workflows to claim.</param>
+        /// <returns>The claimed workflows in claim order - fewer than <c>count</c> (or none) if no more are available.</returns>
+        Task<IEnumerable<Workflow>> ClaimNextAsync(string nodeId, int count);
+
+        /// <summary>
         /// Saves a workflow claimed by a node.  The save only happens if the stored workflow is still locked by the node,
         /// or is not locked at all.  The <c>LockedBy</c> value of the workflow is persisted, so clearing it before the
         /// save releases the lock in the same write.

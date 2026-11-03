@@ -151,7 +151,9 @@ namespace Example.MultiNode
             {
                 ["name"] = Prompts.Ask("Node name", Environment.MachineName),
                 ["concurrency"] = Prompts.AskInt("Workflows to run at once", 20).ToString(),
-                ["node-timeout"] = Prompts.AskInt("Node timeout in seconds (minimum 4)", 20, 4).ToString()
+                ["node-timeout"] = Prompts.AskInt("Node timeout in seconds (minimum 4)", 20, 4).ToString(),
+                // the interactive node runs until every workflow has completed (or Q is pressed)
+                ["max-minutes"] = int.MaxValue.ToString()
             };
             if (Prompts.AskYesNo("Use the async server methods?", true))
             {
@@ -316,6 +318,10 @@ namespace Example.MultiNode
                     }
                 }
 
+                if (stopwatch.Elapsed >= maxRunTime)
+                {
+                    context.Log($"Node stopped at its maximum run time of {maxRunTime.TotalMinutes:0} minutes - {server.WorkflowStore.GetIncompleteCount()} workflow(s) are still to run", ConsoleColor.Yellow);
+                }
                 context.Log($"Node finished in {stopwatch.Elapsed.TotalSeconds:0}s - {context.Stats}", ConsoleColor.Cyan);
             }
             return 0;

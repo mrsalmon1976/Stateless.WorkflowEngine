@@ -490,22 +490,7 @@ namespace Stateless.WorkflowEngine.Stores
         /// </summary>
         public override Workflow ClaimNext(string nodeId)
         {
-            lock (syncLock)
-            {
-                Workflow workflow = _activeWorkflows.Values
-                    .Where(x => !x.IsSuspended && x.ResumeOn <= DateTime.UtcNow && !_locks.ContainsKey(x.Id))
-                    .OrderByDescending(x => x.Priority)
-                    .ThenByDescending(x => x.RetryCount)
-                    .ThenBy(x => x.CreatedOn)
-                    .FirstOrDefault();
-                if (workflow != null)
-                {
-                    workflow.LockedBy = nodeId;
-                    workflow.LockedOn = DateTime.UtcNow;
-                    _locks[workflow.Id] = nodeId;
-                }
-                return workflow;
-            }
+            return ClaimNext(nodeId, 1).FirstOrDefault();
         }
 
         /// <summary>
@@ -514,6 +499,39 @@ namespace Stateless.WorkflowEngine.Stores
         public override async Task<Workflow> ClaimNextAsync(string nodeId)
         {
             return await Task.FromResult(ClaimNext(nodeId));
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows for a node.
+        /// </summary>
+        public override IEnumerable<Workflow> ClaimNext(string nodeId, int count)
+        {
+            lock (syncLock)
+            {
+                DateTime now = DateTime.UtcNow;
+                List<Workflow> workflows = _activeWorkflows.Values
+                    .Where(x => !x.IsSuspended && x.ResumeOn <= now && !_locks.ContainsKey(x.Id))
+                    .OrderByDescending(x => x.Priority)
+                    .ThenByDescending(x => x.RetryCount)
+                    .ThenBy(x => x.CreatedOn)
+                    .Take(count)
+                    .ToList();
+                foreach (Workflow workflow in workflows)
+                {
+                    workflow.LockedBy = nodeId;
+                    workflow.LockedOn = now;
+                    _locks[workflow.Id] = nodeId;
+                }
+                return workflows;
+            }
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows for a node.
+        /// </summary>
+        public override async Task<IEnumerable<Workflow>> ClaimNextAsync(string nodeId, int count)
+        {
+            return await Task.FromResult(ClaimNext(nodeId, count));
         }
 
         /// <summary>

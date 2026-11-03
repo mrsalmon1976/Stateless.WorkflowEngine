@@ -304,7 +304,7 @@ The `IWorkflowServer` class takes a `WorkflowServerOptions` parameter, where the
 - `AutoCreateTables` - for workflow stores where tables must be explicitly created, if set to `true` this option will result in the server creating the tables if they do not exist.  Defaults to `true`.
 - `AutoCreateIndexes` - if set to `true` this option will result in the server creating basic indexes (see below for more details).  Defaults to `true`.
 - `PersistWorkflowDefinitions` - if set to true, workflow definitions will be inspected and stored if possible.  Defaults to `true`.
-- `NodeId`, `NodeName`, `HeartbeatInterval` and `NodeTimeout` - control how the server locks workflows and detects servers that have stopped.  See [Running Multiple Servers](#running-multiple-servers).
+- `NodeId`, `NodeName`, `HeartbeatInterval`, `NodeTimeout` and `ClaimBatchSize` - control how the server claims and locks workflows and detects servers that have stopped.  See [Running Multiple Servers](#running-multiple-servers).
 
 ### Executing a Single Workflow
 
@@ -326,7 +326,7 @@ You would typically use these methods only when you have a specific workflow ins
 | `int ExecuteWorkflows(int count, int? maxConcurrent = null)` | Synchronous. Claims and executes up to `count` workflows, with no more than `maxConcurrent` running at once. |
 | `Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)` | Asynchronous equivalent. Supports cancellation — already-dispatched workflows run to completion before the method returns. |
 
-Workflows are claimed **one at a time, as execution slots free up**: a workflow is only locked once there is a slot to run it in, so a server never holds locks on workflows it hasn't started, and each claim picks the workflow that is first in line at that moment - ordered by **Priority DESC**, then **RetryCount DESC**, then **CreatedOn ASC** - including workflows registered while the batch is running.
+Workflows are **claimed in batches of up to `ClaimBatchSize`** (a `WorkflowServerOptions` setting, default 10): the execution slots take workflows from the claimed batch as they free up, and when the last one is taken the next batch is claimed in the background (one store call), so it is usually ready before the running workflows finish. A new batch is only claimed once the previous one has been taken, so a server holds locks on at most `ClaimBatchSize` workflows it hasn't started yet, and each claim picks the workflows that are first in line at that moment - ordered by **Priority DESC**, then **RetryCount DESC**, then **CreatedOn ASC** - including workflows registered while the batch is running.
 
 The following code loads up to 100 workflows and processes them 10 at a time:
 
@@ -353,7 +353,7 @@ while (true)
 
 Any number of `WorkflowServer`s - in different processes, on different machines or in containers - can execute workflows from the same store at the same time.  Each server is a **node**:
 
-* **Claiming** - `ExecuteWorkflows` and `ExecuteWorkflowsAsync` claim workflows one at a time.  A claim is a single atomic operation in the store that picks the next available workflow and stamps it with the node's id (`Workflow.LockedBy`), so two nodes can never claim the same workflow.  The workflow stays locked while it executes - including any steps that run straight after each other - and the lock is cleared in the same write that saves the workflow after its last step.
+* **Claiming** - `ExecuteWorkflows` and `ExecuteWorkflowsAsync` claim a batch of workflows (`IWorkflowStore.ClaimNext(nodeId, count)`) in the background as soon as the previous batch has been taken by the execution slots.  Each workflow in a batch is claimed atomically - the store only stamps it with the node's id (`Workflow.LockedBy`) if it is still unlocked - so two nodes can never claim the same workflow.  MongoDB claims a batch in three round trips (find the candidates, `updateMany` the ones still available, read back the ones won); custom stores that derive from `WorkflowStore` get a default that claims one at a time.  The workflow stays locked while it executes - including any steps that run straight after each other - and the lock is cleared in the same write that saves the workflow after its last step.
 * **Heartbeats** - each node registers itself in the `WorkflowNodes` collection when it first executes workflows, and a background task updates its heartbeat every `HeartbeatInterval`.  Locks belong to the node rather than having a time limit, so an action can run for as long as it needs while its node is alive.
 * **Recovery** - on every heartbeat, each node removes the nodes that haven't heartbeated within `NodeTimeout`, and releases the workflows locked by nodes that no longer exist.  If a node crashes, its workflows are picked up by the other nodes (or by the node itself when it restarts) after `NodeTimeout`.  A node also releases its own locks on workflows it is no longer executing (e.g. a save failed because the database was briefly unavailable), once they are older than `NodeTimeout`.
 * **Self-fencing** - a node that hasn't been able to heartbeat for half of `NodeTimeout` stops claiming workflows, well before the other nodes can consider it dead.  If it is removed anyway (e.g. after a long GC pause or a network partition), it raises `NodeEvicted` and re-registers with a new id.  A node's saves only succeed if the workflow hasn't been claimed by another node since - otherwise the server raises `WorkflowLockLost` and leaves the workflow to the node that now owns it.
@@ -366,6 +366,7 @@ The options that control this are set on `WorkflowServerOptions`:
 | `NodeName` | the machine name | A display label only - it doesn't need to be unique.  In Kubernetes the machine name is the pod name, and in Docker it is the container id (unless `hostname` is set, or the container uses host networking, in which case containers share a name). |
 | `HeartbeatInterval` | 10 seconds | How often the node heartbeats and checks for nodes that have stopped. |
 | `NodeTimeout` | 60 seconds | How long a node can go without a heartbeat before the other nodes remove it and release its workflows.  Must be at least 3 x `HeartbeatInterval`.  Make it comfortably longer than any GC pause, network blip or database failover you expect - the trade-off is that the workflows of a node that crashes wait this long before another node picks them up. |
+| `ClaimBatchSize` | 10 | The maximum number of workflows claimed in one store call.  Larger batches save a round trip per workflow (most noticeable with low `maxConcurrent`), but claimed workflows stay locked by the node until a slot is free to run them, so other nodes can't pick them up meanwhile.  Set it to 1 to claim one workflow at a time. |
 
 Things to keep in mind:
 

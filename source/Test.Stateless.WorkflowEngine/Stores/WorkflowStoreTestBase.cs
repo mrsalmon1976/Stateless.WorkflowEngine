@@ -1544,6 +1544,86 @@ namespace Test.Stateless.WorkflowEngine.Stores
             Assert.That(await store.ClaimNextAsync("node2"), Is.Null);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ClaimNextBatch_NoWorkflows_ReturnsEmpty(bool isAsync)
+        {
+            IWorkflowStore store = GetStore();
+            IEnumerable<Workflow> claimed = (isAsync ? await store.ClaimNextAsync("node1", 5) : store.ClaimNext("node1", 5));
+            Assert.That(claimed, Is.Empty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ClaimNextBatch_MoreAvailableThanCount_ClaimsCountInClaimOrder(bool isAsync)
+        {
+            DateTime baseDate = DateTime.UtcNow.AddMinutes(-10);
+            List<BasicWorkflow> workflows = Enumerable.Range(0, 5).Select(x =>
+            {
+                BasicWorkflow wf = CreateClaimableWorkflow();
+                wf.CreatedOn = baseDate.AddMinutes(x);
+                return wf;
+            }).ToList();
+            workflows[4].Priority = 1;
+
+            IWorkflowStore store = GetStore();
+            store.Save(workflows);
+
+            List<Workflow> claimed = (isAsync ? await store.ClaimNextAsync("node1", 3) : store.ClaimNext("node1", 3)).ToList();
+
+            Assert.That(claimed.Select(x => x.Id), Is.EqualTo(new[] { workflows[4].Id, workflows[0].Id, workflows[1].Id }));
+            Assert.That(claimed.All(x => x.LockedBy == "node1"), Is.True);
+            Assert.That(store.GetOrDefault(workflows[0].Id).LockedBy, Is.EqualTo("node1"));
+            Assert.That(store.GetOrDefault(workflows[2].Id).LockedBy, Is.Null);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task ClaimNextBatch_FewerAvailableThanCount_ClaimsAvailableOnly(bool isAsync)
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow claimedByOtherNode = CreateClaimableWorkflow();
+            BasicWorkflow suspended = CreateClaimableWorkflow();
+            suspended.IsSuspended = true;
+            BasicWorkflow future = CreateClaimableWorkflow();
+            future.ResumeOn = DateTime.UtcNow.AddMinutes(5);
+            BasicWorkflow available1 = CreateClaimableWorkflow();
+            BasicWorkflow available2 = CreateClaimableWorkflow();
+            store.Save(claimedByOtherNode);
+            Assert.That(store.ClaimNext("node2").Id, Is.EqualTo(claimedByOtherNode.Id));
+            store.Save(new[] { suspended, future, available1, available2 });
+
+            List<Workflow> claimed = (isAsync ? await store.ClaimNextAsync("node1", 10) : store.ClaimNext("node1", 10)).ToList();
+
+            Assert.That(claimed.Select(x => x.Id), Is.EquivalentTo(new[] { available1.Id, available2.Id }));
+            Assert.That(store.ClaimNext("node1", 10), Is.Empty);
+        }
+
+        [Test]
+        public void ClaimNextBatch_ConcurrentNodes_EachWorkflowClaimedOnce()
+        {
+            const int WorkflowCount = 60;
+            IWorkflowStore store = GetStore();
+            store.Save(Enumerable.Range(0, WorkflowCount).Select(x => CreateClaimableWorkflow()).ToList());
+
+            System.Collections.Concurrent.ConcurrentBag<Guid> claimedIds = new System.Collections.Concurrent.ConcurrentBag<Guid>();
+            Parallel.For(0, 4, nodeIndex =>
+            {
+                List<Workflow> claimed;
+                while ((claimed = store.ClaimNext("node" + nodeIndex, 4).ToList()).Count > 0)
+                {
+                    foreach (Workflow workflow in claimed)
+                    {
+                        Assert.That(workflow.LockedBy, Is.EqualTo("node" + nodeIndex));
+                        claimedIds.Add(workflow.Id);
+                    }
+                }
+            });
+
+            Assert.That(claimedIds.Count, Is.EqualTo(WorkflowCount));
+            Assert.That(claimedIds.Distinct().Count(), Is.EqualTo(WorkflowCount));
+        }
+
         #endregion
 
         #region SaveClaimed Tests

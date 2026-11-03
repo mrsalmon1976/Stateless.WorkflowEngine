@@ -43,7 +43,7 @@ namespace Stateless.WorkflowEngine
         Task ExecuteWorkflowAsync(Workflow workflow, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Claims and executes up to <c>count</c> workflows in the registered store (one at a time as execution slots free up), ordered by Priority DESC, RetryCount DESC, and then
+        /// Claims and executes up to <c>count</c> workflows in the registered store (in batches of up to <c>WorkflowServerOptions.ClaimBatchSize</c>, the next batch claimed in the background once the previous one has been taken), ordered by Priority DESC, RetryCount DESC, and then
         /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
@@ -52,7 +52,7 @@ namespace Stateless.WorkflowEngine
         int ExecuteWorkflows(int count, int? maxConcurrent = null);
 
         /// <summary>
-        /// Claims and executes up to <c>count</c> workflows in the registered store (one at a time as execution slots free up), ordered by Priority DESC, RetryCount DESC, and then
+        /// Claims and executes up to <c>count</c> workflows in the registered store (in batches of up to <c>WorkflowServerOptions.ClaimBatchSize</c>, the next batch claimed in the background once the previous one has been taken), ordered by Priority DESC, RetryCount DESC, and then
         /// by CreationDate.  You can optionally elect to specify the number of workflows that should execute in parallel.
         /// </summary>
         /// <param name="count">The number of active workflows to be loaded for processing.</param>

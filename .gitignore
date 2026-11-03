@@ -23,3 +23,6 @@ source/Stateless.WorkflowEngine.WebConsole/Data/
 
 # multi-node stress test logs and reports (test-multinode.ps1)
 /logs/
+
+# benchmark working files (benchmarks/src/Benchmark.Runner)
+/benchmarks/.work/

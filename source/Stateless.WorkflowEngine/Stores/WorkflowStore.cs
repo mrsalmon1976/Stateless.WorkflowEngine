@@ -405,6 +405,38 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract Task<Workflow> ClaimNextAsync(string nodeId);
 
         /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows for a node.  See
+        /// <see cref="IWorkflowStore.ClaimNext(string, int)"/>.  The default implementation claims them one at a time -
+        /// stores override it to claim a batch in fewer round trips.
+        /// </summary>
+        public virtual IEnumerable<Workflow> ClaimNext(string nodeId, int count)
+        {
+            List<Workflow> workflows = new List<Workflow>();
+            Workflow workflow;
+            while (workflows.Count < count && (workflow = ClaimNext(nodeId)) != null)
+            {
+                workflows.Add(workflow);
+            }
+            return workflows;
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> of the next available workflows for a node.  See
+        /// <see cref="IWorkflowStore.ClaimNextAsync(string, int)"/>.  The default implementation claims them one at a
+        /// time - stores override it to claim a batch in fewer round trips.
+        /// </summary>
+        public virtual async Task<IEnumerable<Workflow>> ClaimNextAsync(string nodeId, int count)
+        {
+            List<Workflow> workflows = new List<Workflow>();
+            Workflow workflow;
+            while (workflows.Count < count && (workflow = await ClaimNextAsync(nodeId)) != null)
+            {
+                workflows.Add(workflow);
+            }
+            return workflows;
+        }
+
+        /// <summary>
         /// Saves a workflow claimed by a node.  See <see cref="IWorkflowStore.SaveClaimed"/>.
         /// </summary>
         public abstract bool SaveClaimed(Workflow workflow, string nodeId);

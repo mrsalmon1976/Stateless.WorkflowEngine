@@ -8,6 +8,7 @@ using Test.Stateless.WorkflowEngine.Workflows.Basic;
 using Test.Stateless.WorkflowEngine.Workflows.Delayed;
 using Stateless.WorkflowEngine.Services;
 using NSubstitute;
+using NSubstitute.Core;
 using Stateless.WorkflowEngine.Events;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection.Actions;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection;
@@ -882,7 +883,7 @@ namespace Test.Stateless.WorkflowEngine
                 BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
                 workflows.Add(workflow);
             }
-            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflows[0], workflows.Skip(1).ToArray());
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(workflows);
 
             CancellationToken cancellationToken = new CancellationToken(true);
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
@@ -892,34 +893,28 @@ namespace Test.Stateless.WorkflowEngine
 
             // assert - nothing should have been claimed, as claims would leave workflows locked
             Assert.That(result, Is.EqualTo(0));
-            await workflowStore.DidNotReceive().ClaimNextAsync(Arg.Any<string>());
+            await workflowStore.DidNotReceive().ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>());
 
         }
 
         [Test]
-        public async Task ExecuteWorkflowsAsync_TokenCancelledWhileWaitingForSemaphore_InFlightTaskCompletesAndSemaphoreIsNotDisposedEarly()
+        public async Task ExecuteWorkflowsAsync_TokenCancelledWhileWorkflowRuns_ClaimedWorkflowsCompleteAndNoMoreClaimed()
         {
-            // This test verifies the fix for a use-after-dispose bug:
-            // With the old code, tasks.Clear() would abandon in-flight tasks that still held a reference
-            // to the SemaphoreSlim. Those tasks would call semaphore.Release() after the using block
-            // disposed it, causing ObjectDisposedException.
-            //
-            // Scenario: maxConcurrent=1 means the second workflow blocks on semaphore.WaitAsync(ct).
-            // The first workflow's SaveAsync cancels the token (triggering WaitAsync to throw) but
-            // takes 100ms to complete — so the task is still in-flight when cancellation is observed.
-
+            // the first workflow's save cancels the token and is still in flight when the cancellation is observed.  The
+            // next workflow was claimed in the background before the first one ran, so it must still be executed (it is
+            // locked by this node), but nothing more is claimed.
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
             CancellationTokenSource cts = new CancellationTokenSource();
-
-            List<Workflow> workflows = new List<Workflow>
+            List<Workflow> claimed = new List<Workflow>();
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x =>
             {
-                CreateBasicWorkflow(),
-                CreateBasicWorkflow()
-            };
-            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflows[0], workflows[1]);
-
-            // SaveClaimedAsync cancels the token synchronously then delays, keeping the task in-flight
-            // long enough that it would hit semaphore.Release() on a disposed semaphore under the old code
+                List<Workflow> batch = Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
+                lock (claimed)
+                {
+                    claimed.AddRange(batch);
+                }
+                return batch;
+            });
             workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(async (callInfo) =>
             {
                 cts.Cancel();
@@ -928,15 +923,114 @@ namespace Test.Stateless.WorkflowEngine
             });
             workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
 
-            IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 1 });
 
-            // Act: must not throw ObjectDisposedException
-            int result = await workflowServer.ExecuteWorkflowsAsync(2, 1, cts.Token);
+            // execute
+            int result = await workflowServer.ExecuteWorkflowsAsync(5, 1, cts.Token);
 
-            // Only the first workflow was dispatched before cancellation stopped the loop
-            Assert.That(result, Is.EqualTo(1));
-            // SaveClaimedAsync was called, proving the in-flight task ran to completion inside WhenAll
-            await workflowStore.Received().SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>());
+            // assert - the workflow claimed before the cancellation ran, and nothing was claimed after it
+            Assert.That(result, Is.EqualTo(2));
+            await workflowStore.Received(2).ClaimNextAsync(Arg.Any<string>(), 1);
+            foreach (Workflow workflow in claimed)
+            {
+                await workflowStore.Received().SaveClaimedAsync(workflow, Arg.Any<string>());
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_LastClaimedWorkflowTaken_NextBatchClaimedWhileWorkflowsExecute(bool isAsync)
+        {
+            // the first batch's workflows wait (in their save) for the second claim - it must start while they are still
+            // executing, rather than when a slot runs out of workflows
+            ManualResetEventSlim secondClaimStarted = new ManualResetEventSlim();
+            int claims = 0;
+            Func<CallInfo, List<Workflow>> claim = x =>
+            {
+                if (Interlocked.Increment(ref claims) == 2)
+                {
+                    secondClaimStarted.Set();
+                }
+                return Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
+            };
+            System.Collections.Concurrent.ConcurrentBag<bool> overlapped = new System.Collections.Concurrent.ConcurrentBag<bool>();
+            Func<CallInfo, bool> save = x =>
+            {
+                overlapped.Add(secondClaimStarted.Wait(TimeSpan.FromSeconds(5)));
+                return true;
+            };
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => save(x));
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => save(x));
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 });
+
+            // execute
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(4, 2).Result : workflowServer.ExecuteWorkflows(4, 2));
+
+            // assert
+            Assert.That(result, Is.EqualTo(4));
+            Assert.That(overlapped, Is.All.True);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_BackgroundClaimThrows_ClaimedWorkflowsCompleteThenErrorRaised(bool isAsync)
+        {
+            List<Workflow> firstBatch = new List<Workflow> { CreateBasicWorkflow(), CreateBasicWorkflow() };
+            InvalidOperationException claimError = new InvalidOperationException("claim failed");
+            int claims = 0;
+            Func<List<Workflow>> claim = () =>
+            {
+                if (Interlocked.Increment(ref claims) > 1)
+                {
+                    throw claimError;
+                }
+                return firstBatch;
+            };
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim());
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim());
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 });
+
+            // execute
+            TestDelegate execute = () =>
+            {
+                if (isAsync)
+                {
+                    workflowServer.ExecuteWorkflowsAsync(10, 2).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    workflowServer.ExecuteWorkflows(10, 2);
+                }
+            };
+
+            // assert - the claim error is raised, but only after the workflows that were claimed have been executed
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(execute);
+            Assert.That(ex, Is.SameAs(claimError));
+            foreach (Workflow workflow in firstBatch)
+            {
+                if (isAsync)
+                {
+                    workflowStore.Received().SaveClaimedAsync(workflow, Arg.Any<string>());
+                }
+                else
+                {
+                    workflowStore.Received().SaveClaimed(workflow, Arg.Any<string>());
+                }
+            }
         }
 
         [TestCase(true, 3, 1)]
@@ -976,6 +1070,74 @@ namespace Test.Stateless.WorkflowEngine
             int workflowsInStartState = workflowStore.GetActive(Int32.MaxValue).Where(x => x.CurrentState == BasicWorkflow.State.Start.ToString()).Count();
             int expectedWorkflowsUnexecuted = totalWorkflowCount - executeCount;
             Assert.That(expectedWorkflowsUnexecuted, Is.EqualTo(workflowsInStartState));
+        }
+
+        [TestCase(true, null, 1, 25, new[] { 10, 10, 5 })]
+        [TestCase(false, null, 1, 25, new[] { 10, 10, 5 })]
+        [TestCase(true, 3, 2, 8, new[] { 3, 3, 2 })]
+        [TestCase(false, 3, 2, 8, new[] { 3, 3, 2 })]
+        [TestCase(true, 1, 4, 3, new[] { 1, 1, 1 })]
+        [TestCase(false, 1, 4, 3, new[] { 1, 1, 1 })]
+        public void ExecuteWorkflows_OnExecute_ClaimsBatchesOfClaimBatchSizeUpToCount(bool isAsync, int? claimBatchSize, int maxConcurrent, int count, int[] expectedBatchSizes)
+        {
+            // set up the store and the workflows
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            WorkflowServerOptions options = new WorkflowServerOptions();
+            if (claimBatchSize.HasValue)
+            {
+                options.ClaimBatchSize = claimBatchSize.Value;
+            }
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, options);
+
+            // execute
+            int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(count, maxConcurrent).Result : workflowServer.ExecuteWorkflows(count, maxConcurrent));
+
+            // assert - batches of ClaimBatchSize (default 10) are claimed until the count is reached
+            Assert.That(result, Is.EqualTo(count));
+            IEnumerable<int> batchSizes = workflowStore.ReceivedCalls()
+                .Where(x => x.GetMethodInfo().Name.StartsWith("ClaimNext"))
+                .Select(x => (int)x.GetArguments()[1]);
+            Assert.That(batchSizes, Is.EqualTo(expectedBatchSizes));
+        }
+
+        [TestCase(true, 0)]
+        [TestCase(false, 0)]
+        [TestCase(true, -1)]
+        [TestCase(false, -1)]
+        public void ExecuteWorkflows_ClaimBatchSizeLessThanOne_ThrowsException(bool isAsync, int claimBatchSize)
+        {
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = claimBatchSize });
+
+            TestDelegate execute = () =>
+            {
+                if (isAsync)
+                {
+                    workflowServer.ExecuteWorkflowsAsync(5).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    workflowServer.ExecuteWorkflows(5);
+                }
+            };
+            global::Stateless.WorkflowEngine.Exceptions.WorkflowException ex = Assert.Throws<global::Stateless.WorkflowEngine.Exceptions.WorkflowException>(execute);
+            Assert.That(ex.Message, Does.Contain("ClaimBatchSize"));
+            workflowStore.DidNotReceive().ClaimNext(Arg.Any<string>(), Arg.Any<int>());
+        }
+
+        /// <summary>
+        /// Creates a store that returns as many new workflows as each claim asks for, and accepts every save and archive.
+        /// </summary>
+        private IWorkflowStore CreateBatchClaimingStore()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => CreateBasicWorkflow()).ToList());
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => CreateBasicWorkflow()).ToList());
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            return workflowStore;
         }
 
 
@@ -1139,8 +1301,8 @@ namespace Test.Stateless.WorkflowEngine
             string lockedByOnArchive = "not archived";
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.ClaimNext(Arg.Any<string>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return workflow; }, x => null);
-            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return workflow; }, x => null);
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return new[] { workflow }; }, x => new Workflow[0]);
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => { workflow.LockedBy = x.ArgAt<string>(0); return new[] { workflow }; }, x => new Workflow[0]);
             workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnSave.Add(x.ArgAt<Workflow>(0).LockedBy); return true; });
             workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnSave.Add(x.ArgAt<Workflow>(0).LockedBy); return true; });
             workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lockedByOnArchive = x.ArgAt<Workflow>(0).LockedBy; return true; });
@@ -1165,8 +1327,8 @@ namespace Test.Stateless.WorkflowEngine
             BasicWorkflow workflow = CreateBasicWorkflow();
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.ClaimNext(Arg.Any<string>()).Returns(workflow, (Workflow)null);
-            workflowStore.ClaimNextAsync(Arg.Any<string>()).Returns(workflow, (Workflow)null);
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(new[] { workflow }, new Workflow[0]);
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(new[] { workflow }, new Workflow[0]);
             workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
             workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
 
@@ -1380,7 +1542,7 @@ namespace Test.Stateless.WorkflowEngine
 
             // set up the workflow store
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.ClaimNext(Arg.Any<string>()).Returns(basicWorkflow, decreasingPriorityWorkflow, delayedWorkflow, null);
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(new Workflow[] { basicWorkflow, decreasingPriorityWorkflow, delayedWorkflow }, new Workflow[0]);
             workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
             workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
 

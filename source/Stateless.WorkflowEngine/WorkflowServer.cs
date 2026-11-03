@@ -322,9 +322,10 @@ namespace Stateless.WorkflowEngine
 
         /// <summary>
         /// Claims and executes up to <c>count</c> workflows from the registered store, ordered by Priority DESC, RetryCount
-        /// DESC, and then by CreationDate.  Workflows are claimed one at a time as execution slots become free, so no more
-        /// than <c>maxConcurrent</c> workflows are locked by this server at once, and multiple servers can safely
-        /// execute workflows from the same store.
+        /// DESC, and then by CreationDate.  The <c>maxConcurrent</c> execution slots share the workflows claimed by this
+        /// call: batches of up to <c>Options.ClaimBatchSize</c> workflows are claimed in one store call, the next one in the
+        /// background as soon as the slots have taken the previous one, so up to <c>ClaimBatchSize</c> claimed workflows can
+        /// be waiting for a slot.  Multiple servers can safely execute workflows from the same store.
         /// </summary>
         /// <param name="count">The maximum number of workflows to execute.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
@@ -336,72 +337,26 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentOutOfRangeException("count", "Count parameter must be greater than 0");
             }
 
-            int concurrent = (maxConcurrent ?? count);
-            List<Task> tasks = new List<Task>();
-            ExceptionDispatchInfo claimError = null;
             WorkflowNodeMonitor nodeMonitor = this.NodeMonitor;
             nodeMonitor.EnsureStarted();
+            int concurrent = Math.Min(maxConcurrent ?? count, count);
+            ClaimSlots slots = this.CreateClaimSlots(count);
 
-            using (SemaphoreSlim semaphore = new SemaphoreSlim(concurrent))
-            {
-                while (tasks.Count < count)
-                {
-                    semaphore.Wait();
+            Task[] workers = Enumerable.Range(0, concurrent)
+                .Select(_ => Task.Run(() => this.ExecuteClaimedWorkflows(nodeMonitor, slots)))
+                .ToArray();
+            Task.WaitAll(workers);
 
-                    if (!nodeMonitor.CanClaim)
-                    {
-                        semaphore.Release();
-                        break;
-                    }
-
-                    string nodeId = nodeMonitor.NodeId;
-                    Workflow workflow;
-                    try
-                    {
-                        workflow = this.WorkflowStore.ClaimNext(nodeId);
-                    }
-                    catch (Exception ex)
-                    {
-                        // wait for the workflows already running before raising the error
-                        semaphore.Release();
-                        claimError = ExceptionDispatchInfo.Capture(ex);
-                        break;
-                    }
-
-                    if (workflow == null)
-                    {
-                        semaphore.Release();
-                        break;
-                    }
-
-                    nodeMonitor.Track(workflow.Id);
-                    OnWorkflowClaimed(workflow, nodeId);
-                    tasks.Add(Task.Run(() =>
-                    {
-                        try
-                        {
-                            this.ExecuteWorkflow(workflow, nodeId);
-                        }
-                        finally
-                        {
-                            nodeMonitor.Untrack(workflow.Id);
-                            semaphore.Release();
-                        }
-                    }));
-                }
-
-                Task.WaitAll(tasks.ToArray());
-            }
-
-            claimError?.Throw();
-            return tasks.Count;
+            slots.ClaimError?.Throw();
+            return slots.ClaimedCount;
         }
 
         /// <summary>
         /// Claims and executes up to <c>count</c> workflows from the registered store, ordered by Priority DESC, RetryCount
-        /// DESC, and then by CreationDate.  Workflows are claimed one at a time as execution slots become free, so no more
-        /// than <c>maxConcurrent</c> workflows are locked by this server at once, and multiple servers can safely
-        /// execute workflows from the same store.
+        /// DESC, and then by CreationDate.  The <c>maxConcurrent</c> execution slots share the workflows claimed by this
+        /// call: batches of up to <c>Options.ClaimBatchSize</c> workflows are claimed in one store call, the next one in the
+        /// background as soon as the slots have taken the previous one, so up to <c>ClaimBatchSize</c> claimed workflows can
+        /// be waiting for a slot.  Multiple servers can safely execute workflows from the same store.
         /// </summary>
         /// <param name="count">The maximum number of workflows to execute.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
@@ -413,75 +368,167 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentOutOfRangeException("count", "Count parameter must be greater than 0");
             }
 
-            int concurrent = (maxConcurrent ?? count);
-            List<Task> tasks = new List<Task>();
             CancellationToken ct = cancellationToken ?? CancellationToken.None;
-            ExceptionDispatchInfo claimError = null;
             WorkflowNodeMonitor nodeMonitor = this.NodeMonitor;
             nodeMonitor.EnsureStarted();
+            int concurrent = Math.Min(maxConcurrent ?? count, count);
+            ClaimSlots slots = this.CreateClaimSlots(count);
 
-            using (SemaphoreSlim semaphore = new SemaphoreSlim(concurrent))
+            // the token is not passed to Task.Run: a claimed workflow must always run (and save), or it would stay locked
+            // until the node's stale locks are released - the slots check the token before each claim instead
+            Task[] workers = Enumerable.Range(0, concurrent)
+                .Select(_ => Task.Run(() => this.ExecuteClaimedWorkflowsAsync(nodeMonitor, slots, ct)))
+                .ToArray();
+            await Task.WhenAll(workers);
+
+            slots.ClaimError?.Throw();
+            return slots.ClaimedCount;
+        }
+
+        /// <summary>
+        /// Runs one execution slot: executes claimed workflows one after the other until the slots have claimed
+        /// <c>count</c> workflows, there is nothing left to claim, or the node can no longer claim.
+        /// </summary>
+        private void ExecuteClaimedWorkflows(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots)
+        {
+            ClaimedWorkflow claimed;
+            while ((claimed = this.TakeClaimedWorkflow(nodeMonitor, slots)) != null)
             {
-                while (tasks.Count < count)
+                try
                 {
-                    try
-                    {
-                        await semaphore.WaitAsync(ct);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-
-                    if (ct.IsCancellationRequested || !nodeMonitor.CanClaim)
-                    {
-                        semaphore.Release();
-                        break;
-                    }
-
-                    string nodeId = nodeMonitor.NodeId;
-                    Workflow workflow;
-                    try
-                    {
-                        workflow = await this.WorkflowStore.ClaimNextAsync(nodeId);
-                    }
-                    catch (Exception ex)
-                    {
-                        // wait for the workflows already running before raising the error
-                        semaphore.Release();
-                        claimError = ExceptionDispatchInfo.Capture(ex);
-                        break;
-                    }
-
-                    if (workflow == null)
-                    {
-                        semaphore.Release();
-                        break;
-                    }
-
-                    // the token is not passed to Task.Run: a claimed workflow must always run (and save), or it would stay
-                    // locked until the node's stale locks are released
-                    nodeMonitor.Track(workflow.Id);
-                    OnWorkflowClaimed(workflow, nodeId);
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await this.ExecuteWorkflowAsync(workflow, nodeId, ct);
-                        }
-                        finally
-                        {
-                            nodeMonitor.Untrack(workflow.Id);
-                            semaphore.Release();
-                        }
-                    }));
+                    this.ExecuteWorkflow(claimed.Workflow, claimed.NodeId);
                 }
-
-                await Task.WhenAll(tasks);
+                finally
+                {
+                    nodeMonitor.Untrack(claimed.Workflow.Id);
+                }
             }
+        }
 
-            claimError?.Throw();
-            return tasks.Count;
+        /// <summary>
+        /// Runs one execution slot: executes claimed workflows one after the other until the slots have claimed
+        /// <c>count</c> workflows, there is nothing left to claim, the node can no longer claim, or the token is cancelled.
+        /// </summary>
+        private async Task ExecuteClaimedWorkflowsAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, CancellationToken ct)
+        {
+            ClaimedWorkflow claimed;
+            while ((claimed = await this.TakeClaimedWorkflowAsync(nodeMonitor, slots, ct)) != null)
+            {
+                try
+                {
+                    await this.ExecuteWorkflowAsync(claimed.Workflow, claimed.NodeId, ct);
+                }
+                finally
+                {
+                    nodeMonitor.Untrack(claimed.Workflow.Id);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes the next claimed workflow for a slot, waiting for the claim in flight if none are queued.  Returns null
+        /// once claiming has stopped and all the claimed workflows have been taken.
+        /// </summary>
+        private ClaimedWorkflow TakeClaimedWorkflow(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots)
+        {
+            Func<bool> canClaim = () => nodeMonitor.CanClaim;
+            Func<int, Task> startClaim = batchSize => Task.Run(() => this.ClaimBatch(nodeMonitor, slots, batchSize));
+            while (true)
+            {
+                if (slots.TryTake(canClaim, startClaim, out ClaimedWorkflow claimed, out Task claim))
+                {
+                    return claimed;
+                }
+                if (claim == null)
+                {
+                    return null;
+                }
+                // claims never fault - errors are recorded on the slots
+                claim.Wait();
+            }
+        }
+
+        /// <summary>
+        /// Takes the next claimed workflow for a slot, waiting for the claim in flight if none are queued.  Returns null
+        /// once claiming has stopped (or the token is cancelled) and all the claimed workflows have been taken - claimed
+        /// workflows are always returned, so they are executed and released even if the token is cancelled.
+        /// </summary>
+        private async Task<ClaimedWorkflow> TakeClaimedWorkflowAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, CancellationToken ct)
+        {
+            Func<bool> canClaim = () => !ct.IsCancellationRequested && nodeMonitor.CanClaim;
+            Func<int, Task> startClaim = batchSize => Task.Run(() => this.ClaimBatchAsync(nodeMonitor, slots, batchSize));
+            while (true)
+            {
+                if (slots.TryTake(canClaim, startClaim, out ClaimedWorkflow claimed, out Task claim))
+                {
+                    return claimed;
+                }
+                if (claim == null)
+                {
+                    return null;
+                }
+                // claims never fault - errors are recorded on the slots
+                await claim;
+            }
+        }
+
+        private ClaimSlots CreateClaimSlots(int count)
+        {
+            if (this.Options.ClaimBatchSize < 1)
+            {
+                throw new WorkflowException("ClaimBatchSize must be at least 1");
+            }
+            return new ClaimSlots(count, this.Options.ClaimBatchSize);
+        }
+
+        /// <summary>
+        /// Claims a batch of workflows in the background and adds them to the slots.
+        /// </summary>
+        private void ClaimBatch(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, int batchSize)
+        {
+            try
+            {
+                string nodeId = nodeMonitor.NodeId;
+                List<Workflow> workflows = this.WorkflowStore.ClaimNext(nodeId, batchSize).ToList();
+                this.AddClaimed(nodeMonitor, slots, nodeId, workflows, batchSize);
+            }
+            catch (Exception ex)
+            {
+                // the slots finish the workflows they are running before the error is raised
+                slots.ClaimFailed(ex, batchSize);
+            }
+        }
+
+        /// <summary>
+        /// Claims a batch of workflows in the background and adds them to the slots.
+        /// </summary>
+        private async Task ClaimBatchAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, int batchSize)
+        {
+            try
+            {
+                string nodeId = nodeMonitor.NodeId;
+                List<Workflow> workflows = (await this.WorkflowStore.ClaimNextAsync(nodeId, batchSize)).ToList();
+                this.AddClaimed(nodeMonitor, slots, nodeId, workflows, batchSize);
+            }
+            catch (Exception ex)
+            {
+                // the slots finish the workflows they are running before the error is raised
+                slots.ClaimFailed(ex, batchSize);
+            }
+        }
+
+        /// <summary>
+        /// Tracks a claimed batch (so the node's stale lock release skips it), raises <c>WorkflowClaimed</c> for each
+        /// workflow, and adds the batch to the slots.
+        /// </summary>
+        private void AddClaimed(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, string nodeId, List<Workflow> workflows, int batchSize)
+        {
+            foreach (Workflow workflow in workflows)
+            {
+                nodeMonitor.Track(workflow.Id);
+                OnWorkflowClaimed(workflow, nodeId);
+            }
+            slots.ClaimCompleted(workflows.Select(x => new ClaimedWorkflow(x, nodeId)).ToList(), batchSize);
         }
 
         /// <summary>
@@ -698,6 +745,155 @@ namespace Stateless.WorkflowEngine
             if (lockLostHandler != null)
             {
                 lockLostHandler(this, new WorkflowLockLostEventArgs(workflow, ownerNodeId));
+            }
+        }
+
+        /// <summary>
+        /// A workflow claimed by an <c>ExecuteWorkflows</c> call, and the node id it was claimed with.
+        /// </summary>
+        private sealed class ClaimedWorkflow
+        {
+            public ClaimedWorkflow(Workflow workflow, string nodeId)
+            {
+                this.Workflow = workflow;
+                this.NodeId = nodeId;
+            }
+
+            public Workflow Workflow { get; }
+
+            public string NodeId { get; }
+        }
+
+        /// <summary>
+        /// State shared by the execution slots of one <c>ExecuteWorkflows</c> call: the claimed workflows waiting for a
+        /// slot, the claim in flight, how many more may be claimed, and whether claiming has stopped.
+        /// <para>
+        /// At most one claim is in flight.  It is started when a slot takes the last queued workflow, so the next batch
+        /// is claimed while the slots are still executing - or by a slot that finds nothing queued.  As a claim only
+        /// starts once the queue is empty, no more than the batch size of claimed workflows wait for a slot.  A slot only
+        /// stops once nothing is queued, no claim is in flight and no more can be claimed, so every claimed workflow is
+        /// executed.
+        /// </para>
+        /// </summary>
+        private sealed class ClaimSlots
+        {
+            private readonly object _sync = new object();
+            private readonly Queue<ClaimedWorkflow> _claimed = new Queue<ClaimedWorkflow>();
+            private readonly int _batchSize;
+            private int _remaining;
+            private int _claimedCount;
+            private bool _stopped;
+            private Task _claim;
+            private ExceptionDispatchInfo _claimError;
+
+            public ClaimSlots(int count, int batchSize)
+            {
+                _remaining = count;
+                _batchSize = batchSize;
+            }
+
+            public int ClaimedCount
+            {
+                get
+                {
+                    lock (_sync)
+                    {
+                        return _claimedCount;
+                    }
+                }
+            }
+
+            public ExceptionDispatchInfo ClaimError
+            {
+                get
+                {
+                    lock (_sync)
+                    {
+                        return _claimError;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Takes the next claimed workflow, starting the next claim if this empties the queue.  If nothing is queued,
+            /// returns false with the claim to wait for before trying again - or a null claim if the slot is finished.
+            /// </summary>
+            /// <param name="canClaim">Whether the node may claim (checked before each claim) - claiming stops if not.</param>
+            /// <param name="startClaim">Starts a background claim of the given batch size, which must call
+            /// <see cref="ClaimCompleted"/> or <see cref="ClaimFailed"/>, and must not complete synchronously.</param>
+            public bool TryTake(Func<bool> canClaim, Func<int, Task> startClaim, out ClaimedWorkflow claimed, out Task claim)
+            {
+                lock (_sync)
+                {
+                    if (_claimed.Count > 0)
+                    {
+                        claimed = _claimed.Dequeue();
+                        if (_claimed.Count == 0)
+                        {
+                            this.StartClaim(canClaim, startClaim);
+                        }
+                        claim = null;
+                        return true;
+                    }
+
+                    claimed = null;
+                    this.StartClaim(canClaim, startClaim);
+                    claim = _claim;
+                    return false;
+                }
+            }
+
+            public void ClaimCompleted(List<ClaimedWorkflow> workflows, int batchSize)
+            {
+                lock (_sync)
+                {
+                    // the batch size was reserved when the claim started - give back what wasn't claimed
+                    _remaining += batchSize - workflows.Count;
+                    _claimedCount += workflows.Count;
+                    if (workflows.Count == 0)
+                    {
+                        _stopped = true;
+                    }
+                    foreach (ClaimedWorkflow workflow in workflows)
+                    {
+                        _claimed.Enqueue(workflow);
+                    }
+                    _claim = null;
+                }
+            }
+
+            public void ClaimFailed(Exception ex, int batchSize)
+            {
+                lock (_sync)
+                {
+                    _remaining += batchSize;
+                    if (_claimError == null)
+                    {
+                        _claimError = ExceptionDispatchInfo.Capture(ex);
+                    }
+                    _stopped = true;
+                    _claim = null;
+                }
+            }
+
+            /// <summary>
+            /// Starts a claim if none is in flight and more may be claimed.  Must be called while holding the lock - the
+            /// claim can't complete before <c>_claim</c> is set, as completing needs the lock.
+            /// </summary>
+            private void StartClaim(Func<bool> canClaim, Func<int, Task> startClaim)
+            {
+                if (_claim != null || _stopped || _remaining <= 0)
+                {
+                    return;
+                }
+                if (!canClaim())
+                {
+                    _stopped = true;
+                    return;
+                }
+                int batchSize = Math.Min(_batchSize, _remaining);
+                _remaining -= batchSize;
+                _claim = startClaim(batchSize);
             }
         }
 

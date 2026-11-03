@@ -45,7 +45,7 @@ Test projects:
 ### Core Components
 
 - **`Workflow`** (`Stateless.WorkflowEngine/Workflow.cs`) — abstract base class. Custom workflows override `Initialise(initialState)` to configure Stateless states/triggers. Custom properties are serialized and persist across executions.
-- **`WorkflowServer`** — processes queued workflows. Claims them one at a time as concurrency slots free up (`IWorkflowStore.ClaimNext`, Priority DESC, RetryCount DESC, CreatedOn ASC). Supports concurrent execution via `maxConcurrent` parameter. Should be a singleton, and is `IDisposable` (dispose releases its locks). Multiple servers (nodes) can share a store — see "Multi-node locking".
+- **`WorkflowServer`** — processes queued workflows. The `maxConcurrent` slots share batches claimed with `IWorkflowStore.ClaimNext(nodeId, count)` (up to `WorkflowServerOptions.ClaimBatchSize`, default 10, per claim; the next batch is claimed in the background as soon as the slots have taken the previous one, one claim in flight at a time; Priority DESC, RetryCount DESC, CreatedOn ASC). Supports concurrent execution via `maxConcurrent` parameter. Should be a singleton, and is `IDisposable` (dispose releases its locks). Multiple servers (nodes) can share a store — see "Multi-node locking".
 - **`WorkflowClient`** — registers workflows for processing by the server.
 - **`IWorkflowStore`** — persistence abstraction. Collections: `Workflows` (active), `CompletedWorkflows` (archived) and `WorkflowNodes` (running servers). Every store method has a sync and an async version.
 - **`IWorkflowAction`** — interface for actions executed at each workflow step.
@@ -72,8 +72,12 @@ Test projects:
 
 - Locks are per node, not time-limited. `Services/WorkflowNodeMonitor` registers the node (`WorkflowNodes` collection) before the first claim, then every `HeartbeatInterval`: heartbeats, removes nodes stale for `NodeTimeout`, releases locks of owners with no node (owners MUST be read before nodes), and releases the node's own locks older than `NodeTimeout` that aren't in flight. `CanClaim` is false once the last heartbeat is older than `NodeTimeout / 2` (self-fencing). A removed node re-registers with a new id (`NodeEvicted`).
 - Public `ExecuteWorkflow(workflow)` does not claim/lock (unconditional `Save`/`Archive`); only the bulk methods use the claimed path.
-- Store specifics: Mongo claims with `FindOneAndUpdate`, doesn't store null lock fields (`SetIgnoreIfNull`, partial `Workflow_LockedBy` index on `$exists`), and uses server time for heartbeats (`$currentDate`/`$$NOW`). Raven queries candidates in RQL (documents saved before v6 have no `LockedBy` field, which Raven doesn't treat as null), claims with a conditional patch, saves with optimistic concurrency, and is only atomic against a single Raven server. Memory tracks locks in a dictionary separate from the shared workflow objects.
+- Store specifics: Mongo claims one with `FindOneAndUpdate` and a batch with find → `updateMany` → find-back (matched on a process-unique `LockedOn` claim time), doesn't store null lock fields (`SetIgnoreIfNull`, partial `Workflow_LockedBy` index on `$exists`), and uses server time for heartbeats (`$currentDate`/`$$NOW`). Raven queries candidates in RQL (documents saved before v6 have no `LockedBy` field, which Raven doesn't treat as null), claims with a conditional patch, saves with optimistic concurrency, and is only atomic against a single Raven server. Memory tracks locks in a dictionary separate from the shared workflow objects.
 - `test-multinode.ps1` (repo root) runs the Example `multinode` stress test against both stores; the execution ledger is in MongoDB.
+
+### Benchmarks
+
+`benchmarks/run-benchmarks.ps1` compares every `benchmarks/releases/Stateless.WorkflowEngine.MongoDb_v<version>.zip` with the current branch (1000 two-step workflows; nodes×concurrency 1×1, 1×4, 2×2, 1×10, 2×10, 5×10; 3 iterations) and writes `benchmarks/reports/benchmark-YYYYMMDD-HHMM.md`. `Benchmark.Runner` generates and builds one `Benchmark.Agent` per version under `benchmarks/.work` (releases are netstandard2.0 on their own MongoDB driver, so each needs its own process), with `LEGACY_EXECUTE` (<5.0) and `MULTINODE` (current/≥6.0) compile constants. Nodes run in `dotnet/runtime` containers on the MongoDB container's network by default — Docker Desktop stalls host-to-container requests over ~750 bytes by 40 ms, which skews results (`--host local` to run on the host).
 
 ### Workflow Event Hooks
 

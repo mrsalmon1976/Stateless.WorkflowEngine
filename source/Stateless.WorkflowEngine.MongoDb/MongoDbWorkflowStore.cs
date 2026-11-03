@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Stateless.WorkflowEngine.MongoDb
@@ -775,6 +776,72 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Atomically claims up to <c>count</c> workflows for a node in three round trips: the candidates are read in one
+        /// query, claimed with a single updateMany that only matches the ones that are still available (each document is
+        /// updated atomically, so no two nodes can claim the same workflow), and the ones won by this claim are read back.
+        /// </summary>
+        public override IEnumerable<Workflow> ClaimNext(string nodeId, int count)
+        {
+            if (count == 1)
+            {
+                Workflow workflow = ClaimNext(nodeId);
+                return workflow == null ? new List<Workflow>() : new List<Workflow> { workflow };
+            }
+
+            var collection = GetCollection();
+            while (true)
+            {
+                DateTime now = NextClaimTime();
+                List<Guid> ids = collection.Find(ClaimFilter(now)).Sort(ClaimSort()).Limit(count).Project(x => x.Id).ToList();
+                if (ids.Count == 0)
+                {
+                    return new List<Workflow>();
+                }
+
+                collection.UpdateMany(ClaimFilter(now) & Builders<MongoWorkflow>.Filter.In(x => x.Id, ids), ClaimUpdate(nodeId, now));
+                List<MongoWorkflow> claimed = collection.Find(ClaimWonFilter(ids, nodeId, now)).Sort(ClaimSort()).ToList();
+                if (claimed.Count > 0)
+                {
+                    return claimed.Select(x => x.Workflow).ToList();
+                }
+                // other nodes claimed all of the candidates first - try the next ones
+            }
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> workflows for a node in three round trips: the candidates are read in one
+        /// query, claimed with a single updateMany that only matches the ones that are still available (each document is
+        /// updated atomically, so no two nodes can claim the same workflow), and the ones won by this claim are read back.
+        /// </summary>
+        public override async Task<IEnumerable<Workflow>> ClaimNextAsync(string nodeId, int count)
+        {
+            if (count == 1)
+            {
+                Workflow workflow = await ClaimNextAsync(nodeId);
+                return workflow == null ? new List<Workflow>() : new List<Workflow> { workflow };
+            }
+
+            var collection = GetCollection();
+            while (true)
+            {
+                DateTime now = NextClaimTime();
+                List<Guid> ids = await collection.Find(ClaimFilter(now)).Sort(ClaimSort()).Limit(count).Project(x => x.Id).ToListAsync();
+                if (ids.Count == 0)
+                {
+                    return new List<Workflow>();
+                }
+
+                await collection.UpdateManyAsync(ClaimFilter(now) & Builders<MongoWorkflow>.Filter.In(x => x.Id, ids), ClaimUpdate(nodeId, now));
+                List<MongoWorkflow> claimed = await collection.Find(ClaimWonFilter(ids, nodeId, now)).Sort(ClaimSort()).ToListAsync();
+                if (claimed.Count > 0)
+                {
+                    return claimed.Select(x => x.Workflow).ToList();
+                }
+                // other nodes claimed all of the candidates first - try the next ones
+            }
+        }
+
+        /// <summary>
         /// Saves a workflow claimed by a node, if it is still locked by the node or not locked at all.
         /// </summary>
         public override bool SaveClaimed(Workflow workflow, string nodeId)
@@ -980,12 +1047,48 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             return new FindOneAndUpdateOptions<MongoWorkflow>()
             {
-                Sort = Builders<MongoWorkflow>.Sort
-                    .Descending(x => x.Workflow.Priority)
-                    .Descending(x => x.Workflow.RetryCount)
-                    .Ascending(x => x.Workflow.CreatedOn),
+                Sort = ClaimSort(),
                 ReturnDocument = ReturnDocument.After
             };
+        }
+
+        private static SortDefinition<MongoWorkflow> ClaimSort()
+        {
+            return Builders<MongoWorkflow>.Sort
+                .Descending(x => x.Workflow.Priority)
+                .Descending(x => x.Workflow.RetryCount)
+                .Ascending(x => x.Workflow.CreatedOn);
+        }
+
+        /// <summary>
+        /// Matches the candidates won by a batch claim.  The claim time is unique within the process, so workflows claimed
+        /// at the same time by another claim for the same node (e.g. overlapping ExecuteWorkflows calls) are not included.
+        /// </summary>
+        private static FilterDefinition<MongoWorkflow> ClaimWonFilter(List<Guid> ids, string nodeId, DateTime claimTime)
+        {
+            var builder = Builders<MongoWorkflow>.Filter;
+            return builder.In(x => x.Id, ids)
+                & builder.Eq(x => x.Workflow.LockedBy, nodeId)
+                & builder.Eq(x => x.Workflow.LockedOn, (DateTime?)claimTime);
+        }
+
+        private static long _lastClaimTicks;
+
+        /// <summary>
+        /// Gets the time to stamp a batch claim with: now, truncated to the millisecond precision MongoDB stores, and
+        /// later than any previous claim time in this process.
+        /// </summary>
+        private static DateTime NextClaimTime()
+        {
+            long nowTicks = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond * TimeSpan.TicksPerMillisecond;
+            long last, next;
+            do
+            {
+                last = Interlocked.Read(ref _lastClaimTicks);
+                next = Math.Max(nowTicks, last + TimeSpan.TicksPerMillisecond);
+            }
+            while (Interlocked.CompareExchange(ref _lastClaimTicks, next, last) != last);
+            return new DateTime(next, DateTimeKind.Utc);
         }
 
         private static FilterDefinition<MongoWorkflow> ClaimedFilter(Guid id, string nodeId)

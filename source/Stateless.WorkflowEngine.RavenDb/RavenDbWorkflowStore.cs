@@ -725,14 +725,7 @@ if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflo
         /// </summary>
         public override Workflow ClaimNext(string nodeId)
         {
-            Workflow workflow = TryClaim(nodeId, waitForNonStaleResults: false, out bool retry);
-            if (workflow == null && retry)
-            {
-                // the index was behind (all the candidates were already claimed, or recently released workflows were
-                // missing), so try again against an up-to-date index
-                workflow = TryClaim(nodeId, waitForNonStaleResults: true, out retry);
-            }
-            return workflow;
+            return ClaimNext(nodeId, 1).FirstOrDefault();
         }
 
         /// <summary>
@@ -742,14 +735,41 @@ if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflo
         /// </summary>
         public override async Task<Workflow> ClaimNextAsync(string nodeId)
         {
-            var result = await TryClaimAsync(nodeId, waitForNonStaleResults: false);
-            if (result.Workflow == null && result.Retry)
+            return (await ClaimNextAsync(nodeId, 1)).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> workflows for a node.  The candidates are read from the (possibly stale)
+        /// index in one query, each is claimed with a conditional patch that only succeeds if the workflow is still
+        /// available, and the claimed workflows are loaded in one request.
+        /// </summary>
+        public override IEnumerable<Workflow> ClaimNext(string nodeId, int count)
+        {
+            List<Workflow> workflows = TryClaim(nodeId, count, waitForNonStaleResults: false, out bool retry);
+            if (workflows.Count == 0 && retry)
             {
                 // the index was behind (all the candidates were already claimed, or recently released workflows were
                 // missing), so try again against an up-to-date index
-                result = await TryClaimAsync(nodeId, waitForNonStaleResults: true);
+                workflows = TryClaim(nodeId, count, waitForNonStaleResults: true, out retry);
             }
-            return result.Workflow;
+            return workflows;
+        }
+
+        /// <summary>
+        /// Atomically claims up to <c>count</c> workflows for a node.  The candidates are read from the (possibly stale)
+        /// index in one query, each is claimed with a conditional patch that only succeeds if the workflow is still
+        /// available, and the claimed workflows are loaded in one request.
+        /// </summary>
+        public override async Task<IEnumerable<Workflow>> ClaimNextAsync(string nodeId, int count)
+        {
+            var result = await TryClaimAsync(nodeId, count, waitForNonStaleResults: false);
+            if (result.Workflows.Count == 0 && result.Retry)
+            {
+                // the index was behind (all the candidates were already claimed, or recently released workflows were
+                // missing), so try again against an up-to-date index
+                result = await TryClaimAsync(nodeId, count, waitForNonStaleResults: true);
+            }
+            return result.Workflows;
         }
 
         /// <summary>
@@ -1078,17 +1098,17 @@ if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflo
         }
 
         /// <summary>
-        /// Tries to claim one of the top candidate workflows.  <c>retry</c> is set if nothing was claimed but an
-        /// up-to-date index might return a different result.
+        /// Tries to claim up to <c>count</c> of the top candidate workflows.  <c>retry</c> is set if nothing was claimed
+        /// but an up-to-date index might return a different result.
         /// </summary>
-        private Workflow TryClaim(string nodeId, bool waitForNonStaleResults, out bool retry)
+        private List<Workflow> TryClaim(string nodeId, int count, bool waitForNonStaleResults, out bool retry)
         {
             DateTime now = DateTime.UtcNow;
             List<string> candidateIds;
             QueryStatistics stats;
             using (IDocumentSession session = this.OpenSession())
             {
-                var query = session.Advanced.RawQuery<ClaimCandidate>(ClaimCandidatesQuery())
+                var query = session.Advanced.RawQuery<ClaimCandidate>(ClaimCandidatesQuery(count))
                     .AddParameter("now", now)
                     .Statistics(out stats);
                 if (waitForNonStaleResults)
@@ -1099,32 +1119,43 @@ if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflo
             }
             retry = candidateIds.Count > 0 || stats.IsStale;
 
+            List<string> claimedIds = new List<string>();
             foreach (string id in candidateIds)
             {
+                if (claimedIds.Count == count)
+                {
+                    break;
+                }
                 PatchStatus status = _documentStore.Operations.Send(ClaimOperation(id, nodeId, now));
                 if (status == PatchStatus.Patched)
                 {
-                    using (IDocumentSession session = this.OpenSession())
-                    {
-                        return session.Load<RavenWorkflow>(id)?.Workflow;
-                    }
+                    claimedIds.Add(id);
                 }
             }
-            return null;
+            if (claimedIds.Count == 0)
+            {
+                return new List<Workflow>();
+            }
+
+            using (IDocumentSession session = this.OpenSession())
+            {
+                Dictionary<string, RavenWorkflow> claimed = session.Load<RavenWorkflow>(claimedIds);
+                return claimedIds.Select(id => claimed[id]?.Workflow).Where(x => x != null).ToList();
+            }
         }
 
         /// <summary>
-        /// Tries to claim one of the top candidate workflows.  <c>Retry</c> is set if nothing was claimed but an
-        /// up-to-date index might return a different result.
+        /// Tries to claim up to <c>count</c> of the top candidate workflows.  <c>Retry</c> is set if nothing was claimed
+        /// but an up-to-date index might return a different result.
         /// </summary>
-        private async Task<(Workflow Workflow, bool Retry)> TryClaimAsync(string nodeId, bool waitForNonStaleResults)
+        private async Task<(List<Workflow> Workflows, bool Retry)> TryClaimAsync(string nodeId, int count, bool waitForNonStaleResults)
         {
             DateTime now = DateTime.UtcNow;
             List<string> candidateIds;
             QueryStatistics stats;
             using (var session = this.OpenAsyncSession())
             {
-                var query = session.Advanced.AsyncRawQuery<ClaimCandidate>(ClaimCandidatesQuery())
+                var query = session.Advanced.AsyncRawQuery<ClaimCandidate>(ClaimCandidatesQuery(count))
                     .AddParameter("now", now)
                     .Statistics(out stats);
                 if (waitForNonStaleResults)
@@ -1133,34 +1164,46 @@ if (this.Workflow.LockedBy == null && !this.Workflow.IsSuspended && this.Workflo
                 }
                 candidateIds = (await query.ToListAsync()).Select(x => x.Id).ToList();
             }
+            bool retry = candidateIds.Count > 0 || stats.IsStale;
 
+            List<string> claimedIds = new List<string>();
             foreach (string id in candidateIds)
             {
+                if (claimedIds.Count == count)
+                {
+                    break;
+                }
                 PatchStatus status = await _documentStore.Operations.SendAsync(ClaimOperation(id, nodeId, now));
                 if (status == PatchStatus.Patched)
                 {
-                    using (var session = this.OpenAsyncSession())
-                    {
-                        RavenWorkflow claimed = await session.LoadAsync<RavenWorkflow>(id);
-                        return (claimed?.Workflow, true);
-                    }
+                    claimedIds.Add(id);
                 }
             }
-            return (null, candidateIds.Count > 0 || stats.IsStale);
+            if (claimedIds.Count == 0)
+            {
+                return (new List<Workflow>(), retry);
+            }
+
+            using (var session = this.OpenAsyncSession())
+            {
+                Dictionary<string, RavenWorkflow> claimed = await session.LoadAsync<RavenWorkflow>(claimedIds);
+                return (claimedIds.Select(id => claimed[id]?.Workflow).Where(x => x != null).ToList(), retry);
+            }
         }
 
         /// <summary>
         /// Gets the RQL for the top unlocked workflows that are due.  Documents saved before multi-node support have no
         /// LockedBy field at all, which RavenDB does not treat as null, so these are matched with "not exists".  This is
-        /// written in RQL as the LINQ provider has no way of expressing it.
+        /// written in RQL as the LINQ provider has no way of expressing it.  Extra candidates are read in case other
+        /// nodes claim some of them first.
         /// </summary>
-        private string ClaimCandidatesQuery()
+        private string ClaimCandidatesQuery(int count)
         {
             return $@"from '{WorkflowCollection}'
 where Workflow.IsSuspended = false and Workflow.ResumeOn <= $now and (Workflow.LockedBy = null or (true and not exists(Workflow.LockedBy)))
 order by Workflow.Priority as long desc, Workflow.RetryCount as long desc, Workflow.CreatedOn
 select id() as Id
-limit {ClaimCandidateCount}";
+limit {count + ClaimCandidateCount}";
         }
 
         private class ClaimCandidate

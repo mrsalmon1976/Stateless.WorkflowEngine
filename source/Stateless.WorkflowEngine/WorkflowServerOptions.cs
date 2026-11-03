@@ -14,6 +14,7 @@ namespace Stateless.WorkflowEngine
             this.NodeName = Environment.MachineName;
             this.HeartbeatInterval = TimeSpan.FromSeconds(10);
             this.NodeTimeout = TimeSpan.FromSeconds(60);
+            this.ClaimBatchSize = 10;
         }
 
         public bool AutoCreateTables { get; set; }
@@ -46,6 +47,14 @@ namespace Stateless.WorkflowEngine
         /// to 60 seconds.
         /// </summary>
         public TimeSpan NodeTimeout { get; set; }
+
+        /// <summary>
+        /// Gets/sets the maximum number of workflows claimed in one store call by <c>ExecuteWorkflows</c>.  Claiming in
+        /// batches saves a round trip per workflow, but claimed workflows stay locked by this node until a slot is free
+        /// to run them, so other nodes can't pick them up in the meantime.  Must be at least 1 (claim one workflow at a
+        /// time).  Defaults to 10.
+        /// </summary>
+        public int ClaimBatchSize { get; set; }
 
     }
 }
