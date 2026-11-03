@@ -283,7 +283,7 @@ The `failure` command restarts the service if it crashes.  By default the servic
 Things to keep in mind:
 
 * **You can run as many WorkflowServers against one store as you like** (e.g. several instances of the service, or containers) - each workflow is locked by the server executing it.  See [Running Multiple Servers](#running-multiple-servers).
-* The `WorkflowServer` should be a **singleton** - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).  It is disposed by the host when the service stops, which releases its workflows straight away for the other servers.
+* The `WorkflowServer` should be a **singleton** - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).  When the service stops, `stoppingToken` is cancelled, which shuts the server's node down and releases its workflows straight away for the other servers (the host also disposes it, which does the same).
 * Call `RegisterWorkflowType<T>()` for every workflow type.  This registers the type with the store (required for MongoDb), and saves the workflow's definition so the web console can show its graph.
 * Workflow actions are resolved from the root service provider, so register them as transient or singleton - not scoped.  To use scoped services (e.g. an Entity Framework `DbContext`), create a scope in the action with `IServiceScopeFactory`.
 * Make actions safe to retry: if an action fails part-way through, it runs again from the start.
@@ -345,9 +345,15 @@ while (true)
 }
 ```
 
+#### Errors
+
+Errors thrown by actions are handled by the workflow (retried, and eventually suspended) and aren't raised.  If a store call fails - claiming a batch, or saving or archiving a workflow - no more workflows are claimed, but every workflow already claimed is still executed, and then the first error is thrown.  A workflow whose save failed stays locked by the node until it is released as stale after `NodeTimeout` (see [Running Multiple Servers](#running-multiple-servers)), and is then executed again.
+
 #### Cancellation
 
 `ExecuteWorkflowsAsync` accepts a `CancellationToken`. Cancelling it stops new workflows from being dispatched but allows any already-running workflows to finish cleanly. The token is also forwarded into each `ExecuteWorkflowAsync` call, and from there into `workflow.FireAsync` and any `IWorkflowActionAsync` actions, so long-running async actions can observe it directly.
+
+The token also **shuts the server's node down**.  The server keeps the most recent token passed to `ExecuteWorkflowsAsync`, and when it is cancelled - even between calls, e.g. while your loop waits to poll again - the server does what `Dispose` does (see [Running Multiple Servers](#running-multiple-servers)): it stops claiming, waits (up to `NodeTimeout`) for the workflows it is claiming or executing, then releases all of its locks and removes its node, so other servers can pick up its workflows straight away.  A server that has shut down doesn't claim any more workflows - create a new one to start again.  So pass your application's shutdown token (e.g. a `BackgroundService`'s `stoppingToken`), not a per-call timeout.
 
 ### Running Multiple Servers
 
@@ -370,7 +376,7 @@ The options that control this are set on `WorkflowServerOptions`:
 
 Things to keep in mind:
 
-* **Dispose the server when your application stops.**  It stops claiming workflows, waits (up to `NodeTimeout`) for the workflows it is executing to finish, then releases its locks and removes its node, so the other nodes don't have to wait for the timeout.  A server registered as a singleton in a host's service provider is disposed automatically.
+* **Dispose the server, or cancel its token, when your application stops.**  It stops claiming workflows, waits (up to `NodeTimeout`) for the workflows it is claiming or executing to finish, then releases its locks - including any held under the ids it had before it was [evicted](#running-multiple-servers) - and removes its node, so the other nodes don't have to wait for the timeout.  A server registered as a singleton in a host's service provider is disposed automatically, and cancelling the token last passed to `ExecuteWorkflowsAsync` does the same as soon as the application starts stopping (see [Cancellation](#cancellation)).
 * **Make actions idempotent.**  The engine guarantees that a step never runs on two nodes at the same time - not that it runs exactly once.  If a node crashes after an action finishes but before the workflow is saved, the step runs again on another node.  (This was already true for a single server that crashes and restarts.)
 * **Upgrade every server together.**  Servers older than 6.0 don't lock workflows, so stop all of them before starting 6.0 servers on the same store.  Existing workflows don't need migrating - workflows without lock fields are treated as unlocked.
 * **RavenDb clusters** - see the [RavenDb caveats](#ravendb-caveats) below.
@@ -781,6 +787,33 @@ The `/app/Data` volume holds users, connections and the encryption keys, so it m
 ## Performance on large stores
 
 Each dashboard load (and auto refresh) requests the workflow counts for every connection.  On MongoDb these use collection metadata and the partial `Workflow_IsSuspended` index (see [Default Indexes](#default-indexes)), so make sure that index exists on large stores.  On RavenDb they use auto indexes, which RavenDB creates on the first request (see [Default Indexes](#default-indexes)) - on a large existing database the counts can be incomplete until it has finished building them.
+
+# Troubleshooting
+
+## A long-running or hung action delays other workflows
+
+The engine has no action timeout.  `IWorkflowAction.Execute` can't be interrupted, and `IWorkflowActionAsync.ExecuteAsync` only stops if it observes the cancellation token passed to `ExecuteWorkflowsAsync`.  An action that throws is handled normally (the workflow is retried and eventually suspended), but an action that never returns keeps its execution slot - and its workflow's lock - for as long as it runs.  This is deliberate: releasing the lock while the action is still running would let another node run the same step at the same time.
+
+Because workflows are [claimed in batches](#executing-workflows-in-bulk), the workflows claimed alongside a hung action also wait: they stay locked by the node until a slot is free to run them, and other nodes can't pick them up.  With `maxConcurrent` of 1, the whole batch waits, and so does the `ExecuteWorkflows` call.  Slow actions have the same effect on a smaller scale.
+
+To avoid this:
+
+* Make sure actions can't block forever - set timeouts on all I/O (database commands, HTTP calls, locks), and avoid blocking on async code (`.Result`/`.Wait()`), which can deadlock.
+* In async actions, pass the cancellation token through to the calls you make.
+* Use a `maxConcurrent` greater than 1, so other slots keep running the rest of the batch.
+* Lower `ClaimBatchSize` (down to 1) if your actions are slow, so fewer workflows are held by a node waiting for a slot.
+
+When a server with a hung action is disposed, it waits up to `NodeTimeout` and then releases its locks, so its workflows - including the hung one - become available to other nodes even though the action may still be running.
+
+## A workflow that can't be saved is retried forever
+
+If a workflow's action succeeds but the workflow can't be saved - for example a custom property that can't be serialised, or a document over the store's size limit (16MB on MongoDB) - the failure isn't a workflow error, so the workflow's `RetryCount` isn't increased and it is never suspended.  Instead:
+
+1. `ExecuteWorkflows`/`ExecuteWorkflowsAsync` finishes the other workflows it has claimed, then throws the store's exception.
+2. The workflow stays locked by the node until the node's stale lock release frees it, after `NodeTimeout`.
+3. It is then claimed again, its action runs again, the save fails again - and so on, every `NodeTimeout`.
+
+Nothing is lost, but the action keeps re-running (another reason to [make actions idempotent](#running-multiple-servers)).  The sign is the same exception thrown by `ExecuteWorkflows` at regular intervals - log exceptions from your execution loop rather than swallowing them.  To fix it, correct the workflow's data or delete it (e.g. with `WorkflowClient.Delete` or the [web console](#web-console)), and keep custom workflow properties small and serialisable.
 
 # Development
 

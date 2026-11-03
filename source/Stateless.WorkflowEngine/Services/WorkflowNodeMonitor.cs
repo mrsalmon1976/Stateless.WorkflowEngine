@@ -20,10 +20,17 @@ namespace Stateless.WorkflowEngine.Services
     {
         private readonly IWorkflowStore _workflowStore;
         private readonly WorkflowServerOptions _options;
-        private readonly ConcurrentDictionary<Guid, byte> _inFlight = new ConcurrentDictionary<Guid, byte>();
+        private readonly ConcurrentDictionary<Guid, int> _inFlight = new ConcurrentDictionary<Guid, int>();
+        private readonly object _inFlightLock = new object();
         private readonly object _startLock = new object();
+        private readonly object _stopLock = new object();
+        private readonly List<string> _previousNodeIds = new List<string>();
         private CancellationTokenSource _cancellationTokenSource;
         private Task _loopTask;
+        private Task _stopTask;
+        private int _claimsInProgress;
+        private CancellationToken _shutdownToken;
+        private CancellationTokenRegistration _shutdownRegistration;
         private long _lastHeartbeatTicks;
         private volatile bool _isStarted;
         private volatile bool _isStopping;
@@ -114,11 +121,69 @@ namespace Stateless.WorkflowEngine.Services
         }
 
         /// <summary>
-        /// Marks a claimed workflow as being executed by the node.
+        /// Sets the token that shuts the node down when cancelled (see <see cref="StopAsync"/>).  Only the most recent
+        /// token is used, and a token that can't be cancelled is ignored.
+        /// </summary>
+        public void SetShutdownToken(CancellationToken token)
+        {
+            if (!token.CanBeCanceled)
+            {
+                return;
+            }
+            lock (_stopLock)
+            {
+                if (token == _shutdownToken)
+                {
+                    return;
+                }
+                _shutdownRegistration.Unregister();
+                _shutdownToken = token;
+
+                // StopAsync only starts the shutdown in the background, so cancelling the token doesn't block
+                _shutdownRegistration = token.Register(() => this.StopAsync());
+            }
+        }
+
+        /// <summary>
+        /// Checks that the node can claim and, if so, records a claim in progress, which must be ended with
+        /// <see cref="EndClaim"/> once the claimed workflows are tracked.  Shutdown waits for claims in progress, so
+        /// workflows claimed as the node stops are never left locked.
+        /// </summary>
+        public bool TryBeginClaim()
+        {
+            lock (_stopLock)
+            {
+                if (!this.CanClaim)
+                {
+                    return false;
+                }
+                _claimsInProgress++;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Ends a claim started with <see cref="TryBeginClaim"/>.
+        /// </summary>
+        public void EndClaim()
+        {
+            lock (_stopLock)
+            {
+                _claimsInProgress--;
+            }
+        }
+
+        /// <summary>
+        /// Marks a claimed workflow as being executed by the node.  Tracking is counted: after an eviction the same
+        /// workflow can still be executing under the old node id when it is claimed again under the new one, and it must
+        /// stay in flight until both have finished.
         /// </summary>
         public void Track(Guid workflowId)
         {
-            _inFlight[workflowId] = 0;
+            lock (_inFlightLock)
+            {
+                _inFlight[workflowId] = _inFlight.TryGetValue(workflowId, out int count) ? count + 1 : 1;
+            }
         }
 
         /// <summary>
@@ -126,7 +191,21 @@ namespace Stateless.WorkflowEngine.Services
         /// </summary>
         public void Untrack(Guid workflowId)
         {
-            _inFlight.TryRemove(workflowId, out _);
+            lock (_inFlightLock)
+            {
+                if (!_inFlight.TryGetValue(workflowId, out int count))
+                {
+                    return;
+                }
+                if (count > 1)
+                {
+                    _inFlight[workflowId] = count - 1;
+                }
+                else
+                {
+                    _inFlight.TryRemove(workflowId, out _);
+                }
+            }
         }
 
         /// <summary>
@@ -142,46 +221,74 @@ namespace Stateless.WorkflowEngine.Services
         }
 
         /// <summary>
-        /// Stops claiming, waits (up to the node timeout) for in-flight workflows to finish, then releases the node's
-        /// locks and removes the node so its workflows are available immediately.
+        /// Shuts the node down: stops claiming, waits (up to the node timeout) for claims in progress and in-flight
+        /// workflows to finish, then releases the node's locks - including any held under ids it had before it was
+        /// evicted - and removes the node so its workflows are available immediately.  The shutdown runs in the
+        /// background, and calling this again returns the same task.  A node that has stopped can't be restarted.
+        /// </summary>
+        public Task StopAsync()
+        {
+            lock (_stopLock)
+            {
+                if (_stopTask == null)
+                {
+                    if (!_isStarted)
+                    {
+                        return Task.CompletedTask;
+                    }
+                    _isStopping = true;
+                    _stopTask = Task.Run(StopCoreAsync);
+                }
+                return _stopTask;
+            }
+        }
+
+        /// <summary>
+        /// Shuts the node down (see <see cref="StopAsync"/>) and waits for the shutdown to finish.
         /// </summary>
         public void Dispose()
         {
-            if (!_isStarted || _isStopping)
+            this.StopAsync().Wait();
+            lock (_stopLock)
             {
-                return;
+                _shutdownRegistration.Unregister();
             }
-            _isStopping = true;
+        }
 
+        private async Task StopCoreAsync()
+        {
             if (_cancellationTokenSource != null)
             {
+                // the loop handles its own errors, so it only needs a bounded wait
                 _cancellationTokenSource.Cancel();
-                try
-                {
-                    _loopTask.Wait(TimeSpan.FromSeconds(5));
-                }
-                catch (AggregateException)
-                {
-                    // the loop handles its own errors - nothing to do on shutdown
-                }
+                await Task.WhenAny(_loopTask, Task.Delay(TimeSpan.FromSeconds(5)));
                 _cancellationTokenSource.Dispose();
             }
 
             DateTime waitUntil = DateTime.UtcNow.Add(_options.NodeTimeout);
-            while (!_inFlight.IsEmpty && DateTime.UtcNow < waitUntil)
+            while (!this.IsIdle() && DateTime.UtcNow < waitUntil)
             {
-                Thread.Sleep(50);
+                await Task.Delay(50);
             }
 
-            try
+            // if any of these fail, the node and its locks are removed by the other nodes after the node timeout
+            List<string> nodeIds;
+            lock (_stopLock)
             {
-                _workflowStore.ReleaseLocks(_nodeId);
-                _workflowStore.RemoveNode(_nodeId);
+                nodeIds = _previousNodeIds.Concat(new[] { _nodeId }).ToList();
             }
-            catch (Exception ex)
+            foreach (string nodeId in nodeIds)
             {
-                // if this fails, the node and its locks are removed by the other nodes after the node timeout
-                OnNodeMonitorError(ex);
+                await RunStepAsync(() => _workflowStore.ReleaseLocksAsync(nodeId));
+            }
+            await RunStepAsync(() => _workflowStore.RemoveNodeAsync(_nodeId));
+        }
+
+        private bool IsIdle()
+        {
+            lock (_stopLock)
+            {
+                return _claimsInProgress == 0 && _inFlight.IsEmpty;
             }
         }
 
@@ -240,6 +347,10 @@ namespace Stateless.WorkflowEngine.Services
             string previousNodeId = _nodeId;
             string nodeId = Guid.NewGuid().ToString();
             Register(nodeId);
+            lock (_stopLock)
+            {
+                _previousNodeIds.Add(previousNodeId);
+            }
             _nodeId = nodeId;
             NodeEvicted?.Invoke(this, new NodeEvictedEventArgs(previousNodeId, nodeId));
         }

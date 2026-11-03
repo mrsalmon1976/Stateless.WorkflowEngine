@@ -16,9 +16,10 @@ namespace Stateless.WorkflowEngine.Stores
         private readonly List<WorkflowDefinition> _workflowDefinitions = new List<WorkflowDefinition>();
         private readonly Dictionary<string, WorkflowNode> _nodes = new Dictionary<string, WorkflowNode>();
 
-        // the workflow objects are shared with the callers, so lock ownership is tracked separately from the
-        // Workflow.LockedBy property, which an executing workflow server changes before saving
-        private readonly Dictionary<Guid, string> _locks = new Dictionary<Guid, string>();
+        // the workflow objects are shared with the callers, so locks (owner and claim time) are tracked separately from
+        // the Workflow.LockedBy/LockedOn properties, which an executing workflow server clears before saving - if that
+        // save then fails, the lock must still be released as stale
+        private readonly Dictionary<Guid, StoreLock> _locks = new Dictionary<Guid, StoreLock>();
         private readonly object syncLock = new object();
 
         /// <summary>
@@ -520,7 +521,7 @@ namespace Stateless.WorkflowEngine.Stores
                 {
                     workflow.LockedBy = nodeId;
                     workflow.LockedOn = now;
-                    _locks[workflow.Id] = nodeId;
+                    _locks[workflow.Id] = new StoreLock(nodeId, now);
                 }
                 return workflows;
             }
@@ -590,7 +591,7 @@ namespace Stateless.WorkflowEngine.Stores
         {
             lock (syncLock)
             {
-                Release(_locks.Where(x => x.Value == nodeId).Select(x => x.Key).ToList());
+                Release(_locks.Where(x => x.Value.NodeId == nodeId).Select(x => x.Key).ToList());
             }
         }
 
@@ -612,8 +613,7 @@ namespace Stateless.WorkflowEngine.Stores
             {
                 HashSet<Guid> exclude = new HashSet<Guid>(excludeIds);
                 Release(_locks
-                    .Where(x => x.Value == nodeId && !exclude.Contains(x.Key))
-                    .Where(x => _activeWorkflows.TryGetValue(x.Key, out Workflow w) && w.LockedOn < lockedBefore)
+                    .Where(x => x.Value.NodeId == nodeId && x.Value.LockedOn < lockedBefore && !exclude.Contains(x.Key))
                     .Select(x => x.Key)
                     .ToList());
             }
@@ -635,7 +635,7 @@ namespace Stateless.WorkflowEngine.Stores
         {
             lock (syncLock)
             {
-                return _locks.Values.Distinct().ToList();
+                return _locks.Values.Select(x => x.NodeId).Distinct().ToList();
             }
         }
 
@@ -762,7 +762,7 @@ namespace Stateless.WorkflowEngine.Stores
             {
                 return false;
             }
-            return !_locks.TryGetValue(workflowId, out string owner) || owner == nodeId;
+            return !_locks.TryGetValue(workflowId, out StoreLock storeLock) || storeLock.NodeId == nodeId;
         }
 
         private void Release(IEnumerable<Guid> workflowIds)
@@ -784,10 +784,24 @@ namespace Stateless.WorkflowEngine.Stores
             {
                 _locks.Remove(workflow.Id);
             }
-            else
+            else if (!_locks.TryGetValue(workflow.Id, out StoreLock storeLock) || storeLock.NodeId != workflow.LockedBy)
             {
-                _locks[workflow.Id] = workflow.LockedBy;
+                // a save by the lock owner keeps the claim time, as the other stores do
+                _locks[workflow.Id] = new StoreLock(workflow.LockedBy, workflow.LockedOn ?? DateTime.UtcNow);
             }
+        }
+
+        private sealed class StoreLock
+        {
+            public StoreLock(string nodeId, DateTime lockedOn)
+            {
+                this.NodeId = nodeId;
+                this.LockedOn = lockedOn;
+            }
+
+            public string NodeId { get; }
+
+            public DateTime LockedOn { get; }
         }
 
     }

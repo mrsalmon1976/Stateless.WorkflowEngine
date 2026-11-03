@@ -50,6 +50,44 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region Lock Tests
+
+        [Test]
+        public void ReleaseStaleLocks_LockClearedOnSharedObjectButNotSaved_StillReleased()
+        {
+            // the server clears the lock on the (shared) workflow object before a save that releases it - if that save
+            // fails, the store still holds the lock and must release it as stale
+            MemoryWorkflowStore store = new MemoryWorkflowStore();
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            Workflow claimed = store.ClaimNext("node1");
+            claimed.LockedBy = null;
+            claimed.LockedOn = null;
+
+            store.ReleaseStaleLocks("node1", DateTime.UtcNow.AddMinutes(1), new Guid[0]);
+
+            Assert.That(store.GetLockOwners(), Is.Empty);
+            Assert.That(store.ClaimNext("node2")?.Id, Is.EqualTo(claimed.Id));
+        }
+
+        [Test]
+        public void SaveClaimed_LockKept_ClaimTimeUnchanged()
+        {
+            // a workflow that keeps its lock across steps is saved with a later LockedOn on the shared object, but the
+            // lock is still as old as the claim
+            MemoryWorkflowStore store = new MemoryWorkflowStore();
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+            Workflow claimed = store.ClaimNext("node1");
+            DateTime claimedOn = claimed.LockedOn.Value;
+            claimed.LockedOn = DateTime.UtcNow.AddHours(1);
+            store.SaveClaimed(claimed, "node1");
+
+            store.ReleaseStaleLocks("node1", claimedOn.AddTicks(1), new Guid[0]);
+
+            Assert.That(store.GetLockOwners(), Is.Empty);
+        }
+
+        #endregion
+
         #region Thread Safety Tests
 
         [Test]

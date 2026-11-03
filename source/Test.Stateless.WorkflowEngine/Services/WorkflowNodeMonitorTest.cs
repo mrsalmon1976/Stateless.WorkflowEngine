@@ -199,9 +199,7 @@ namespace Test.Stateless.WorkflowEngine.Services
             WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
             monitor.EnsureStarted(runLoop: false);
 
-            SaveWorkflow();
-            Workflow claimed = _workflowStore.ClaimNext(monitor.NodeId);
-            claimed.LockedOn = DateTime.UtcNow.AddHours(-1);
+            Workflow claimed = SaveLockedWorkflow(monitor.NodeId, DateTime.UtcNow.AddHours(-1));
 
             await monitor.TickAsync();
 
@@ -214,14 +212,37 @@ namespace Test.Stateless.WorkflowEngine.Services
             WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
             monitor.EnsureStarted(runLoop: false);
 
-            SaveWorkflow();
-            Workflow claimed = _workflowStore.ClaimNext(monitor.NodeId);
-            claimed.LockedOn = DateTime.UtcNow.AddHours(-1);
+            Workflow claimed = SaveLockedWorkflow(monitor.NodeId, DateTime.UtcNow.AddHours(-1));
             monitor.Track(claimed.Id);
 
             await monitor.TickAsync();
 
             Assert.That(_workflowStore.GetLockOwners(), Is.EqualTo(new[] { monitor.NodeId }));
+        }
+
+        [Test]
+        public async Task TickAsync_OwnOldLockTrackedTwiceUntrackedOnce_NotReleased()
+        {
+            // after an eviction, a workflow can still be executing under the old node id when it is claimed again - the
+            // first execution finishing must not untrack the second
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+
+            Workflow claimed = SaveLockedWorkflow(monitor.NodeId, DateTime.UtcNow.AddHours(-1));
+            monitor.Track(claimed.Id);
+            monitor.Track(claimed.Id);
+            monitor.Untrack(claimed.Id);
+
+            await monitor.TickAsync();
+
+            Assert.That(monitor.InFlight, Is.EqualTo(new[] { claimed.Id }));
+            Assert.That(_workflowStore.GetLockOwners(), Is.EqualTo(new[] { monitor.NodeId }));
+
+            monitor.Untrack(claimed.Id);
+            await monitor.TickAsync();
+
+            Assert.That(monitor.InFlight, Is.Empty);
+            Assert.That(_workflowStore.GetLockOwners(), Is.Empty);
         }
 
         [Test]
@@ -336,6 +357,145 @@ namespace Test.Stateless.WorkflowEngine.Services
             Assert.That(_workflowStore.GetNodes(), Is.Empty);
         }
 
+        [Test]
+        public void Dispose_ShutdownTokenAlreadyCancelled_WaitsForTheShutdownToFinish()
+        {
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            CancellationTokenSource cts = new CancellationTokenSource();
+            monitor.SetShutdownToken(cts.Token);
+            Assert.That(monitor.TryBeginClaim(), Is.True);
+            cts.Cancel();
+
+            Task dispose = Task.Run(() => monitor.Dispose());
+            Assert.That(dispose.Wait(200), Is.False);
+
+            monitor.EndClaim();
+            Assert.That(dispose.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            Assert.That(_workflowStore.GetNodes(), Is.Empty);
+        }
+
+        #endregion
+
+        #region Shutdown Tests
+
+        [Test]
+        public async Task StopAsync_ShutdownTokenCancelled_ReleasesLocksAndRemovesNode()
+        {
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            CancellationTokenSource cts = new CancellationTokenSource();
+            monitor.SetShutdownToken(cts.Token);
+            SaveWorkflow();
+            _workflowStore.ClaimNext(monitor.NodeId);
+
+            cts.Cancel();
+            await monitor.StopAsync();
+
+            Assert.That(_workflowStore.GetLockOwners(), Is.Empty);
+            Assert.That(_workflowStore.GetNodes(), Is.Empty);
+            Assert.That(monitor.CanClaim, Is.False);
+            Assert.That(monitor.TryBeginClaim(), Is.False);
+        }
+
+        [Test]
+        public async Task StopAsync_ShutdownTokenAlreadyCancelled_NodeStops()
+        {
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+
+            monitor.SetShutdownToken(new CancellationToken(true));
+            await monitor.StopAsync();
+
+            Assert.That(_workflowStore.GetNodes(), Is.Empty);
+            Assert.That(monitor.CanClaim, Is.False);
+        }
+
+        [Test]
+        public async Task SetShutdownToken_ReplacedByAnotherToken_OnlyTheLatestTokenStopsTheNode()
+        {
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            CancellationTokenSource first = new CancellationTokenSource();
+            CancellationTokenSource second = new CancellationTokenSource();
+            monitor.SetShutdownToken(first.Token);
+            monitor.SetShutdownToken(second.Token);
+
+            first.Cancel();
+            await Task.Delay(100);
+            Assert.That(monitor.CanClaim, Is.True);
+            Assert.That(_workflowStore.GetNodes().Count(), Is.EqualTo(1));
+
+            second.Cancel();
+            await monitor.StopAsync();
+            Assert.That(monitor.CanClaim, Is.False);
+            Assert.That(_workflowStore.GetNodes(), Is.Empty);
+        }
+
+        [Test]
+        public async Task StopAsync_ClaimInProgress_LocksReleasedOnlyOnceClaimedWorkflowsHaveFinished()
+        {
+            // a claim that is in progress when the node stops lands after shutdown has started - its workflows must be
+            // tracked and executed before the locks are released, or another node could run them at the same time
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            Assert.That(monitor.TryBeginClaim(), Is.True);
+
+            Task stop = monitor.StopAsync();
+            Assert.That(monitor.TryBeginClaim(), Is.False);
+            SaveWorkflow();
+            Workflow claimed = _workflowStore.ClaimNext(monitor.NodeId);
+            monitor.Track(claimed.Id);
+            monitor.EndClaim();
+
+            await Task.Delay(200);
+            Assert.That(stop.IsCompleted, Is.False);
+            Assert.That(_workflowStore.GetLockOwners(), Is.EqualTo(new[] { monitor.NodeId }));
+
+            monitor.Untrack(claimed.Id);
+            await stop;
+            Assert.That(_workflowStore.GetLockOwners(), Is.Empty);
+            Assert.That(_workflowStore.GetNodes(), Is.Empty);
+        }
+
+        [Test]
+        public async Task StopAsync_ClaimNeverEnds_LocksReleasedAfterNodeTimeout()
+        {
+            _options.HeartbeatInterval = TimeSpan.FromMilliseconds(50);
+            _options.NodeTimeout = TimeSpan.FromMilliseconds(300);
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            SaveWorkflow();
+            _workflowStore.ClaimNext(monitor.NodeId);
+            monitor.TryBeginClaim();
+
+            Task stop = monitor.StopAsync();
+
+            Assert.That(await Task.WhenAny(stop, Task.Delay(TimeSpan.FromSeconds(5))), Is.SameAs(stop));
+            Assert.That(_workflowStore.GetLockOwners(), Is.Empty);
+        }
+
+        [Test]
+        public async Task StopAsync_NodeWasEvicted_ReleasesLocksHeldUnderPreviousIds()
+        {
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options);
+            monitor.EnsureStarted(runLoop: false);
+            string originalNodeId = monitor.NodeId;
+            _workflowStore.RemoveNode(originalNodeId);
+            await monitor.TickAsync();
+            Assert.That(monitor.NodeId, Is.Not.EqualTo(originalNodeId));
+
+            // locks under both ids - e.g. a workflow that was still executing under the old id when the node was evicted
+            SaveWorkflow();
+            SaveWorkflow();
+            _workflowStore.ClaimNext(originalNodeId);
+            _workflowStore.ClaimNext(monitor.NodeId);
+
+            await monitor.StopAsync();
+
+            Assert.That(_workflowStore.GetLockOwners(), Is.Empty);
+        }
+
         #endregion
 
         #region Private Methods
@@ -354,6 +514,19 @@ namespace Test.Stateless.WorkflowEngine.Services
         {
             BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
             workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            _workflowStore.Save(workflow);
+            return workflow;
+        }
+
+        /// <summary>
+        /// Saves a workflow that was locked by a node at the given time, so the lock can be older than the node timeout.
+        /// </summary>
+        private BasicWorkflow SaveLockedWorkflow(string nodeId, DateTime lockedOn)
+        {
+            BasicWorkflow workflow = new BasicWorkflow(BasicWorkflow.State.Start);
+            workflow.ResumeTrigger = BasicWorkflow.Trigger.DoStuff.ToString();
+            workflow.LockedBy = nodeId;
+            workflow.LockedOn = lockedOn;
             _workflowStore.Save(workflow);
             return workflow;
         }

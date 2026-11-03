@@ -57,6 +57,10 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         /// <param name="count">The number of active workflows to be loaded for processing.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
+        /// <param name="cancellationToken">Stops claiming when cancelled (the workflows already claimed are still
+        /// executed).  It also shuts the server's node down: the most recent token passed to this method is kept after
+        /// it returns, and when it is cancelled the node releases its locks and is removed, as on <c>Dispose</c> - so
+        /// pass the application's shutdown token, not a per-call timeout.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
         Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null);
 

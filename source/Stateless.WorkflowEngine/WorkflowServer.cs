@@ -347,7 +347,7 @@ namespace Stateless.WorkflowEngine
                 .ToArray();
             Task.WaitAll(workers);
 
-            slots.ClaimError?.Throw();
+            slots.Error?.Throw();
             return slots.ClaimedCount;
         }
 
@@ -360,6 +360,10 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         /// <param name="count">The maximum number of workflows to execute.</param>
         /// <param name="maxConcurrent">The maximum number of workflows to processing parallel - defaults to the value of <c>count</c>.</param>
+        /// <param name="cancellationToken">Stops claiming when cancelled (the workflows already claimed are still
+        /// executed).  It also shuts the server's node down: the most recent token passed to this method is kept after
+        /// it returns, and when it is cancelled the node releases its locks and is removed, as on <c>Dispose</c> - so
+        /// pass the application's shutdown token, not a per-call timeout.</param>
         /// <returns>The number of workflows that were actually executed.</returns>
         public async Task<int> ExecuteWorkflowsAsync(int count, int? maxConcurrent = null, CancellationToken? cancellationToken = null)
         {
@@ -371,6 +375,7 @@ namespace Stateless.WorkflowEngine
             CancellationToken ct = cancellationToken ?? CancellationToken.None;
             WorkflowNodeMonitor nodeMonitor = this.NodeMonitor;
             nodeMonitor.EnsureStarted();
+            nodeMonitor.SetShutdownToken(ct);
             int concurrent = Math.Min(maxConcurrent ?? count, count);
             ClaimSlots slots = this.CreateClaimSlots(count);
 
@@ -381,13 +386,15 @@ namespace Stateless.WorkflowEngine
                 .ToArray();
             await Task.WhenAll(workers);
 
-            slots.ClaimError?.Throw();
+            slots.Error?.Throw();
             return slots.ClaimedCount;
         }
 
         /// <summary>
         /// Runs one execution slot: executes claimed workflows one after the other until the slots have claimed
-        /// <c>count</c> workflows, there is nothing left to claim, or the node can no longer claim.
+        /// <c>count</c> workflows, there is nothing left to claim, or the node can no longer claim.  A workflow that fails
+        /// (e.g. its save throws) stops claiming but not the slot, so every claimed workflow is still executed and
+        /// untracked - a lock left behind is then released by the node's stale lock release.
         /// </summary>
         private void ExecuteClaimedWorkflows(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots)
         {
@@ -397,6 +404,10 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     this.ExecuteWorkflow(claimed.Workflow, claimed.NodeId);
+                }
+                catch (Exception ex)
+                {
+                    slots.ExecutionFailed(ex);
                 }
                 finally
                 {
@@ -408,6 +419,8 @@ namespace Stateless.WorkflowEngine
         /// <summary>
         /// Runs one execution slot: executes claimed workflows one after the other until the slots have claimed
         /// <c>count</c> workflows, there is nothing left to claim, the node can no longer claim, or the token is cancelled.
+        /// A workflow that fails (e.g. its save throws) stops claiming but not the slot, so every claimed workflow is still
+        /// executed and untracked - a lock left behind is then released by the node's stale lock release.
         /// </summary>
         private async Task ExecuteClaimedWorkflowsAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, CancellationToken ct)
         {
@@ -417,6 +430,10 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     await this.ExecuteWorkflowAsync(claimed.Workflow, claimed.NodeId, ct);
+                }
+                catch (Exception ex)
+                {
+                    slots.ExecutionFailed(ex);
                 }
                 finally
                 {
@@ -431,7 +448,8 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         private ClaimedWorkflow TakeClaimedWorkflow(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots)
         {
-            Func<bool> canClaim = () => nodeMonitor.CanClaim;
+            // a claim starts whenever canClaim returns true, and it ends the claim recorded by TryBeginClaim
+            Func<bool> canClaim = () => nodeMonitor.TryBeginClaim();
             Func<int, Task> startClaim = batchSize => Task.Run(() => this.ClaimBatch(nodeMonitor, slots, batchSize));
             while (true)
             {
@@ -455,7 +473,8 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         private async Task<ClaimedWorkflow> TakeClaimedWorkflowAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, CancellationToken ct)
         {
-            Func<bool> canClaim = () => !ct.IsCancellationRequested && nodeMonitor.CanClaim;
+            // a claim starts whenever canClaim returns true, and it ends the claim recorded by TryBeginClaim
+            Func<bool> canClaim = () => !ct.IsCancellationRequested && nodeMonitor.TryBeginClaim();
             Func<int, Task> startClaim = batchSize => Task.Run(() => this.ClaimBatchAsync(nodeMonitor, slots, batchSize));
             while (true)
             {
@@ -482,7 +501,8 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Claims a batch of workflows in the background and adds them to the slots.
+        /// Claims a batch of workflows in the background and adds them to the slots.  The claim was started with
+        /// <c>TryBeginClaim</c>, and is ended once the claimed workflows are tracked.
         /// </summary>
         private void ClaimBatch(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, int batchSize)
         {
@@ -497,10 +517,15 @@ namespace Stateless.WorkflowEngine
                 // the slots finish the workflows they are running before the error is raised
                 slots.ClaimFailed(ex, batchSize);
             }
+            finally
+            {
+                nodeMonitor.EndClaim();
+            }
         }
 
         /// <summary>
-        /// Claims a batch of workflows in the background and adds them to the slots.
+        /// Claims a batch of workflows in the background and adds them to the slots.  The claim was started with
+        /// <c>TryBeginClaim</c>, and is ended once the claimed workflows are tracked.
         /// </summary>
         private async Task ClaimBatchAsync(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, int batchSize)
         {
@@ -514,6 +539,10 @@ namespace Stateless.WorkflowEngine
             {
                 // the slots finish the workflows they are running before the error is raised
                 slots.ClaimFailed(ex, batchSize);
+            }
+            finally
+            {
+                nodeMonitor.EndClaim();
             }
         }
 
@@ -608,9 +637,10 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Stops the server from claiming workflows, waits (up to the node timeout) for workflows it is executing to
-        /// finish, and then releases its locks and removes its node so that other servers can pick up its workflows
-        /// immediately.  Call this when the application shuts down.
+        /// Stops the server from claiming workflows, waits (up to the node timeout) for workflows it is claiming or
+        /// executing to finish, and then releases its locks and removes its node so that other servers can pick up its
+        /// workflows immediately.  Call this when the application shuts down - this also happens when the token last
+        /// passed to <c>ExecuteWorkflowsAsync</c> is cancelled, in which case this waits for that shutdown to finish.
         /// </summary>
         public void Dispose()
         {
@@ -784,7 +814,7 @@ namespace Stateless.WorkflowEngine
             private int _claimedCount;
             private bool _stopped;
             private Task _claim;
-            private ExceptionDispatchInfo _claimError;
+            private ExceptionDispatchInfo _error;
 
             public ClaimSlots(int count, int batchSize)
             {
@@ -803,13 +833,16 @@ namespace Stateless.WorkflowEngine
                 }
             }
 
-            public ExceptionDispatchInfo ClaimError
+            /// <summary>
+            /// Gets the first claim or execution error, raised once every slot has finished.
+            /// </summary>
+            public ExceptionDispatchInfo Error
             {
                 get
                 {
                     lock (_sync)
                     {
-                        return _claimError;
+                        return _error;
                     }
                 }
             }
@@ -867,13 +900,33 @@ namespace Stateless.WorkflowEngine
                 lock (_sync)
                 {
                     _remaining += batchSize;
-                    if (_claimError == null)
-                    {
-                        _claimError = ExceptionDispatchInfo.Capture(ex);
-                    }
-                    _stopped = true;
+                    this.Fail(ex);
                     _claim = null;
                 }
+            }
+
+            /// <summary>
+            /// Records a workflow that failed to execute and stops claiming - the workflows already claimed are still
+            /// executed.
+            /// </summary>
+            public void ExecutionFailed(Exception ex)
+            {
+                lock (_sync)
+                {
+                    this.Fail(ex);
+                }
+            }
+
+            /// <summary>
+            /// Records the first error and stops claiming.  Must be called while holding the lock.
+            /// </summary>
+            private void Fail(Exception ex)
+            {
+                if (_error == null)
+                {
+                    _error = ExceptionDispatchInfo.Capture(ex);
+                }
+                _stopped = true;
             }
 
             /// <summary>

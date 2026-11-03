@@ -1490,6 +1490,330 @@ namespace Test.Stateless.WorkflowEngine
             }
         }
 
+        [Test]
+        public async Task ExecuteWorkflowsAsync_TokenCancelledBetweenCalls_NodeReleasesLocksAndIsRemoved()
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                await workflowServer.ExecuteWorkflowsAsync(1, 1, cts.Token);
+
+                // a lock left behind by the node, e.g. by a save that failed
+                workflowStore.Save(CreateBasicWorkflow());
+                workflowStore.ClaimNext(workflowServer.NodeId);
+
+                // the token is cancelled while the application waits to poll again
+                cts.Cancel();
+                await workflowServer.NodeMonitor.StopAsync();
+
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+                Assert.That(workflowStore.GetNodes(), Is.Empty);
+
+                // the node has stopped, so nothing more is claimed
+                BasicWorkflow workflow = CreateBasicWorkflow();
+                workflowStore.Save(workflow);
+                Assert.That(await workflowServer.ExecuteWorkflowsAsync(1, 1, new CancellationTokenSource().Token), Is.EqualTo(0));
+                Assert.That(workflowStore.Get(workflow.Id).LockedBy, Is.Null);
+            }
+        }
+
+        [Test]
+        public async Task ExecuteWorkflowsAsync_TokenCancelledDuringClaim_ClaimedWorkflowsExecutedBeforeLocksReleased()
+        {
+            // the claim is in flight when the token is cancelled - the node must not release its locks until the
+            // workflows it claimed have been executed
+            ManualResetEventSlim claimStarted = new ManualResetEventSlim();
+            ManualResetEventSlim releaseClaim = new ManualResetEventSlim();
+            List<string> calls = new List<string>();
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x =>
+            {
+                claimStarted.Set();
+                releaseClaim.Wait(TimeSpan.FromSeconds(5));
+                return Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
+            });
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { lock (calls) { calls.Add("archive"); } return true; });
+            workflowStore.When(x => x.ReleaseLocksAsync(Arg.Any<string>())).Do(x => { lock (calls) { calls.Add("release"); } });
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 }))
+            {
+                Task<int> execute = workflowServer.ExecuteWorkflowsAsync(2, 2, cts.Token);
+                Assert.That(claimStarted.Wait(TimeSpan.FromSeconds(5)), Is.True);
+                cts.Cancel();
+                releaseClaim.Set();
+
+                Assert.That(await execute, Is.EqualTo(2));
+                await workflowServer.NodeMonitor.StopAsync();
+
+                Assert.That(calls, Is.EqualTo(new[] { "archive", "archive", "release" }));
+            }
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        public void ExecuteWorkflows_StoreThrowsForOneWorkflow_OtherClaimedWorkflowsExecutedThenErrorRaised(bool isAsync, bool failArchive)
+        {
+            // one slot and a batch of three - the slot must not stop at the failed workflow, or the rest of the batch
+            // would stay locked and tracked (so never released by the node monitor)
+            List<Workflow> batch = new List<Workflow> { CreateBasicWorkflow(), CreateBasicWorkflow(), CreateBasicWorkflow() };
+            InvalidOperationException storeError = new InvalidOperationException("store unavailable");
+            Func<CallInfo, bool, bool> write = (x, isArchive) =>
+            {
+                if (isArchive == failArchive && x.ArgAt<Workflow>(0) == batch[0])
+                {
+                    throw storeError;
+                }
+                return true;
+            };
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(batch, new List<Workflow>());
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(batch, new List<Workflow>());
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => write(x, false));
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => write(x, false));
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => write(x, true));
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => write(x, true));
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 3 }))
+            {
+                TestDelegate execute = () =>
+                {
+                    if (isAsync)
+                    {
+                        workflowServer.ExecuteWorkflowsAsync(10, 1).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workflowServer.ExecuteWorkflows(10, 1);
+                    }
+                };
+
+                // assert - the error is raised (unwrapped) after the rest of the batch completed, nothing more was
+                // claimed, and no workflow is left in flight
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(execute);
+                Assert.That(ex, Is.SameAs(storeError));
+                foreach (Workflow workflow in batch.Skip(1))
+                {
+                    if (isAsync)
+                    {
+                        workflowStore.Received(1).ArchiveClaimedAsync(workflow, Arg.Any<string>());
+                    }
+                    else
+                    {
+                        workflowStore.Received(1).ArchiveClaimed(workflow, Arg.Any<string>());
+                    }
+                }
+                Assert.That(workflowStore.ReceivedCalls().Count(x => x.GetMethodInfo().Name.StartsWith("ClaimNext")), Is.EqualTo(1));
+                Assert.That(workflowServer.NodeMonitor.InFlight, Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_SaveThrows_LockReleasedByNodeMonitorAndWorkflowExecutedLater(bool isAsync)
+        {
+            FailingSaveWorkflowStore workflowStore = new FailingSaveWorkflowStore(failures: 1);
+            BasicWorkflow workflow = CreateBasicWorkflow();
+            workflowStore.Save(workflow);
+            WorkflowServerOptions options = new WorkflowServerOptions()
+            {
+                HeartbeatInterval = TimeSpan.FromMilliseconds(50),
+                NodeTimeout = TimeSpan.FromMilliseconds(200)
+            };
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, options))
+            {
+                // the failed save leaves the workflow locked by this node
+                Assert.Throws<InvalidOperationException>(() =>
+                {
+                    if (isAsync)
+                    {
+                        workflowServer.ExecuteWorkflowsAsync(1).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        workflowServer.ExecuteWorkflows(1);
+                    }
+                });
+                Assert.That(workflowStore.GetLockOwners(), Is.EqualTo(new[] { workflowServer.NodeId }));
+
+                // the node monitor releases it once it is older than the node timeout
+                DateTime timeout = DateTime.UtcNow.AddSeconds(5);
+                while (workflowStore.GetLockOwners().Any() && DateTime.UtcNow < timeout)
+                {
+                    Thread.Sleep(20);
+                }
+                Assert.That(workflowStore.GetLockOwners(), Is.Empty);
+
+                // and it can then be claimed and executed again
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(workflowStore.GetCompletedOrDefault(workflow.Id), Is.Not.Null);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowClaimedByAnotherNodeBeforeArchive_RaisesWorkflowLockLostAndNotCompleted(bool isAsync)
+        {
+            BasicWorkflow workflow = CreateBasicWorkflow();
+
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(new[] { workflow }, new Workflow[0]);
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(new[] { workflow }, new Workflow[0]);
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
+            workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
+            workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(false);
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore))
+            {
+                List<WorkflowLockLostEventArgs> lockLostEvents = new List<WorkflowLockLostEventArgs>();
+                List<WorkflowEventArgs> completedEvents = new List<WorkflowEventArgs>();
+                workflowServer.WorkflowLockLost += (sender, e) => lockLostEvents.Add(e);
+                workflowServer.WorkflowCompleted += (sender, e) => completedEvents.Add(e);
+
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(1).Result : workflowServer.ExecuteWorkflows(1));
+
+                Assert.That(result, Is.EqualTo(1));
+                Assert.That(lockLostEvents.Count, Is.EqualTo(1));
+                Assert.That(lockLostEvents[0].Workflow, Is.SameAs(workflow));
+                Assert.That(lockLostEvents[0].NodeId, Is.EqualTo(workflowServer.NodeId));
+                Assert.That(completedEvents, Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_NodeCanNoLongerClaim_ClaimedWorkflowsExecutedAndNoMoreClaimed(bool isAsync)
+        {
+            // heartbeats fail, so the node stops claiming after half the node timeout (100ms).  Each workflow takes ~500ms
+            // (two slow saves): the second batch is claimed in the background as the first workflow is taken, but by the
+            // time the second workflow is taken the node can no longer claim.
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            workflowStore.HeartbeatAsync(Arg.Any<string>()).Returns<Task<bool>>(x => throw new TimeoutException("database unavailable"));
+            workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { Thread.Sleep(250); return true; });
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => { Thread.Sleep(250); return true; });
+            WorkflowServerOptions options = new WorkflowServerOptions()
+            {
+                HeartbeatInterval = TimeSpan.FromMilliseconds(50),
+                NodeTimeout = TimeSpan.FromMilliseconds(200),
+                ClaimBatchSize = 1
+            };
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, options))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(5, 1).Result : workflowServer.ExecuteWorkflows(5, 1));
+
+                Assert.That(result, Is.EqualTo(2));
+                Assert.That(workflowStore.ReceivedCalls().Count(x => x.GetMethodInfo().Name.StartsWith("ClaimNext")), Is.EqualTo(2));
+                Assert.That(workflowStore.ReceivedCalls().Count(x => x.GetMethodInfo().Name.StartsWith("ArchiveClaimed")), Is.EqualTo(2));
+                Assert.That(workflowServer.NodeMonitor.InFlight, Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_WorkflowsExecuted_NoneLeftInFlight(bool isAsync)
+        {
+            MemoryWorkflowStore workflowStore = new MemoryWorkflowStore();
+            for (int i = 0; i < 5; i++)
+            {
+                workflowStore.Save(CreateBasicWorkflow());
+            }
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 }))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(5, 2).Result : workflowServer.ExecuteWorkflows(5, 2));
+
+                Assert.That(result, Is.EqualTo(5));
+                Assert.That(workflowServer.NodeMonitor.InFlight, Is.Empty);
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_ClaimReturnsFewerThanRequested_UnclaimedCountGivenBack(bool isAsync)
+        {
+            // the first claim only gets 3 of 5 - the 2 it didn't get are claimed later, so the count is still reached
+            int claims = 0;
+            Func<CallInfo, List<Workflow>> claim = x =>
+            {
+                int count = Interlocked.Increment(ref claims) == 1 ? 3 : x.ArgAt<int>(1);
+                return Enumerable.Range(0, count).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
+            };
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 5 }))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(12, 1).Result : workflowServer.ExecuteWorkflows(12, 1));
+
+                Assert.That(result, Is.EqualTo(12));
+                IEnumerable<int> batchSizes = workflowStore.ReceivedCalls()
+                    .Where(x => x.GetMethodInfo().Name.StartsWith("ClaimNext"))
+                    .Select(x => (int)x.GetArguments()[1]);
+                Assert.That(batchSizes, Is.EqualTo(new[] { 5, 5, 4 }));
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ExecuteWorkflows_MoreSlotsThanBatchSize_OnlyOneClaimInFlight(bool isAsync)
+        {
+            int inFlight = 0;
+            int maxInFlight = 0;
+            Func<CallInfo, List<Workflow>> claim = x =>
+            {
+                int current = Interlocked.Increment(ref inFlight);
+                lock (this)
+                {
+                    maxInFlight = Math.Max(maxInFlight, current);
+                }
+                Thread.Sleep(20);
+                Interlocked.Decrement(ref inFlight);
+                return Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
+            };
+            IWorkflowStore workflowStore = CreateBatchClaimingStore();
+            workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+            workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
+
+            using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 }))
+            {
+                int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(20, 10).Result : workflowServer.ExecuteWorkflows(20, 10));
+
+                Assert.That(result, Is.EqualTo(20));
+                Assert.That(maxInFlight, Is.EqualTo(1));
+            }
+        }
+
+        /// <summary>
+        /// A memory store whose first saves of claimed workflows throw, as a store that is briefly unavailable would.
+        /// </summary>
+        private class FailingSaveWorkflowStore : MemoryWorkflowStore
+        {
+            private int _failures;
+
+            public FailingSaveWorkflowStore(int failures)
+            {
+                _failures = failures;
+            }
+
+            public override bool SaveClaimed(Workflow workflow, string nodeId)
+            {
+                if (Interlocked.Decrement(ref _failures) >= 0)
+                {
+                    throw new InvalidOperationException("store unavailable");
+                }
+                return base.SaveClaimed(workflow, nodeId);
+            }
+        }
+
         #endregion
 
         #region IsSingleInstanceWorkflowRegistered Tests
