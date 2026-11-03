@@ -834,6 +834,58 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed collection, without executing any
+        /// further steps.  The raw document is moved, so the workflow type doesn't need to be loaded (e.g. by the web
+        /// console).  It is removed from the active collection atomically, so a node executing it at the same time will
+        /// fail to save it.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void CompleteWorkflow(Guid id)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
+            var doc = this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive).FindOneAndDelete(filter);
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+
+            SetCompleted(doc);
+            this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionCompleted).ReplaceOne(filter, doc, new ReplaceOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed collection, without executing any
+        /// further steps.  The raw document is moved, so the workflow type doesn't need to be loaded (e.g. by the web
+        /// console).  It is removed from the active collection atomically, so a node executing it at the same time will
+        /// fail to save it.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task CompleteWorkflowAsync(Guid id)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
+            var doc = await this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionActive).FindOneAndDeleteAsync(filter);
+            if (doc == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+
+            SetCompleted(doc);
+            await this.MongoDatabase.GetCollection<BsonDocument>(this.CollectionCompleted).ReplaceOneAsync(filter, doc, new ReplaceOptions() { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Sets the raw workflow document to the state the workflow server archives a completed workflow in.
+        /// </summary>
+        private static void SetCompleted(BsonDocument doc)
+        {
+            BsonDocument workflowElement = doc["Workflow"].AsBsonDocument;
+            workflowElement["IsComplete"] = BsonValue.Create(true);
+            workflowElement["CompletedOn"] = BsonValue.Create(DateTime.UtcNow);
+            workflowElement.Remove("LockedBy");
+            workflowElement.Remove("LockedOn");
+        }
+
+        /// <summary>
         /// Atomically claims the next available workflow for a node, using a single findAndModify so that no two nodes
         /// can claim the same workflow.
         /// </summary>

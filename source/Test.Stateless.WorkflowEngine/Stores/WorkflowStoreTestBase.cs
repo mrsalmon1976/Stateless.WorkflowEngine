@@ -1596,6 +1596,82 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region CompleteWorkflow Tests
+
+        [Test]
+        public void CompleteWorkflow_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.Throws<WorkflowNotFoundException>(() => store.CompleteWorkflow(Guid.NewGuid()));
+        }
+
+        [Test]
+        public void CompleteWorkflow_OnCompletion_MovesWorkflowToCompletedStore()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            wf.BasicMetaData = "metadata";
+            store.Save(wf);
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+
+            DateTime beforeComplete = DateTime.UtcNow;
+            store.CompleteWorkflow(wf.Id);
+
+            Assert.That(store.GetOrDefault(wf.Id), Is.Null);
+            Assert.That(store.GetIncompleteCount(), Is.EqualTo(1));
+            Assert.That(store.GetCompletedCount(), Is.EqualTo(1));
+
+            BasicWorkflow result = (BasicWorkflow)store.GetCompleted(wf.Id);
+            Assert.That(result.IsComplete, Is.True);
+            Assert.That(result.CompletedOn, Is.GreaterThan(beforeComplete.AddSeconds(-1)));
+            Assert.That(result.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
+            Assert.That(result.BasicMetaData, Is.EqualTo("metadata"));
+        }
+
+        [Test]
+        public void CompleteWorkflow_WorkflowClaimed_LockClearedAndNodeCannotSave()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(CreateClaimableWorkflow());
+            Workflow claimed = store.ClaimNext("node1");
+
+            store.CompleteWorkflow(claimed.Id);
+
+            Workflow result = store.GetCompleted(claimed.Id);
+            Assert.That(result.LockedBy, Is.Null);
+            Assert.That(result.LockedOn, Is.Null);
+            Assert.That(store.GetLockOwners(), Is.Empty);
+            // the node executing the workflow loses it, and doesn't recreate it
+            Assert.That(store.SaveClaimed(claimed, "node1"), Is.False);
+            Assert.That(store.GetOrDefault(claimed.Id), Is.Null);
+        }
+
+        [Test]
+        public void CompleteWorkflowAsync_WorkflowNotFound_ThrowsWorkflowNotFoundException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.ThrowsAsync<WorkflowNotFoundException>(() => store.CompleteWorkflowAsync(Guid.NewGuid()));
+        }
+
+        [Test]
+        public async Task CompleteWorkflowAsync_OnCompletion_MovesWorkflowToCompletedStore()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            store.Save(wf);
+
+            DateTime beforeComplete = DateTime.UtcNow;
+            await store.CompleteWorkflowAsync(wf.Id);
+
+            Assert.That(await store.GetOrDefaultAsync(wf.Id), Is.Null);
+            Workflow result = await store.GetCompletedAsync(wf.Id);
+            Assert.That(result.IsComplete, Is.True);
+            Assert.That(result.CompletedOn, Is.GreaterThan(beforeComplete.AddSeconds(-1)));
+            Assert.That(await store.GetCompletedCountAsync(), Is.EqualTo(1));
+        }
+
+        #endregion
+
         #region ClaimNext Tests
 
         [Test]

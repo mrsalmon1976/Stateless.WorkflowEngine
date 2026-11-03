@@ -517,6 +517,35 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed store, without executing any further
+        /// steps or raising any workflow events.  Any lock held on the workflow is cleared.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void CompleteWorkflow(Guid id)
+        {
+            lock (syncLock)
+            {
+                Workflow w = this.Get(id);
+                w.IsComplete = true;
+                w.CompletedOn = DateTime.UtcNow;
+                w.LockedBy = null;
+                w.LockedOn = null;
+                Archive(w);
+            }
+        }
+
+        /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed store, without executing any further
+        /// steps or raising any workflow events.  Any lock held on the workflow is cleared.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task CompleteWorkflowAsync(Guid id)
+        {
+            await Task.FromResult(0);
+            CompleteWorkflow(id);
+        }
+
+        /// <summary>
         /// Atomically claims the next available workflow for a node.
         /// </summary>
         public override Workflow ClaimNext(string nodeId)

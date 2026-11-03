@@ -156,6 +156,32 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
             foreach (var id in ids) await _workflowStore.Received(1).DeleteAsync(id);
         }
 
+        [Test]
+        public async Task Complete_Returns400_WhenNoWorkflowIds()
+        {
+            Assert.That(await _controller.Complete(_connection.Id, new WorkflowIdsRequest()), Is.TypeOf<BadRequestObjectResult>());
+        }
+
+        [Test]
+        public async Task Complete_Returns404_WhenConnectionNotFound()
+        {
+            var result = await _controller.Complete(Guid.NewGuid(), new WorkflowIdsRequest { WorkflowIds = new[] { Guid.NewGuid() } });
+
+            Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
+        }
+
+        [TestCase(1)]
+        [TestCase(5)]
+        public async Task Complete_CompletesEachWorkflow(int count)
+        {
+            var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
+
+            var result = await _controller.Complete(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
+
+            Assert.That(result, Is.TypeOf<NoContentResult>());
+            foreach (var id in ids) await _workflowStore.Received(1).CompleteWorkflowAsync(id);
+        }
+
         // --- Definition ---
 
         [Test]

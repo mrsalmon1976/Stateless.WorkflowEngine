@@ -22,7 +22,7 @@ const { hasClaim } = useAuth()
 const { confirm } = useConfirm()
 const { getConnection, getConnectionInfo } = useConnections()
 const { dashboards } = useDashboards()
-const { loadWorkflows, getWorkflow, suspendWorkflows, unsuspendWorkflows, deleteWorkflows } = useWorkflows(props.connectionId)
+const { loadWorkflows, getWorkflow, suspendWorkflows, unsuspendWorkflows, deleteWorkflows, completeWorkflows } = useWorkflows(props.connectionId)
 const overlay = useOverlay()
 const detailSlideover = overlay.create(WorkflowDetailSlideover)
 const definitionModal = overlay.create(DefinitionGraphModal)
@@ -122,7 +122,7 @@ async function refresh() {
     // drop selections for workflows that are no longer in the list
     const ids = new Set(workflowResult.map((x) => x.id))
     rowSelection.value = Object.fromEntries(Object.entries(rowSelection.value).filter(([id]) => ids.has(id) || id === idLookup.value?.id))
-    // refresh a looked-up workflow too, as it may have been suspended, unsuspended or deleted
+    // refresh a looked-up workflow too, as it may have been suspended, unsuspended, completed or deleted
     if (idLookup.value) await lookupWorkflowById()
   } catch (e) {
     notFound.value = e.status === 404
@@ -132,19 +132,33 @@ async function refresh() {
 }
 
 async function runBulkAction(action, ids) {
+  const countLabel = `${ids.length} workflow${ids.length === 1 ? '' : 's'}`
   const actions = {
     suspend: { fn: suspendWorkflows, verb: 'Suspend', done: 'suspended', color: 'warning' },
     unsuspend: { fn: unsuspendWorkflows, verb: 'Unsuspend', done: 'unsuspended', color: 'primary' },
-    delete: { fn: deleteWorkflows, verb: 'Delete', done: 'deleted', color: 'error' }
+    delete: {
+      fn: deleteWorkflows,
+      verb: 'Delete',
+      done: 'deleted',
+      color: 'error',
+      description: `Are you sure you want to permanently delete ${countLabel}? This cannot be undone.`
+    },
+    complete: {
+      fn: completeWorkflows,
+      verb: 'Mark as completed',
+      title: 'Mark workflows as completed',
+      done: 'marked as completed',
+      color: 'success',
+      description: `Are you sure you want to mark ${countLabel} as completed? ${ids.length === 1 ? 'It' : 'They'} will be moved to the completed workflows without running any further steps. This cannot be undone.`
+    }
   }
   const { fn, verb, done, color } = actions[action]
-  const description = action === 'delete'
-    ? `Are you sure you want to permanently delete ${ids.length} workflow${ids.length === 1 ? '' : 's'}? This cannot be undone.`
-    : `Are you sure you want to ${verb.toLowerCase()} ${ids.length} workflow${ids.length === 1 ? '' : 's'}?`
+  const title = actions[action].title ?? `${verb} workflows`
+  const description = actions[action].description ?? `Are you sure you want to ${verb.toLowerCase()} ${countLabel}?`
 
-  if (!(await confirm({ title: `${verb} workflows`, description, confirmLabel: verb, color }))) return false
+  if (!(await confirm({ title, description, confirmLabel: verb, color }))) return false
   await fn(ids)
-  notifySuccess(`${ids.length} workflow${ids.length === 1 ? '' : 's'} ${done}`)
+  notifySuccess(`${countLabel} ${done}`)
   await refresh()
   return true
 }
@@ -219,6 +233,7 @@ onMounted(refresh)
             <span class="text-sm text-muted">{{ selectedIds.length }} selected</span>
             <UButton v-if="hasClaim(Claims.SuspendWorkflow)" label="Suspend" icon="i-lucide-pause" color="warning" variant="soft" @click="runBulkAction('suspend', selectedIds)" />
             <UButton v-if="hasClaim(Claims.UnsuspendWorkflow)" label="Unsuspend" icon="i-lucide-play" color="primary" variant="soft" @click="runBulkAction('unsuspend', selectedIds)" />
+            <UButton v-if="hasClaim(Claims.CompleteWorkflow)" label="Mark as completed" icon="i-lucide-circle-check" color="success" variant="soft" @click="runBulkAction('complete', selectedIds)" />
             <UButton v-if="hasClaim(Claims.RemoveWorkflow)" label="Delete" icon="i-lucide-trash-2" color="error" variant="soft" @click="runBulkAction('delete', selectedIds)" />
           </div>
         </div>

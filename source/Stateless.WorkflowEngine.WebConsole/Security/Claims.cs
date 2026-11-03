@@ -2,6 +2,8 @@ namespace Stateless.WorkflowEngine.WebConsole.Security
 {
     public static class Claims
     {
+        public const string CompleteWorkflow = "CompleteWorkflow";
+
         public const string ConnectionAdd = "ConnectionAdd";
 
         public const string ConnectionDelete = "ConnectionDelete";
@@ -35,6 +37,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Security
 
         public static IReadOnlyList<string> AllClaims { get; } = new[]
         {
+            CompleteWorkflow,
             ConnectionAdd,
             ConnectionDelete,
             ConnectionEdit,

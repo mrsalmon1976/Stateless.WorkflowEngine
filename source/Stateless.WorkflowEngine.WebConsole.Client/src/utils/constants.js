@@ -1,4 +1,5 @@
 export const Claims = {
+  CompleteWorkflow: 'CompleteWorkflow',
   ConnectionAdd: 'ConnectionAdd',
   ConnectionDelete: 'ConnectionDelete',
   ConnectionEdit: 'ConnectionEdit',
@@ -23,6 +24,7 @@ export const ClaimDescriptions = [
   { value: Claims.DashboardDelete, label: 'Delete dashboards' },
   { value: Claims.SuspendWorkflow, label: 'Suspend workflows' },
   { value: Claims.UnsuspendWorkflow, label: 'Unsuspend workflows' },
+  { value: Claims.CompleteWorkflow, label: 'Mark workflows as completed' },
   { value: Claims.RemoveWorkflow, label: 'Delete workflows' },
   { value: Claims.UserList, label: 'View users' },
   { value: Claims.UserAdd, label: 'Add users' },

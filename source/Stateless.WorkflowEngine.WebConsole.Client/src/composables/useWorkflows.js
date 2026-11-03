@@ -27,5 +27,9 @@ export function useWorkflows(connectionId) {
     return api(`${base}/workflows/delete`, { method: 'POST', body: { workflowIds } })
   }
 
-  return { loadWorkflows, getWorkflow, getDefinition, suspendWorkflows, unsuspendWorkflows, deleteWorkflows }
+  function completeWorkflows(workflowIds) {
+    return api(`${base}/workflows/complete`, { method: 'POST', body: { workflowIds } })
+  }
+
+  return { loadWorkflows, getWorkflow, getDefinition, suspendWorkflows, unsuspendWorkflows, deleteWorkflows, completeWorkflows }
 }

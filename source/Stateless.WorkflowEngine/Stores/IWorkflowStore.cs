@@ -370,6 +370,20 @@ namespace Stateless.WorkflowEngine.Stores
         Task UnsuspendWorkflowAsync(Guid id);
 
         /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed store, without executing any further
+        /// steps or raising any workflow events.  Any lock held on the workflow is cleared.
+        /// </summary>
+        /// <param name="id"></param>
+        void CompleteWorkflow(Guid id);
+
+        /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed store, without executing any further
+        /// steps or raising any workflow events.  Any lock held on the workflow is cleared.
+        /// </summary>
+        /// <param name="id"></param>
+        Task CompleteWorkflowAsync(Guid id);
+
+        /// <summary>
         /// Atomically claims the next available workflow (not suspended, due for resumption and not locked), ordered by
         /// Priority DESC, RetryCount DESC and then CreatedOn, by setting <c>LockedBy</c> to the supplied node id.  This is
         /// the method used by the workflow server to fetch workflows - no two nodes can claim the same workflow.

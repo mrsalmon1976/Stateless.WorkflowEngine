@@ -14,7 +14,7 @@ const props = defineProps({
   workflow: { type: Object, required: true }
 })
 
-// closes with the action to perform ('suspend', 'unsuspend', 'delete') or null
+// closes with the action to perform ('suspend', 'unsuspend', 'delete', 'complete') or null
 const emit = defineEmits(['close'])
 
 const { hasClaim } = useAuth()
@@ -74,15 +74,26 @@ onMounted(async () => {
 
     <template #footer>
       <div class="flex w-full justify-between gap-2">
-        <UButton
-          v-if="!loading && !error && hasClaim(Claims.RemoveWorkflow)"
-          label="Delete"
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="soft"
-          @click="emit('close', 'delete')"
-        />
-        <span v-else />
+        <div class="flex gap-2">
+          <template v-if="!loading && !error">
+            <UButton
+              v-if="hasClaim(Claims.RemoveWorkflow)"
+              label="Delete"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="soft"
+              @click="emit('close', 'delete')"
+            />
+            <UButton
+              v-if="hasClaim(Claims.CompleteWorkflow)"
+              label="Mark as completed"
+              icon="i-lucide-circle-check"
+              color="success"
+              variant="soft"
+              @click="emit('close', 'complete')"
+            />
+          </template>
+        </div>
         <div class="flex gap-2">
           <template v-if="!loading && !error">
             <UButton

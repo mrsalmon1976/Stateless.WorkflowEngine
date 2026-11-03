@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/* Tailwind v4 no longer sets a pointer cursor on buttons - restore it (disabled buttons keep their own cursor) */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 /* highlight.js tokens for the workflow JSON viewer, using Nuxt UI tokens so they follow the colour mode */
 .json-viewer .hljs-attr {
   color: var(--ui-primary);

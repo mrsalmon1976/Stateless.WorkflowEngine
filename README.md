@@ -687,7 +687,7 @@ The web console is a browser-based tool for monitoring and managing workflow sto
 Features:
 
 * Dashboards of connections to workflow stores, showing active, suspended and completed workflow counts (with optional auto refresh)
-* A list of incomplete workflows per store - view the workflow JSON, view the workflow definition graph, and suspend, unsuspend or delete workflows individually or in bulk
+* A list of incomplete workflows per store - view the workflow JSON, view the workflow definition graph, and suspend, unsuspend, mark as completed or delete workflows individually or in bulk
 * User management with Admin and User roles - Users can be granted individual permissions
 * A notification when a new version of the console is available
 
@@ -713,7 +713,7 @@ Click **Add connection** to connect to a workflow store, and **Test connection**
 
 To connect to a secured RavenDb server, which uses https and authenticates with a client certificate, set **Client certificate** to the path of the certificate (`.pfx`) file on the console's server, and **Certificate password** to its password (if any).  In Docker, put the certificate in the `/app/Data` volume, e.g. `/app/Data/certs/client.pfx`.
 
-The console doesn't have your workflow types loaded, so it works with the raw workflow documents.  Versions of the RavenDb store prior to 6.0 loaded the workflow type to suspend, unsuspend and delete a workflow - from 6.0 these patch or delete the document directly, as the MongoDb store does.
+The console doesn't have your workflow types loaded, so it works with the raw workflow documents.  Versions of the RavenDb store prior to 6.0 loaded the workflow type to suspend, unsuspend and delete a workflow - from 6.0 these (and marking a workflow as completed) patch, move or delete the document directly, as the MongoDb store does.
 
 ## Workflows
 
@@ -722,8 +722,8 @@ The console doesn't have your workflow types loaded, so it works with the raw wo
 The workflow list shows the incomplete workflows in a store - completed workflows are not shown.  Suspended workflows are highlighted, and can be sorted to the top with the **Suspended** column.
 
 * **Show** sets how many workflows are loaded (up to 1000) - sorting and filtering apply to the loaded rows only.  To find a specific workflow in a large store, paste its full id into the filter and it will be looked up directly.
-* Select workflows with the checkboxes to **Suspend**, **Unsuspend** or **Delete** them in bulk.  Unsuspending a workflow resets its retry count, so it is picked up by the server straight away.
-* Click a workflow's row to see its full JSON document, which can be copied, and to suspend, unsuspend or delete it.
+* Select workflows with the checkboxes to **Suspend**, **Unsuspend**, **Mark as completed** or **Delete** them in bulk (each asks for confirmation first).  Unsuspending a workflow resets its retry count, so it is picked up by the server straight away.  Marking a workflow as completed moves it into the completed workflows as it is, without running any further steps or workflow events - use it for workflows that no longer need to run but should be kept rather than deleted.
+* Click a workflow's row to see its full JSON document, which can be copied, and to suspend, unsuspend, mark as completed or delete it.
 
 ![Workflow JSON](docs/images/webconsole/workflow-detail.png)
 
@@ -739,7 +739,7 @@ Admins can do everything, including managing users.  Users can view all dashboar
 
 * add, edit and delete connections
 * add, rename and delete dashboards
-* suspend, unsuspend and delete workflows
+* suspend, unsuspend, mark as completed and delete workflows
 * view, add, edit and delete users
 
 Actions a user doesn't have permission for are hidden.  Every user can change their own password from the user menu.

@@ -96,6 +96,16 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
             return ForEachWorkflowAsync(connectionId, request, (store, id) => store.DeleteAsync(id));
         }
 
+        /// <summary>
+        /// Marks workflows as complete, moving them into the completed collection without running any further steps.
+        /// </summary>
+        [HttpPost("workflows/complete")]
+        [Authorize(Policy = Claims.CompleteWorkflow)]
+        public Task<IActionResult> Complete(Guid connectionId, [FromBody] WorkflowIdsRequest request)
+        {
+            return ForEachWorkflowAsync(connectionId, request, (store, id) => store.CompleteWorkflowAsync(id));
+        }
+
         [HttpGet("definitions")]
         public async Task<IActionResult> Definition(Guid connectionId, [FromQuery] string? qualifiedName)
         {

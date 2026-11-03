@@ -757,6 +757,74 @@ namespace Stateless.WorkflowEngine.RavenDb
             await PatchWorkflowAsync(id, UnsuspendScript, new Dictionary<string, object> { { "resumeOn", DateTime.UtcNow } });
         }
 
+        /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed collection, without executing any
+        /// further steps.  The raw document is copied, so the workflow type doesn't need to be loaded (e.g. by the web
+        /// console), and the copy and delete are saved in a single transaction.
+        /// </summary>
+        /// <param name="id"></param>
+        public override void CompleteWorkflow(Guid id)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            using (IDocumentSession session = this.OpenSession())
+            {
+                if (!session.Advanced.Exists(fid))
+                {
+                    throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                }
+                session.Advanced.Defer(CompleteCommands(id));
+                session.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Marks an active workflow as complete and moves it into the completed collection, without executing any
+        /// further steps.  The raw document is copied, so the workflow type doesn't need to be loaded (e.g. by the web
+        /// console), and the copy and delete are saved in a single transaction.
+        /// </summary>
+        /// <param name="id"></param>
+        public override async Task CompleteWorkflowAsync(Guid id)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            using (var session = this.OpenAsyncSession())
+            {
+                if (!await session.Advanced.ExistsAsync(fid))
+                {
+                    throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+                }
+                session.Advanced.Defer(CompleteCommands(id));
+                await session.SaveChangesAsync();
+            }
+        }
+
+        // Copies the workflow into a completed workflow document, in the state the workflow server archives completed
+        // workflows in.  The metadata puts the copy in the completed workflow collection.
+        private const string CompleteScript = @"
+var workflow = this.Workflow;
+workflow.IsComplete = true;
+workflow.CompletedOn = args.now;
+workflow.LockedBy = null;
+workflow.LockedOn = null;
+put(args.completedId, { Workflow: workflow, WorkflowType: this.WorkflowType, '@metadata': { '@collection': args.collection, 'Raven-Clr-Type': args.clrType } });";
+
+        private ICommandData[] CompleteCommands(Guid id)
+        {
+            string fid = RavenDbIdUtility.FormatWorkflowId(id);
+            Type completedType = typeof(RavenCompletedWorkflow);
+            PatchRequest patch = new PatchRequest
+            {
+                Script = CompleteScript,
+                Values = new Dictionary<string, object>
+                {
+                    { "now", DateTime.UtcNow },
+                    { "completedId", RavenDbIdUtility.FormatCompletedWorkflowId(id) },
+                    { "collection", _documentStore.Conventions.FindCollectionName(completedType) },
+                    { "clrType", _documentStore.Conventions.FindClrTypeName(completedType) }
+                }
+            };
+            return new ICommandData[] { new PatchCommandData(fid, null, patch), new DeleteCommandData(fid, null) };
+        }
+
         private const string SuspendScript = "this.Workflow.IsSuspended = true;";
 
         private const string UnsuspendScript = "this.Workflow.IsSuspended = false; this.Workflow.RetryCount = 0; this.Workflow.ResumeOn = args.resumeOn;";

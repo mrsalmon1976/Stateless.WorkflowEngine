@@ -57,6 +57,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
             yield return new Endpoint("POST", $"/api/connections/{ConnectionId}/workflows/suspend", ids, Claims.SuspendWorkflow);
             yield return new Endpoint("POST", $"/api/connections/{ConnectionId}/workflows/unsuspend", ids, Claims.UnsuspendWorkflow);
             yield return new Endpoint("POST", $"/api/connections/{ConnectionId}/workflows/delete", ids, Claims.RemoveWorkflow);
+            yield return new Endpoint("POST", $"/api/connections/{ConnectionId}/workflows/complete", ids, Claims.CompleteWorkflow);
             yield return new Endpoint("GET", "/api/users", null, Claims.UserList);
             yield return new Endpoint("POST", "/api/users", user, Claims.UserAdd);
             yield return new Endpoint("PUT", $"/api/users/{TargetUserId}", user, Claims.UserEdit);
