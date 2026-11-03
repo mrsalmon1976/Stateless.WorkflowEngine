@@ -44,24 +44,24 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
         }
 
         [HttpGet("workflows")]
-        public IActionResult List(Guid connectionId, [FromQuery] int count = DefaultCount)
+        public async Task<IActionResult> List(Guid connectionId, [FromQuery] int count = DefaultCount)
         {
             if (count <= 0 || count > MaxCount) return ValidationFailed($"Count must be between 1 and {MaxCount}");
 
             ConnectionModel? connection = _userStore.GetConnection(connectionId);
             if (connection == null) return ConnectionNotFound();
 
-            return Ok(_workflowInfoService.GetIncompleteWorkflows(connection, count));
+            return Ok(await _workflowInfoService.GetIncompleteWorkflowsAsync(connection, count));
         }
 
         [HttpGet("workflows/{workflowId:guid}")]
-        public IActionResult Get(Guid connectionId, Guid workflowId)
+        public async Task<IActionResult> Get(Guid connectionId, Guid workflowId)
         {
             ConnectionModel? connection = _userStore.GetConnection(connectionId);
             if (connection == null) return ConnectionNotFound();
 
             IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
-            string? json = store.GetWorkflowAsJson(workflowId);
+            string? json = await store.GetWorkflowAsJsonAsync(workflowId);
             if (json == null)
             {
                 return NotFound(new { error = "No workflow found matching the supplied workflow and connection (the workflow may have completed)." });
@@ -70,34 +70,34 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
             UIWorkflow wf = _workflowInfoService.GetWorkflowInfoFromJson(connection.WorkflowStoreType, json);
             if (!String.IsNullOrEmpty(wf.QualifiedName))
             {
-                wf.WorkflowGraph = store.GetDefinitionByQualifiedName(wf.QualifiedName)?.Graph;
+                wf.WorkflowGraph = (await store.GetDefinitionByQualifiedNameAsync(wf.QualifiedName))?.Graph;
             }
             return Ok(new WorkflowResponse { WorkflowJson = json, IsSuspended = wf.IsSuspended, Workflow = wf });
         }
 
         [HttpPost("workflows/suspend")]
         [Authorize(Policy = Claims.SuspendWorkflow)]
-        public IActionResult Suspend(Guid connectionId, [FromBody] WorkflowIdsRequest request)
+        public Task<IActionResult> Suspend(Guid connectionId, [FromBody] WorkflowIdsRequest request)
         {
-            return ForEachWorkflow(connectionId, request, (store, id) => store.SuspendWorkflow(id));
+            return ForEachWorkflowAsync(connectionId, request, (store, id) => store.SuspendWorkflowAsync(id));
         }
 
         [HttpPost("workflows/unsuspend")]
         [Authorize(Policy = Claims.UnsuspendWorkflow)]
-        public IActionResult Unsuspend(Guid connectionId, [FromBody] WorkflowIdsRequest request)
+        public Task<IActionResult> Unsuspend(Guid connectionId, [FromBody] WorkflowIdsRequest request)
         {
-            return ForEachWorkflow(connectionId, request, (store, id) => store.UnsuspendWorkflow(id));
+            return ForEachWorkflowAsync(connectionId, request, (store, id) => store.UnsuspendWorkflowAsync(id));
         }
 
         [HttpPost("workflows/delete")]
         [Authorize(Policy = Claims.RemoveWorkflow)]
-        public IActionResult Delete(Guid connectionId, [FromBody] WorkflowIdsRequest request)
+        public Task<IActionResult> Delete(Guid connectionId, [FromBody] WorkflowIdsRequest request)
         {
-            return ForEachWorkflow(connectionId, request, (store, id) => store.Delete(id));
+            return ForEachWorkflowAsync(connectionId, request, (store, id) => store.DeleteAsync(id));
         }
 
         [HttpGet("definitions")]
-        public IActionResult Definition(Guid connectionId, [FromQuery] string? qualifiedName)
+        public async Task<IActionResult> Definition(Guid connectionId, [FromQuery] string? qualifiedName)
         {
             if (String.IsNullOrWhiteSpace(qualifiedName)) return ValidationFailed("Qualified name is required");
 
@@ -105,7 +105,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
             if (connection == null) return ConnectionNotFound();
 
             IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
-            WorkflowDefinition? definition = store.GetDefinitionByQualifiedName(qualifiedName);
+            WorkflowDefinition? definition = await store.GetDefinitionByQualifiedNameAsync(qualifiedName);
             if (definition == null)
             {
                 return NotFound(new { error = $"No workflow definition found for '{qualifiedName}'" });
@@ -113,7 +113,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
             return Ok(definition);
         }
 
-        private IActionResult ForEachWorkflow(Guid connectionId, WorkflowIdsRequest request, Action<IWorkflowStore, Guid> action)
+        private async Task<IActionResult> ForEachWorkflowAsync(Guid connectionId, WorkflowIdsRequest request, Func<IWorkflowStore, Guid, Task> action)
         {
             if (request.WorkflowIds.Length == 0) return ValidationFailed("No workflows selected");
 
@@ -123,7 +123,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Workflows
             IWorkflowStore store = _workflowStoreFactory.GetWorkflowStore(connection);
             foreach (Guid workflowId in request.WorkflowIds)
             {
-                action(store, workflowId);
+                await action(store, workflowId);
             }
             return NoContent();
         }

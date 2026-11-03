@@ -12,6 +12,7 @@ using NSubstitute;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
+using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.MongoDb
 {
@@ -148,6 +149,73 @@ namespace Test.Stateless.WorkflowEngine.MongoDb
 
             schemaService.Received(1).EnsureLockedByIndexExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
             schemaService.Received(1).EnsureCollectionExists(Arg.Any<IMongoDatabase>(), workflowStore.CollectionNodes);
+        }
+
+        [Test]
+        public async Task InitialiseAsync_AutoCreateTablesFalseAndAutoCreateIndexesFalse_NothingIsCreated()
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            await workflowStore.InitialiseAsync(false, false, false);
+
+            await schemaService.DidNotReceive().EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+            await schemaService.DidNotReceive().EnsureActiveIndexExistsAsync(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task InitialiseAsync_AutoCreateIndexFalse_CollectionsCreatedOnlyIfAutoCreateTables(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            await workflowStore.InitialiseAsync(autoCreateTables, false, true);
+
+            int expected = autoCreateTables ? 1 : 0;
+            await schemaService.Received(expected).EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            await schemaService.Received(expected).EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionDefinitions);
+            await schemaService.DidNotReceive().EnsureActiveIndexExistsAsync(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+            schemaService.DidNotReceive().EnsureCollectionExists(Arg.Any<IMongoDatabase>(), Arg.Any<string>());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task InitialiseAsync_AutoCreateIndexTrue_CollectionsAndIndexesAreCreated(bool autoCreateTables)
+        {
+            IMongoDbSchemaService schemaService = Substitute.For<IMongoDbSchemaService>();
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+            workflowStore.SchemaService = schemaService;
+
+            await workflowStore.InitialiseAsync(autoCreateTables, true, false);
+
+            await schemaService.Received(1).EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            await schemaService.Received(1).EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
+            await schemaService.Received(1).EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionNodes);
+            await schemaService.DidNotReceive().EnsureCollectionExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionDefinitions);
+            await schemaService.Received(1).EnsureActiveIndexExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            await schemaService.Received(1).EnsureSuspendedIndexExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            await schemaService.Received(1).EnsureLockedByIndexExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionActive);
+            await schemaService.Received(1).EnsureCompletedIndexExistsAsync(Arg.Any<IMongoDatabase>(), workflowStore.CollectionCompleted);
+        }
+
+        [Test]
+        public async Task InitialiseAsync_RealSchemaService_CreatesIndexesOnce()
+        {
+            MongoDbWorkflowStore workflowStore = (MongoDbWorkflowStore)GetStore();
+
+            // a second call finds the existing collections and indexes, so must not fail
+            await workflowStore.InitialiseAsync(true, true, true);
+            await workflowStore.InitialiseAsync(true, true, true);
+
+            var indexNames = (await workflowStore.GetCollection().Indexes.ListAsync()).ToList().Select(x => x["name"].AsString).ToList();
+            Assert.That(indexNames, Does.Contain(IndexNames.Workflow_Priority_RetryCount_CreatedOn));
+            Assert.That(indexNames, Does.Contain(IndexNames.Workflow_IsSuspended));
+            Assert.That(indexNames, Does.Contain(IndexNames.Workflow_LockedBy));
+            var completedIndexNames = (await workflowStore.GetCompletedCollection().Indexes.ListAsync()).ToList().Select(x => x["name"].AsString).ToList();
+            Assert.That(completedIndexNames, Does.Contain(IndexNames.CompletedWorkflow_CreatedOn));
         }
 
         [Test]

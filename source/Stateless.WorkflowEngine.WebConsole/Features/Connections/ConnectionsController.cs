@@ -142,7 +142,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
         }
 
         [HttpGet("{id:guid}/info")]
-        public IActionResult Info(Guid id)
+        public async Task<IActionResult> Info(Guid id)
         {
             if (_memoryCache.TryGetValue(InfoCacheKey(id), out WorkflowStoreInfo? cached) && cached != null)
             {
@@ -152,14 +152,14 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             ConnectionModel? connection = _userStore.GetConnection(id);
             if (connection == null) return ConnectionNotFound();
 
-            WorkflowStoreInfo info = _workflowInfoService.GetWorkflowStoreInfo(connection);
+            WorkflowStoreInfo info = await _workflowInfoService.GetWorkflowStoreInfoAsync(connection);
             _memoryCache.Set(InfoCacheKey(id), info, InfoCacheDuration);
             return Ok(info);
         }
 
         [HttpPost("test")]
         [Authorize(Policy = WebConsoleServiceCollectionExtensions.ConnectionTestPolicy)]
-        public IActionResult Test([FromBody] ConnectionRequest request)
+        public async Task<IActionResult> Test([FromBody] ConnectionRequest request)
         {
             var errors = _validator.Validate(request);
             if (errors.Count > 0) return ValidationFailed(errors);
@@ -172,7 +172,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Features.Connections
             try
             {
                 var store = _workflowStoreFactory.GetWorkflowStore(connection);
-                store.GetIncompleteCount();
+                await store.GetIncompleteCountAsync();
                 return Ok(new ConnectionTestResponse { Success = true, Message = "Connection succeeded" });
             }
             catch (Exception ex)

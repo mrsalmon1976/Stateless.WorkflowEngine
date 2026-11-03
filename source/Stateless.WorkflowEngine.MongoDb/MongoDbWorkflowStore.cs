@@ -229,6 +229,19 @@ namespace Stateless.WorkflowEngine.MongoDb
         }
 
         /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override async Task<WorkflowDefinition> GetDefinitionByQualifiedNameAsync(string qualifiedName)
+        {
+            var collection = GetDefinitionCollection();
+            return await collection
+                   .Find(x => x.QualifiedName == qualifiedName)
+                   .SingleOrDefaultAsync();
+        }
+
+        /// <summary>
         /// Gets all workflow definitions persisted in the store.
         /// </summary>
         /// <returns></returns>
@@ -236,6 +249,16 @@ namespace Stateless.WorkflowEngine.MongoDb
         {
             var collection = GetDefinitionCollection();
             return collection.Find(_ => true).ToList();
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<WorkflowDefinition>> GetDefinitionsAsync()
+        {
+            var collection = GetDefinitionCollection();
+            return await collection.Find(_ => true).ToListAsync();
         }
 
         /// <summary>
@@ -382,6 +405,16 @@ namespace Stateless.WorkflowEngine.MongoDb
             return workflows;
         }
 
+        public override async Task<IEnumerable<string>> GetIncompleteWorkflowsAsJsonAsync(int count)
+        {
+            var docs = await this.MongoDatabase
+                .GetCollection<BsonDocument>(this.CollectionActive)
+                .Find(new BsonDocument())
+                .Limit(count)
+                .ToListAsync();
+            return docs.Select(x => MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(x)).ToList();
+        }
+
         /// <summary>
         /// Gets an active workflow by it's unique identifier, returning null if it does not exist.
         /// </summary>
@@ -425,9 +458,28 @@ namespace Stateless.WorkflowEngine.MongoDb
                 .GetCollection<BsonDocument>(this.CollectionActive)
                 .Find(filter)
                 .SingleOrDefault();
+            return ToWorkflowJson(doc);
+        }
+
+        /// <summary>
+        /// Gets the json version of a workflow.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<string> GetWorkflowAsJsonAsync(Guid id)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", ToBsonId(id));
+            var doc = await this.MongoDatabase
+                .GetCollection<BsonDocument>(this.CollectionActive)
+                .Find(filter)
+                .SingleOrDefaultAsync();
+            return ToWorkflowJson(doc);
+        }
+
+        private static string ToWorkflowJson(BsonDocument doc)
+        {
             if (doc != null)
             {
-                
                 var settings = new JsonWriterSettings { OutputMode = JsonOutputMode.Shell, Indent = true };
                 string json = MongoDB.Bson.BsonExtensionMethods.ToJson<BsonDocument>(doc, settings);
                 return ToReadableLegacyGuids(json);
@@ -567,6 +619,36 @@ namespace Stateless.WorkflowEngine.MongoDb
                 this.SchemaService.EnsureSuspendedIndexExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureLockedByIndexExists(this.MongoDatabase, this.CollectionActive);
                 this.SchemaService.EnsureCompletedIndexExists(this.MongoDatabase, this.CollectionCompleted);
+            }
+        }
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override async Task InitialiseAsync(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
+        {
+            if (autoCreateTables || autoCreateIndexes)
+            {
+                await this.SchemaService.EnsureCollectionExistsAsync(this.MongoDatabase, this.CollectionActive);
+                await this.SchemaService.EnsureCollectionExistsAsync(this.MongoDatabase, this.CollectionCompleted);
+
+                await this.SchemaService.EnsureCollectionExistsAsync(this.MongoDatabase, this.CollectionNodes);
+
+                if (persistWorkflowDefinitions)
+                {
+                    await this.SchemaService.EnsureCollectionExistsAsync(this.MongoDatabase, this.CollectionDefinitions);
+                }
+
+            }
+
+            if (autoCreateIndexes)
+            {
+                await this.SchemaService.EnsureActiveIndexExistsAsync(this.MongoDatabase, this.CollectionActive);
+                await this.SchemaService.EnsureSuspendedIndexExistsAsync(this.MongoDatabase, this.CollectionActive);
+                await this.SchemaService.EnsureLockedByIndexExistsAsync(this.MongoDatabase, this.CollectionActive);
+                await this.SchemaService.EnsureCompletedIndexExistsAsync(this.MongoDatabase, this.CollectionCompleted);
             }
         }
 

@@ -48,6 +48,20 @@ namespace Stateless.WorkflowEngine.Stores
         T Get<T>(Guid id) where T : Workflow;
 
         /// <summary>
+        /// Gets an active workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<Workflow> GetAsync(Guid id);
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<T> GetAsync<T>(Guid id) where T : Workflow;
+
+        /// <summary>
         /// Gets the count of unsuspended workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
@@ -67,10 +81,23 @@ namespace Stateless.WorkflowEngine.Stores
         WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName);
 
         /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        Task<WorkflowDefinition> GetDefinitionByQualifiedNameAsync(string qualifiedName);
+
+        /// <summary>
         /// Gets all workflow definitions persisted in the store.
         /// </summary>
         /// <returns></returns>
         IEnumerable<WorkflowDefinition> GetDefinitions();
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        Task<IEnumerable<WorkflowDefinition>> GetDefinitionsAsync();
 
         /// <summary>
         /// Gets the count of workflows in the active collection (including suspended workflows).
@@ -138,6 +165,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="id"></param>
         /// <returns></returns>
         Workflow GetCompleted(Guid id);
+
+        /// <summary>
+        /// Gets a completed workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<Workflow> GetCompletedAsync(Guid id);
 
         /// <summary>
         /// Gets the count of completed workflows in the completed collection.
@@ -219,12 +253,26 @@ namespace Stateless.WorkflowEngine.Stores
         IEnumerable<string> GetIncompleteWorkflowsAsJson(int count);
 
         /// <summary>
+        /// Gets all incomplete workflows as JSON documents.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        Task<IEnumerable<string>> GetIncompleteWorkflowsAsJsonAsync(int count);
+
+        /// <summary>
         /// Gets the json version of a workflow.
         /// </summary>
         /// <param name="connectionModel"></param>
         /// <param name="workflowId"></param>
         /// <returns></returns>
         string GetWorkflowAsJson(Guid id);
+
+        /// <summary>
+        /// Gets the json version of a workflow.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        Task<string> GetWorkflowAsJsonAsync(Guid id);
 
         /// <summary>
         /// Gets the count of suspended workflows in the active collection.
@@ -244,6 +292,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
         void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        Task InitialiseAsync(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
 
 
         /// <summary>

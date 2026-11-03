@@ -34,26 +34,26 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
         // --- List ---
 
         [Test]
-        public void List_Returns404_WhenConnectionNotFound()
+        public async Task List_Returns404_WhenConnectionNotFound()
         {
-            Assert.That(_controller.List(Guid.NewGuid()), Is.TypeOf<NotFoundObjectResult>());
+            Assert.That(await _controller.List(Guid.NewGuid()), Is.TypeOf<NotFoundObjectResult>());
         }
 
         [TestCase(0)]
         [TestCase(-1)]
         [TestCase(WorkflowsController.MaxCount + 1)]
-        public void List_Returns400_WhenCountInvalid(int count)
+        public async Task List_Returns400_WhenCountInvalid(int count)
         {
-            Assert.That(_controller.List(_connection.Id, count), Is.TypeOf<BadRequestObjectResult>());
+            Assert.That(await _controller.List(_connection.Id, count), Is.TypeOf<BadRequestObjectResult>());
         }
 
         [Test]
-        public void List_ReturnsIncompleteWorkflows()
+        public async Task List_ReturnsIncompleteWorkflows()
         {
             var workflows = new[] { new UIWorkflow(), new UIWorkflow() };
-            _workflowInfoService.GetIncompleteWorkflows(_connection, 25).Returns(workflows);
+            _workflowInfoService.GetIncompleteWorkflowsAsync(_connection, 25).Returns(Task.FromResult<IEnumerable<UIWorkflow>>(workflows));
 
-            var result = (OkObjectResult)_controller.List(_connection.Id, 25);
+            var result = (OkObjectResult)await _controller.List(_connection.Id, 25);
 
             Assert.That(result.Value, Is.SameAs(workflows));
         }
@@ -61,29 +61,29 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
         // --- Get ---
 
         [Test]
-        public void Get_Returns404_WhenConnectionNotFound()
+        public async Task Get_Returns404_WhenConnectionNotFound()
         {
-            Assert.That(_controller.Get(Guid.NewGuid(), Guid.NewGuid()), Is.TypeOf<NotFoundObjectResult>());
+            Assert.That(await _controller.Get(Guid.NewGuid(), Guid.NewGuid()), Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Get_Returns404_WhenWorkflowNotFound()
+        public async Task Get_Returns404_WhenWorkflowNotFound()
         {
             var workflowId = Guid.NewGuid();
-            _workflowStore.GetWorkflowAsJson(workflowId).Returns((string?)null);
+            _workflowStore.GetWorkflowAsJsonAsync(workflowId).Returns(Task.FromResult<string?>(null));
 
-            Assert.That(_controller.Get(_connection.Id, workflowId), Is.TypeOf<NotFoundObjectResult>());
+            Assert.That(await _controller.Get(_connection.Id, workflowId), Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Get_ReturnsWorkflowJsonAndSuspendedFlag()
+        public async Task Get_ReturnsWorkflowJsonAndSuspendedFlag()
         {
             var workflowId = Guid.NewGuid();
-            _workflowStore.GetWorkflowAsJson(workflowId).Returns("{ json }");
+            _workflowStore.GetWorkflowAsJsonAsync(workflowId).Returns(Task.FromResult<string?>("{ json }"));
             var workflow = new UIWorkflow { IsSuspended = true };
             _workflowInfoService.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, "{ json }").Returns(workflow);
 
-            var result = (OkObjectResult)_controller.Get(_connection.Id, workflowId);
+            var result = (OkObjectResult)await _controller.Get(_connection.Id, workflowId);
 
             var response = (WorkflowResponse)result.Value!;
             Assert.That(response.WorkflowJson, Is.EqualTo("{ json }"));
@@ -92,14 +92,14 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
         }
 
         [Test]
-        public void Get_IncludesDefinitionGraph_WhenWorkflowHasQualifiedName()
+        public async Task Get_IncludesDefinitionGraph_WhenWorkflowHasQualifiedName()
         {
             var workflowId = Guid.NewGuid();
-            _workflowStore.GetWorkflowAsJson(workflowId).Returns("{ json }");
+            _workflowStore.GetWorkflowAsJsonAsync(workflowId).Returns(Task.FromResult<string?>("{ json }"));
             _workflowInfoService.GetWorkflowInfoFromJson(WorkflowStoreType.MongoDb, "{ json }").Returns(new UIWorkflow { QualifiedName = "Test.Workflow" });
-            _workflowStore.GetDefinitionByQualifiedName("Test.Workflow").Returns(new WorkflowDefinition { Graph = "digraph {}" });
+            _workflowStore.GetDefinitionByQualifiedNameAsync("Test.Workflow").Returns(Task.FromResult<WorkflowDefinition?>(new WorkflowDefinition { Graph = "digraph {}" }));
 
-            var result = (OkObjectResult)_controller.Get(_connection.Id, workflowId);
+            var result = (OkObjectResult)await _controller.Get(_connection.Id, workflowId);
 
             Assert.That(((WorkflowResponse)result.Value!).Workflow!.WorkflowGraph, Is.EqualTo("digraph {}"));
         }
@@ -107,84 +107,84 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Workflows
         // --- Suspend / Unsuspend / Delete ---
 
         [Test]
-        public void Suspend_Returns404_WhenConnectionNotFound()
+        public async Task Suspend_Returns404_WhenConnectionNotFound()
         {
-            var result = _controller.Suspend(Guid.NewGuid(), new WorkflowIdsRequest { WorkflowIds = new[] { Guid.NewGuid() } });
+            var result = await _controller.Suspend(Guid.NewGuid(), new WorkflowIdsRequest { WorkflowIds = new[] { Guid.NewGuid() } });
 
             Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Suspend_Returns400_WhenNoWorkflowIds()
+        public async Task Suspend_Returns400_WhenNoWorkflowIds()
         {
-            Assert.That(_controller.Suspend(_connection.Id, new WorkflowIdsRequest()), Is.TypeOf<BadRequestObjectResult>());
+            Assert.That(await _controller.Suspend(_connection.Id, new WorkflowIdsRequest()), Is.TypeOf<BadRequestObjectResult>());
         }
 
         [TestCase(1)]
         [TestCase(5)]
-        public void Suspend_SuspendsEachWorkflow(int count)
+        public async Task Suspend_SuspendsEachWorkflow(int count)
         {
             var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
 
-            var result = _controller.Suspend(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
+            var result = await _controller.Suspend(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
 
             Assert.That(result, Is.TypeOf<NoContentResult>());
-            foreach (var id in ids) _workflowStore.Received(1).SuspendWorkflow(id);
+            foreach (var id in ids) await _workflowStore.Received(1).SuspendWorkflowAsync(id);
         }
 
         [TestCase(1)]
         [TestCase(5)]
-        public void Unsuspend_UnsuspendsEachWorkflow(int count)
+        public async Task Unsuspend_UnsuspendsEachWorkflow(int count)
         {
             var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
 
-            var result = _controller.Unsuspend(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
+            var result = await _controller.Unsuspend(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
 
             Assert.That(result, Is.TypeOf<NoContentResult>());
-            foreach (var id in ids) _workflowStore.Received(1).UnsuspendWorkflow(id);
+            foreach (var id in ids) await _workflowStore.Received(1).UnsuspendWorkflowAsync(id);
         }
 
         [TestCase(1)]
         [TestCase(5)]
-        public void Delete_DeletesEachWorkflow(int count)
+        public async Task Delete_DeletesEachWorkflow(int count)
         {
             var ids = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToArray();
 
-            var result = _controller.Delete(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
+            var result = await _controller.Delete(_connection.Id, new WorkflowIdsRequest { WorkflowIds = ids });
 
             Assert.That(result, Is.TypeOf<NoContentResult>());
-            foreach (var id in ids) _workflowStore.Received(1).Delete(id);
+            foreach (var id in ids) await _workflowStore.Received(1).DeleteAsync(id);
         }
 
         // --- Definition ---
 
         [Test]
-        public void Definition_Returns400_WhenNoQualifiedName()
+        public async Task Definition_Returns400_WhenNoQualifiedName()
         {
-            Assert.That(_controller.Definition(_connection.Id, " "), Is.TypeOf<BadRequestObjectResult>());
+            Assert.That(await _controller.Definition(_connection.Id, " "), Is.TypeOf<BadRequestObjectResult>());
         }
 
         [Test]
-        public void Definition_Returns404_WhenConnectionNotFound()
+        public async Task Definition_Returns404_WhenConnectionNotFound()
         {
-            Assert.That(_controller.Definition(Guid.NewGuid(), "A"), Is.TypeOf<NotFoundObjectResult>());
+            Assert.That(await _controller.Definition(Guid.NewGuid(), "A"), Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Definition_Returns404_WhenDefinitionNotFound()
+        public async Task Definition_Returns404_WhenDefinitionNotFound()
         {
-            _workflowStore.GetDefinitionByQualifiedName("A").Returns((WorkflowDefinition?)null);
+            _workflowStore.GetDefinitionByQualifiedNameAsync("A").Returns(Task.FromResult<WorkflowDefinition?>(null));
 
-            Assert.That(_controller.Definition(_connection.Id, "A"), Is.TypeOf<NotFoundObjectResult>());
+            Assert.That(await _controller.Definition(_connection.Id, "A"), Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Definition_ReturnsDefinition()
+        public async Task Definition_ReturnsDefinition()
         {
             var definition = new WorkflowDefinition { QualifiedName = "A", Graph = "digraph {}" };
-            _workflowStore.GetDefinitionByQualifiedName("A").Returns(definition);
+            _workflowStore.GetDefinitionByQualifiedNameAsync("A").Returns(Task.FromResult<WorkflowDefinition?>(definition));
 
-            var result = (OkObjectResult)_controller.Definition(_connection.Id, "A");
+            var result = (OkObjectResult)await _controller.Definition(_connection.Id, "A");
 
             Assert.That(result.Value, Is.SameAs(definition));
         }

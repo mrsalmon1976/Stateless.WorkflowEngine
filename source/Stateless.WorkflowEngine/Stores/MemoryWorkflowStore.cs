@@ -104,6 +104,16 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override async Task<WorkflowDefinition> GetDefinitionByQualifiedNameAsync(string qualifiedName)
+        {
+            return await Task.FromResult(GetDefinitionByQualifiedName(qualifiedName));
+        }
+
+        /// <summary>
         /// Gets all workflow definitions persisted in the store.
         /// </summary>
         /// <returns></returns>
@@ -113,6 +123,15 @@ namespace Stateless.WorkflowEngine.Stores
             {
                 return _workflowDefinitions.ToList();
             }
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<WorkflowDefinition>> GetDefinitionsAsync()
+        {
+            return await Task.FromResult(GetDefinitions());
         }
 
         /// <summary>
@@ -345,6 +364,17 @@ namespace Stateless.WorkflowEngine.Stores
         public override void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
         {
             // does nothing - tables are in-memory and there are no indexes
+        }
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override Task InitialiseAsync(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
+        {
+            // does nothing - tables are in-memory and there are no indexes
+            return Task.CompletedTask;
         }
 
 

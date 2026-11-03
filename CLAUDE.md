@@ -47,7 +47,7 @@ Test projects:
 - **`Workflow`** (`Stateless.WorkflowEngine/Workflow.cs`) — abstract base class. Custom workflows override `Initialise(initialState)` to configure Stateless states/triggers. Custom properties are serialized and persist across executions.
 - **`WorkflowServer`** — processes queued workflows. The `maxConcurrent` slots share batches claimed with `IWorkflowStore.ClaimNext(nodeId, count)` (up to `WorkflowServerOptions.ClaimBatchSize`, default 10, per claim; the next batch is claimed in the background as soon as the slots have taken the previous one, one claim in flight at a time; Priority DESC, RetryCount DESC, CreatedOn ASC). Supports concurrent execution via `maxConcurrent` parameter. Should be a singleton, and is `IDisposable` (dispose releases its locks). Multiple servers (nodes) can share a store — see "Multi-node locking".
 - **`WorkflowClient`** — registers workflows for processing by the server.
-- **`IWorkflowStore`** — persistence abstraction. Collections: `Workflows` (active), `CompletedWorkflows` (archived) and `WorkflowNodes` (running servers). Every store method has a sync and an async version.
+- **`IWorkflowStore`** — persistence abstraction. Collections: `Workflows` (active), `CompletedWorkflows` (archived) and `WorkflowNodes` (running servers). Every store method has a sync and an async version (except `RegisterType`, which does no I/O).
 - **`IWorkflowAction`** — interface for actions executed at each workflow step.
 
 ### Store Implementations

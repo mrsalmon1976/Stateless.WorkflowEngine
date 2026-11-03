@@ -14,6 +14,7 @@ using Raven.Client.ServerWide;
 using Raven.Client.Documents.Operations.Indexes;
 using Newtonsoft.Json.Linq;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
+using System.Threading.Tasks;
 
 namespace Test.Stateless.WorkflowEngine.RavenDb
 {
@@ -94,6 +95,17 @@ namespace Test.Stateless.WorkflowEngine.RavenDb
             // the store relies on RavenDB auto indexes - see RavenDbWorkflowStore.Initialise
             RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
             workflowStore.Initialise(false, true, false);
+
+            string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto/")).ToArray();
+            Assert.That(indexNames, Is.Empty);
+        }
+
+        [Test]
+        public async Task InitialiseAsync_DatabaseAlreadyExists_NoStaticIndexesAreCreated()
+        {
+            // the test database already exists, so this also checks the "already exists" error is swallowed
+            RavenDbWorkflowStore workflowStore = (RavenDbWorkflowStore)GetStore();
+            await workflowStore.InitialiseAsync(true, true, false);
 
             string[] indexNames = _documentStore.Maintenance.Send(new GetIndexNamesOperation(0, 10)).Where(x => !x.StartsWith("Auto/")).ToArray();
             Assert.That(indexNames, Is.Empty);

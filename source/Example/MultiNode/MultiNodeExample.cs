@@ -309,7 +309,7 @@ namespace Example.MultiNode
                     {
                         // workflows locked by a crashed node only become available after the node timeout, so keep polling
                         // until the store is empty
-                        emptyChecks = (server.WorkflowStore.GetIncompleteCount() == 0 ? emptyChecks + 1 : 0);
+                        emptyChecks = (await server.WorkflowStore.GetIncompleteCountAsync() == 0 ? emptyChecks + 1 : 0);
                         if (emptyChecks >= 3)
                         {
                             break;
@@ -320,7 +320,7 @@ namespace Example.MultiNode
 
                 if (stopwatch.Elapsed >= maxRunTime)
                 {
-                    context.Log($"Node stopped at its maximum run time of {maxRunTime.TotalMinutes:0} minutes - {server.WorkflowStore.GetIncompleteCount()} workflow(s) are still to run", ConsoleColor.Yellow);
+                    context.Log($"Node stopped at its maximum run time of {maxRunTime.TotalMinutes:0} minutes - {await server.WorkflowStore.GetIncompleteCountAsync()} workflow(s) are still to run", ConsoleColor.Yellow);
                 }
                 context.Log($"Node finished in {stopwatch.Elapsed.TotalSeconds:0}s - {context.Stats}", ConsoleColor.Cyan);
             }

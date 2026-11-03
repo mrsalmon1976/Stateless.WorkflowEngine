@@ -59,6 +59,31 @@ namespace Stateless.WorkflowEngine.Stores
         }
 
         /// <summary>
+        /// Gets an active workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<Workflow> GetAsync(Guid id)
+        {
+            Workflow workflow = await this.GetOrDefaultAsync(id);
+            if (workflow == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", id));
+            }
+            return workflow;
+        }
+
+        /// <summary>
+        /// Gets an active workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<T> GetAsync<T>(Guid id) where T : Workflow
+        {
+            return (T)await this.GetAsync(id);
+        }
+
+        /// <summary>
         /// Gets the count of active workflows in the active collection (excluding suspended workflows).
         /// </summary>
         /// <returns></returns>
@@ -78,10 +103,23 @@ namespace Stateless.WorkflowEngine.Stores
         public abstract WorkflowDefinition GetDefinitionByQualifiedName(string qualifiedName);
 
         /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public abstract Task<WorkflowDefinition> GetDefinitionByQualifiedNameAsync(string qualifiedName);
+
+        /// <summary>
         /// Gets all workflow definitions persisted in the store.
         /// </summary>
         /// <returns></returns>
         public abstract IEnumerable<WorkflowDefinition> GetDefinitions();
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task<IEnumerable<WorkflowDefinition>> GetDefinitionsAsync();
 
         /// <summary>
         /// Gets the count of active workflows in the active collection (including suspended workflows).
@@ -104,7 +142,18 @@ namespace Stateless.WorkflowEngine.Stores
         {
             return this.GetIncomplete(count).Select(x => JsonConvert.SerializeObject(x));
         }
-        
+
+        /// <summary>
+        /// Gets all incomplete workflows as JSON documents.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public virtual async Task<IEnumerable<string>> GetIncompleteWorkflowsAsJsonAsync(int count)
+        {
+            IEnumerable<Workflow> workflows = await this.GetIncompleteAsync(count);
+            return workflows.Select(x => JsonConvert.SerializeObject(x));
+        }
+
         /// <summary>
         /// Gets a workflow as a JSON document.
         /// </summary>
@@ -113,6 +162,21 @@ namespace Stateless.WorkflowEngine.Stores
         public virtual string GetWorkflowAsJson(Guid id)
         {
             var doc = this.GetOrDefault(id);
+            if (doc == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(doc);
+        }
+
+        /// <summary>
+        /// Gets a workflow as a JSON document.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public virtual async Task<string> GetWorkflowAsJsonAsync(Guid id)
+        {
+            var doc = await this.GetOrDefaultAsync(id);
             if (doc == null)
             {
                 return null;
@@ -194,6 +258,21 @@ namespace Stateless.WorkflowEngine.Stores
         public Workflow GetCompleted(Guid id)
         {
             Workflow workflow = this.GetCompletedOrDefault(id);
+            if (workflow == null)
+            {
+                throw new WorkflowNotFoundException(String.Format("No completed workflow found matching id {0}", id));
+            }
+            return workflow;
+        }
+
+        /// <summary>
+        /// Gets a completed workflow by it's unique identifier.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task<Workflow> GetCompletedAsync(Guid id)
+        {
+            Workflow workflow = await this.GetCompletedOrDefaultAsync(id);
             if (workflow == null)
             {
                 throw new WorkflowNotFoundException(String.Format("No completed workflow found matching id {0}", id));
@@ -324,6 +403,13 @@ namespace Stateless.WorkflowEngine.Stores
         /// <param name="autoCreateTables"></param>
         /// <param name="autoCreateIndexes"></param>
         public abstract void Initialise(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public abstract Task InitialiseAsync(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions);
 
 
         /// <summary>

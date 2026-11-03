@@ -151,6 +151,55 @@ namespace Test.Stateless.WorkflowEngine.Stores
 
         #endregion
 
+        #region GetAsync Tests
+
+        [Test]
+        public void GetAsync_InvalidId_ThrowsException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.ThrowsAsync<WorkflowNotFoundException>(async () => await store.GetAsync(Guid.NewGuid()));
+        }
+
+        [Test]
+        public async Task GetAsync_ValidId_ReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            store.Save(new BasicWorkflow(BasicWorkflow.State.Start));
+
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+
+            BasicWorkflow result = await store.GetAsync<BasicWorkflow>(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        #endregion
+
+        #region GetCompletedAsync Tests
+
+        [Test]
+        public void GetCompletedAsync_InvalidId_ThrowsException()
+        {
+            IWorkflowStore store = GetStore();
+            Assert.ThrowsAsync<WorkflowNotFoundException>(async () => await store.GetCompletedAsync(Guid.NewGuid()));
+        }
+
+        [Test]
+        public async Task GetCompletedAsync_ValidId_ReturnsWorkflow()
+        {
+            IWorkflowStore store = GetStore();
+            BasicWorkflow wf = new BasicWorkflow(BasicWorkflow.State.Start);
+            store.Save(wf);
+            store.Archive(wf);
+
+            Workflow result = await store.GetCompletedAsync(wf.Id);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Id, Is.EqualTo(wf.Id));
+        }
+
+        #endregion
+
         #region GetOrDefaultAsync Tests
 
         [Test]
@@ -615,6 +664,67 @@ namespace Test.Stateless.WorkflowEngine.Stores
             store.SaveDefinition(brokenWorkflowDefinition);
 
             WorkflowDefinition result = store.GetDefinitionByQualifiedName(basicWorkflowType.FullName);
+
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.Name, Is.EqualTo(basicWorkflowType.Name));
+            Assert.That(result.QualifiedName, Is.EqualTo(basicWorkflowType.FullName));
+        }
+
+        #endregion
+
+        #region GetDefinitionsAsync Tests
+
+        [Test]
+        public async Task GetDefinitionsAsync_NoDefinitions_EmptyEnumerableReturned()
+        {
+            IWorkflowStore store = GetStore();
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = await store.GetDefinitionsAsync();
+
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task GetDefinitionsAsync_DefinitionsAdded_AllDefinitionsReturned()
+        {
+            IWorkflowStore store = GetStore();
+            WorkflowDefinition basicWorkflowDefinition = this.CreateWorkflowDefinition<BasicWorkflow>();
+            WorkflowDefinition brokenWorkflowDefinition = this.CreateWorkflowDefinition<BrokenWorkflow>();
+
+            store.SaveDefinition(basicWorkflowDefinition);
+            store.SaveDefinition(brokenWorkflowDefinition);
+
+            IEnumerable<WorkflowDefinition> savedDefinitions = await store.GetDefinitionsAsync();
+
+            Assert.That(savedDefinitions.Count(), Is.EqualTo(2));
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == basicWorkflowDefinition.QualifiedName), Is.Not.Null);
+            Assert.That(savedDefinitions.SingleOrDefault(x => x.QualifiedName == brokenWorkflowDefinition.QualifiedName), Is.Not.Null);
+        }
+
+        #endregion
+
+        #region GetDefinitionByQualifiedNameAsync Tests
+
+        [Test]
+        public async Task GetDefinitionByQualifiedNameAsync_NotFound_ReturnsNull()
+        {
+            IWorkflowStore store = GetStore();
+            store.SaveDefinition(this.CreateWorkflowDefinition<BrokenWorkflow>());
+
+            WorkflowDefinition result = await store.GetDefinitionByQualifiedNameAsync(typeof(BasicWorkflow).FullName);
+
+            Assert.That(result, Is.Null);
+        }
+
+        [Test]
+        public async Task GetDefinitionByQualifiedNameAsync_Exists_Returned()
+        {
+            IWorkflowStore store = GetStore();
+            Type basicWorkflowType = typeof(BasicWorkflow);
+            store.SaveDefinition(this.CreateWorkflowDefinition<BasicWorkflow>());
+            store.SaveDefinition(this.CreateWorkflowDefinition<BrokenWorkflow>());
+
+            WorkflowDefinition result = await store.GetDefinitionByQualifiedNameAsync(basicWorkflowType.FullName);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result.Name, Is.EqualTo(basicWorkflowType.Name));
@@ -1130,7 +1240,60 @@ namespace Test.Stateless.WorkflowEngine.Stores
             BasicWorkflow workflow = DeserializeJsonWorkflow<BasicWorkflow>(json);
             Assert.That(workflow, Is.Not.Null);
             Assert.That(workflow.Id, Is.EqualTo(id));
-            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString())); 
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
+        }
+
+        #endregion
+
+        #region GetIncompleteWorkflowsAsJsonAsync Tests
+
+        [Test]
+        public async Task GetIncompleteWorkflowsAsJsonAsync_WorkflowsFound_SerializesWorkflows()
+        {
+            Workflow workflow1 = new BasicWorkflow(BasicWorkflow.State.Start);
+            Workflow workflow2 = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+
+            IWorkflowStore store = GetStore();
+            store.Save(workflow1);
+            store.Save(workflow2);
+
+            List<string> documents = (await store.GetIncompleteWorkflowsAsJsonAsync(10)).ToList();
+            Assert.That(documents.Count, Is.EqualTo(2));
+
+            Workflow w1 = DeserializeJsonWorkflow<BasicWorkflow>(documents[0]);
+            Assert.That(w1.Id, Is.EqualTo(workflow1.Id));
+            Workflow w2 = DeserializeJsonWorkflow<BasicWorkflow>(documents[1]);
+            Assert.That(w2.Id, Is.EqualTo(workflow2.Id));
+        }
+
+        #endregion
+
+        #region GetWorkflowAsJsonAsync Tests
+
+        [Test]
+        public async Task GetWorkflowAsJsonAsync_NoSuchDocument_ReturnsNull()
+        {
+            var store = this.GetStore();
+
+            var doc = await store.GetWorkflowAsJsonAsync(Guid.NewGuid());
+            Assert.That(doc, Is.Null);
+        }
+
+        [Test]
+        public async Task GetWorkflowAsJsonAsync_DocumentExists_ReturnsDocument()
+        {
+            IWorkflowStore store = GetStore();
+            Workflow wf = new BasicWorkflow(BasicWorkflow.State.DoingStuff);
+            Guid id = wf.Id;
+            store.Save(wf);
+
+            string json = await store.GetWorkflowAsJsonAsync(id);
+            Assert.That(json, Is.Not.Null);
+
+            BasicWorkflow workflow = DeserializeJsonWorkflow<BasicWorkflow>(json);
+            Assert.That(workflow, Is.Not.Null);
+            Assert.That(workflow.Id, Is.EqualTo(id));
+            Assert.That(workflow.CurrentState, Is.EqualTo(BasicWorkflow.State.DoingStuff.ToString()));
         }
 
         #endregion

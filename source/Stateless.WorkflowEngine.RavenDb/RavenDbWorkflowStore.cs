@@ -317,6 +317,23 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Gets a workflow by a qualified definition name.
+        /// </summary>
+        /// <param name="qualifiedName"></param>
+        /// <returns></returns>
+        public override async Task<WorkflowDefinition> GetDefinitionByQualifiedNameAsync(string qualifiedName)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                var result = from s in session.Query<RavenWorkflowDefinition>()
+                    .Customize(x => x.WaitForNonStaleResults())
+                    .Where(x => x.WorkflowDefinition.QualifiedName == qualifiedName)
+                             select s.WorkflowDefinition;
+                return await result.SingleOrDefaultAsync();
+            }
+        }
+
+        /// <summary>
         /// Gets all workflow definitions persisted in the store.
         /// </summary>
         /// <returns></returns>
@@ -329,6 +346,21 @@ namespace Stateless.WorkflowEngine.RavenDb
                     .Customize(x => x.WaitForNonStaleResults())
                              select s.WorkflowDefinition;
                 return result.ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets all workflow definitions persisted in the store.
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<IEnumerable<WorkflowDefinition>> GetDefinitionsAsync()
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                var result = from s in session.Query<RavenWorkflowDefinition>()
+                    .Customize(x => x.WaitForNonStaleResults())
+                             select s.WorkflowDefinition;
+                return await result.ToListAsync();
             }
         }
 
@@ -353,6 +385,25 @@ namespace Stateless.WorkflowEngine.RavenDb
         }
 
         /// <summary>
+        /// Gets the first <c>count</c> incomplete workflows as raw JSON documents.  The documents are not deserialized,
+        /// so the workflow types don't need to be loaded (e.g. by the web console).
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public override async Task<IEnumerable<string>> GetIncompleteWorkflowsAsJsonAsync(int count)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                // the documents belong to the session, so they must be converted before it is disposed
+                List<BlittableJsonReaderObject> docs = await session.Advanced.AsyncRawQuery<BlittableJsonReaderObject>($"from '{WorkflowCollection}'")
+                    .NoTracking()
+                    .Take(count)
+                    .ToListAsync();
+                return docs.Select(x => x.ToString()).ToList();
+            }
+        }
+
+        /// <summary>
         /// Gets an active workflow as a raw JSON document, or null if it does not exist.  The document is not
         /// deserialized, so the workflow type doesn't need to be loaded (e.g. by the web console).
         /// </summary>
@@ -363,6 +414,21 @@ namespace Stateless.WorkflowEngine.RavenDb
             using (IDocumentSession session = this.OpenSession())
             {
                 BlittableJsonReaderObject doc = session.Load<BlittableJsonReaderObject>(RavenDbIdUtility.FormatWorkflowId(id));
+                return doc?.ToString();
+            }
+        }
+
+        /// <summary>
+        /// Gets an active workflow as a raw JSON document, or null if it does not exist.  The document is not
+        /// deserialized, so the workflow type doesn't need to be loaded (e.g. by the web console).
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override async Task<string> GetWorkflowAsJsonAsync(Guid id)
+        {
+            using (var session = this.OpenAsyncSession())
+            {
+                BlittableJsonReaderObject doc = await session.LoadAsync<BlittableJsonReaderObject>(RavenDbIdUtility.FormatWorkflowId(id));
                 return doc?.ToString();
             }
         }
@@ -533,6 +599,28 @@ namespace Stateless.WorkflowEngine.RavenDb
             // Versions prior to 6.0 deployed static indexes here ("WorkflowIndex/Priority/RetryCount/CreatedOn" and
             // "CompletedWorkflowIndex/CreatedOn"), but no query ever used them, so they only added indexing and storage
             // overhead.  Existing copies can be deleted from the database.  See https://ravendb.net/docs/article-page/7.0/csharp/indexes/creating-and-deploying
+        }
+
+        /// <summary>
+        /// Called to initialise the workflow store (creates tables/collections/indexes etc.)
+        /// </summary>
+        /// <param name="autoCreateTables"></param>
+        /// <param name="autoCreateIndexes"></param>
+        public override async Task InitialiseAsync(bool autoCreateTables, bool autoCreateIndexes, bool persistWorkflowDefinitions)
+        {
+            // ensure the database exists - no static indexes are created (see Initialise)
+            if (autoCreateTables || autoCreateIndexes)
+            {
+                try
+                {
+                    await _documentStore.Maintenance.Server.SendAsync(
+                        new CreateDatabaseOperation(new DatabaseRecord(_documentStore.Database)));
+                }
+                catch (ConcurrencyException)
+                {
+                    // database already exists
+                }
+            }
         }
 
 

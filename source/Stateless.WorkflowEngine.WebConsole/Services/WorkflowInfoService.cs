@@ -19,9 +19,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
 
     public interface IWorkflowInfoService
     {
-        WorkflowStoreInfo GetWorkflowStoreInfo(ConnectionModel connectionModel);
+        Task<WorkflowStoreInfo> GetWorkflowStoreInfoAsync(ConnectionModel connectionModel);
 
-        IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count);
+        Task<IEnumerable<UIWorkflow>> GetIncompleteWorkflowsAsync(ConnectionModel connectionModel, int count);
 
         UIWorkflow GetWorkflowInfoFromJson(WorkflowStoreType workflowStoreType, string json);
     }
@@ -35,10 +35,10 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
             _workflowStoreFactory = workflowStoreFactory;
         }
 
-        public IEnumerable<UIWorkflow> GetIncompleteWorkflows(ConnectionModel connectionModel, int count)
+        public async Task<IEnumerable<UIWorkflow>> GetIncompleteWorkflowsAsync(ConnectionModel connectionModel, int count)
         {
             IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
-            IEnumerable<string> documents = workflowStore.GetIncompleteWorkflowsAsJson(count);
+            IEnumerable<string> documents = await workflowStore.GetIncompleteWorkflowsAsJsonAsync(count);
             List<UIWorkflow> workflows = new List<UIWorkflow>();
             Dictionary<string, string?> workflowGraphs = new Dictionary<string, string?>();
 
@@ -50,7 +50,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
                 {
                     if (!workflowGraphs.TryGetValue(wf.QualifiedName, out string? graph))
                     {
-                        graph = workflowStore.GetDefinitionByQualifiedName(wf.QualifiedName)?.Graph;
+                        graph = (await workflowStore.GetDefinitionByQualifiedNameAsync(wf.QualifiedName))?.Graph;
                         workflowGraphs.Add(wf.QualifiedName, graph);
                     }
                     wf.WorkflowGraph = graph;
@@ -89,7 +89,7 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
             return workflow;
         }
 
-        public WorkflowStoreInfo GetWorkflowStoreInfo(ConnectionModel connectionModel)
+        public async Task<WorkflowStoreInfo> GetWorkflowStoreInfoAsync(ConnectionModel connectionModel)
         {
             ArgumentNullException.ThrowIfNull(connectionModel);
 
@@ -97,9 +97,9 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
             try
             {
                 IWorkflowStore workflowStore = _workflowStoreFactory.GetWorkflowStore(connectionModel);
-                info.ActiveCount = workflowStore.GetActiveCount();
-                info.SuspendedCount = workflowStore.GetSuspendedCount();
-                info.CompleteCount = workflowStore.GetCompletedCount();
+                info.ActiveCount = await workflowStore.GetActiveCountAsync();
+                info.SuspendedCount = await workflowStore.GetSuspendedCountAsync();
+                info.CompleteCount = await workflowStore.GetCompletedCountAsync();
             }
             catch (Exception ex)
             {

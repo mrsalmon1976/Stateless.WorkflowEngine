@@ -333,6 +333,17 @@ namespace Stateless.WorkflowEngine.Services
             Interlocked.Exchange(ref _lastHeartbeatTicks, DateTime.UtcNow.Ticks);
         }
 
+        private async Task RegisterAsync(string nodeId)
+        {
+            await _workflowStore.RegisterNodeAsync(new WorkflowNode
+            {
+                Id = nodeId,
+                Name = _options.NodeName,
+                StartedOn = DateTime.UtcNow
+            });
+            Interlocked.Exchange(ref _lastHeartbeatTicks, DateTime.UtcNow.Ticks);
+        }
+
         private async Task HeartbeatAsync()
         {
             if (await _workflowStore.HeartbeatAsync(_nodeId))
@@ -346,7 +357,7 @@ namespace Stateless.WorkflowEngine.Services
             // use a new id
             string previousNodeId = _nodeId;
             string nodeId = Guid.NewGuid().ToString();
-            Register(nodeId);
+            await RegisterAsync(nodeId);
             lock (_stopLock)
             {
                 _previousNodeIds.Add(previousNodeId);

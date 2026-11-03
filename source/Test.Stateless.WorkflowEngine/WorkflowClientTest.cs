@@ -179,12 +179,12 @@ namespace Test.Stateless.WorkflowEngine
             workflow.Id = workflowId;
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(workflow));
+            workflowStore.GetAsync<BasicWorkflow>(workflowId).Returns(Task.FromResult(workflow));
 
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             BasicWorkflow result = await workflowClient.GetAsync<BasicWorkflow>(workflowId);
 
-            await workflowStore.Received(1).GetOrDefaultAsync(workflowId);
+            await workflowStore.Received(1).GetAsync<BasicWorkflow>(workflowId);
             Assert.That(result.Id, Is.EqualTo(workflowId));
         }
 
@@ -194,7 +194,7 @@ namespace Test.Stateless.WorkflowEngine
             Guid workflowId = Guid.NewGuid();
 
             IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetOrDefaultAsync(workflowId).Returns(Task.FromResult<Workflow>(null));
+            workflowStore.GetAsync<BasicWorkflow>(workflowId).Returns(Task.FromException<BasicWorkflow>(new WorkflowNotFoundException("not found")));
 
             IWorkflowClient workflowClient = new WorkflowClient(workflowStore, Substitute.For<IWorkflowRegistrationService>());
             Assert.ThrowsAsync<WorkflowNotFoundException>(async () => await workflowClient.GetAsync<BasicWorkflow>(workflowId));

@@ -86,12 +86,7 @@ namespace Stateless.WorkflowEngine
         /// <returns></returns>
         public async Task<T> GetAsync<T>(Guid workflowId) where T : Workflow
         {
-            Workflow workflow = await this.WorkflowStore.GetOrDefaultAsync(workflowId);
-            if (workflow == null)
-            {
-                throw new WorkflowNotFoundException(String.Format("No workflow found matching id {0}", workflowId));
-            }
-            return (T)workflow;
+            return await this.WorkflowStore.GetAsync<T>(workflowId);
         }
 
         /// <summary>

@@ -24,16 +24,16 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
             _service = new WorkflowInfoService(_workflowStoreFactory);
         }
 
-        // --- GetWorkflowStoreInfo ---
+        // --- GetWorkflowStoreInfoAsync ---
 
         [Test]
-        public void GetWorkflowStoreInfo_ReturnsCounts()
+        public async Task GetWorkflowStoreInfo_ReturnsCounts()
         {
-            _workflowStore.GetActiveCount().Returns(10);
-            _workflowStore.GetSuspendedCount().Returns(2);
-            _workflowStore.GetCompletedCount().Returns(100);
+            _workflowStore.GetActiveCountAsync().Returns(Task.FromResult(10L));
+            _workflowStore.GetSuspendedCountAsync().Returns(Task.FromResult(2L));
+            _workflowStore.GetCompletedCountAsync().Returns(Task.FromResult(100L));
 
-            var info = _service.GetWorkflowStoreInfo(_connection);
+            var info = await _service.GetWorkflowStoreInfoAsync(_connection);
 
             Assert.That(info.ActiveCount, Is.EqualTo(10));
             Assert.That(info.SuspendedCount, Is.EqualTo(2));
@@ -42,19 +42,19 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
         }
 
         [Test]
-        public void GetWorkflowStoreInfo_CapturesError_WhenStoreFails()
+        public async Task GetWorkflowStoreInfo_CapturesError_WhenStoreFails()
         {
-            _workflowStore.GetActiveCount().Returns(x => throw new Exception("boom"));
+            _workflowStore.GetActiveCountAsync().Returns(Task.FromException<long>(new Exception("boom")));
 
-            var info = _service.GetWorkflowStoreInfo(_connection);
+            var info = await _service.GetWorkflowStoreInfoAsync(_connection);
 
             Assert.That(info.ConnectionError, Is.EqualTo("boom"));
         }
 
-        // --- GetIncompleteWorkflows ---
+        // --- GetIncompleteWorkflowsAsync ---
 
         [Test]
-        public void GetIncompleteWorkflows_LoadsEachDefinitionOnce()
+        public async Task GetIncompleteWorkflows_LoadsEachDefinitionOnce()
         {
             var docs = new[]
             {
@@ -62,29 +62,29 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
                 CreateWorkflowJson("A", "Test.WorkflowA"),
                 CreateWorkflowJson("B", "Test.WorkflowB")
             };
-            _workflowStore.GetIncompleteWorkflowsAsJson(50).Returns(docs);
-            _workflowStore.GetDefinitionByQualifiedName("Test.WorkflowA").Returns(new WorkflowDefinition { Graph = "graphA" });
-            _workflowStore.GetDefinitionByQualifiedName("Test.WorkflowB").Returns((WorkflowDefinition?)null);
+            _workflowStore.GetIncompleteWorkflowsAsJsonAsync(50).Returns(Task.FromResult<IEnumerable<string>>(docs));
+            _workflowStore.GetDefinitionByQualifiedNameAsync("Test.WorkflowA").Returns(Task.FromResult<WorkflowDefinition?>(new WorkflowDefinition { Graph = "graphA" }));
+            _workflowStore.GetDefinitionByQualifiedNameAsync("Test.WorkflowB").Returns(Task.FromResult<WorkflowDefinition?>(null));
 
-            var result = _service.GetIncompleteWorkflows(_connection, 50).ToList();
+            var result = (await _service.GetIncompleteWorkflowsAsync(_connection, 50)).ToList();
 
             Assert.That(result, Has.Count.EqualTo(3));
             Assert.That(result[0].WorkflowGraph, Is.EqualTo("graphA"));
             Assert.That(result[1].WorkflowGraph, Is.EqualTo("graphA"));
             Assert.That(result[2].WorkflowGraph, Is.Null);
-            _workflowStore.Received(1).GetDefinitionByQualifiedName("Test.WorkflowA");
-            _workflowStore.Received(1).GetDefinitionByQualifiedName("Test.WorkflowB");
+            await _workflowStore.Received(1).GetDefinitionByQualifiedNameAsync("Test.WorkflowA");
+            await _workflowStore.Received(1).GetDefinitionByQualifiedNameAsync("Test.WorkflowB");
         }
 
         [Test]
-        public void GetIncompleteWorkflows_DoesNotLoadDefinition_WhenNoQualifiedName()
+        public async Task GetIncompleteWorkflows_DoesNotLoadDefinition_WhenNoQualifiedName()
         {
-            _workflowStore.GetIncompleteWorkflowsAsJson(5).Returns(new[] { CreateWorkflowJson("A", null) });
+            _workflowStore.GetIncompleteWorkflowsAsJsonAsync(5).Returns(Task.FromResult<IEnumerable<string>>(new[] { CreateWorkflowJson("A", null) }));
 
-            var result = _service.GetIncompleteWorkflows(_connection, 5).ToList();
+            var result = (await _service.GetIncompleteWorkflowsAsync(_connection, 5)).ToList();
 
             Assert.That(result, Has.Count.EqualTo(1));
-            _workflowStore.DidNotReceiveWithAnyArgs().GetDefinitionByQualifiedName(default!);
+            await _workflowStore.DidNotReceiveWithAnyArgs().GetDefinitionByQualifiedNameAsync(default!);
         }
 
         // --- GetWorkflowInfoFromJson ---
@@ -170,15 +170,15 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Services
         }
 
         [Test]
-        public void GetIncompleteWorkflows_ParsesDocumentsForConnectionStoreType()
+        public async Task GetIncompleteWorkflows_ParsesDocumentsForConnectionStoreType()
         {
             var connection = TestHelpers.CreateRavenDbConnection();
             _workflowStoreFactory.GetWorkflowStore(connection).Returns(_workflowStore);
             // not valid for the MongoDb parser, which treats $type as an extended json type
             string json = "{ \"Workflow\": { \"$type\": \"Test.MyWorkflow, Test\", \"Name\": \"MyWorkflow\" } }";
-            _workflowStore.GetIncompleteWorkflowsAsJson(5).Returns(new[] { json });
+            _workflowStore.GetIncompleteWorkflowsAsJsonAsync(5).Returns(Task.FromResult<IEnumerable<string>>(new[] { json }));
 
-            var result = _service.GetIncompleteWorkflows(connection, 5).ToList();
+            var result = (await _service.GetIncompleteWorkflowsAsync(connection, 5)).ToList();
 
             Assert.That(result.Single().Name, Is.EqualTo("MyWorkflow"));
         }

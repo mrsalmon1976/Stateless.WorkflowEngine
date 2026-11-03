@@ -83,9 +83,9 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
             WriteUserStore(Path.Combine(dataPath, "users.json"));
 
             var workflowStore = Substitute.For<IWorkflowStore>();
-            workflowStore.GetIncompleteWorkflowsAsJson(Arg.Any<int>()).Returns(Array.Empty<string>());
-            workflowStore.GetWorkflowAsJson(WorkflowId).Returns(JsonConvert.SerializeObject(new { Workflow = new { Id = WorkflowId } }));
-            workflowStore.GetDefinitionByQualifiedName("Test.Workflow").Returns(new WorkflowDefinition { QualifiedName = "Test.Workflow" });
+            workflowStore.GetIncompleteWorkflowsAsJsonAsync(Arg.Any<int>()).Returns(Task.FromResult<IEnumerable<string>>(Array.Empty<string>()));
+            workflowStore.GetWorkflowAsJsonAsync(WorkflowId).Returns(Task.FromResult(JsonConvert.SerializeObject(new { Workflow = new { Id = WorkflowId } })));
+            workflowStore.GetDefinitionByQualifiedNameAsync("Test.Workflow").Returns(Task.FromResult(new WorkflowDefinition { QualifiedName = "Test.Workflow" }));
             var workflowStoreFactory = Substitute.For<IWorkflowStoreFactory>();
             workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(workflowStore);
             var versionCheckService = Substitute.For<IVersionCheckService>();

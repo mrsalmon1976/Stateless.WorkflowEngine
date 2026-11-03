@@ -383,36 +383,36 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         // --- Info ---
 
         [Test]
-        public void Info_Returns404_WhenConnectionNotFound()
+        public async Task Info_Returns404_WhenConnectionNotFound()
         {
-            var result = _controller.Info(Guid.NewGuid());
+            var result = await _controller.Info(Guid.NewGuid());
 
             Assert.That(result, Is.TypeOf<NotFoundObjectResult>());
         }
 
         [Test]
-        public void Info_ReturnsAndCachesInfo()
+        public async Task Info_ReturnsAndCachesInfo()
         {
             var connection = TestHelpers.CreateConnection();
             var info = new WorkflowStoreInfo { ActiveCount = 5 };
             _userStore.GetConnection(connection.Id).Returns(connection);
-            _workflowInfoService.GetWorkflowStoreInfo(connection).Returns(info);
+            _workflowInfoService.GetWorkflowStoreInfoAsync(connection).Returns(Task.FromResult(info));
 
-            var result = (OkObjectResult)_controller.Info(connection.Id);
-            _controller.Info(connection.Id);
+            var result = (OkObjectResult)await _controller.Info(connection.Id);
+            await _controller.Info(connection.Id);
 
             Assert.That(result.Value, Is.SameAs(info));
-            _workflowInfoService.Received(1).GetWorkflowStoreInfo(connection);
+            await _workflowInfoService.Received(1).GetWorkflowStoreInfoAsync(connection);
         }
 
         [Test]
-        public void Info_ReturnsCachedInfo_WithoutLoadingConnection()
+        public async Task Info_ReturnsCachedInfo_WithoutLoadingConnection()
         {
             var id = Guid.NewGuid();
             var info = new WorkflowStoreInfo();
             _memoryCache.Set(ConnectionsController.InfoCacheKey(id), info);
 
-            var result = (OkObjectResult)_controller.Info(id);
+            var result = (OkObjectResult)await _controller.Info(id);
 
             Assert.That(result.Value, Is.SameAs(info));
             _userStore.DidNotReceiveWithAnyArgs().GetConnection(default);
@@ -421,36 +421,36 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         // --- Test ---
 
         [Test]
-        public void Test_Returns400_WhenInvalid()
+        public async Task Test_Returns400_WhenInvalid()
         {
             _validator.Validate(Arg.Any<ConnectionRequest>()).Returns(new List<string> { "error" });
 
-            var result = _controller.Test(CreateRequest());
+            var result = await _controller.Test(CreateRequest());
 
             Assert.That(result, Is.TypeOf<BadRequestObjectResult>());
         }
 
         [Test]
-        public void Test_ReturnsSuccess_WhenStoreResponds()
+        public async Task Test_ReturnsSuccess_WhenStoreResponds()
         {
             var store = Substitute.For<IWorkflowStore>();
             _workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(store);
 
-            var result = (OkObjectResult)_controller.Test(CreateRequest());
+            var result = (OkObjectResult)await _controller.Test(CreateRequest());
 
             Assert.That(((ConnectionTestResponse)result.Value!).Success, Is.True);
-            store.Received(1).GetIncompleteCount();
+            await store.Received(1).GetIncompleteCountAsync();
             _workflowStoreFactory.Received(1).Evict(Arg.Any<Guid>());
         }
 
         [Test]
-        public void Test_ReturnsFailure_WhenStoreThrows()
+        public async Task Test_ReturnsFailure_WhenStoreThrows()
         {
             var store = Substitute.For<IWorkflowStore>();
-            store.GetIncompleteCount().Returns(x => throw new Exception("Command is not authorized"));
+            store.GetIncompleteCountAsync().Returns(Task.FromException<long>(new Exception("Command is not authorized")));
             _workflowStoreFactory.GetWorkflowStore(Arg.Any<ConnectionModel>()).Returns(store);
 
-            var result = (OkObjectResult)_controller.Test(CreateRequest());
+            var result = (OkObjectResult)await _controller.Test(CreateRequest());
 
             var response = (ConnectionTestResponse)result.Value!;
             Assert.That(response.Success, Is.False);
@@ -458,7 +458,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
         }
 
         [Test]
-        public void Test_UsesStoredPassword_WhenTestingExistingConnection()
+        public async Task Test_UsesStoredPassword_WhenTestingExistingConnection()
         {
             var existing = TestHelpers.CreateConnection();
             existing.User = "joe";
@@ -468,7 +468,7 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Features.Connections
             var request = CreateRequest(user: "joe");
             request.Id = existing.Id;
 
-            _controller.Test(request);
+            await _controller.Test(request);
 
             _workflowStoreFactory.Received(1).GetWorkflowStore(Arg.Is<ConnectionModel>(x => x.Password == "existing-cipher" && x.Id != existing.Id));
         }
