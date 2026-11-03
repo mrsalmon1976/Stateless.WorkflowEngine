@@ -11,10 +11,12 @@ hljs.registerLanguage('json', json)
 
 const props = defineProps({
   connectionId: { type: String, required: true },
-  workflow: { type: Object, required: true }
+  workflow: { type: Object, required: true },
+  // runs an action ('suspend', 'unsuspend', 'delete', 'complete') on the workflow, including its confirmation,
+  // resolving to true if it was carried out
+  runAction: { type: Function, required: true }
 })
 
-// closes with the action to perform ('suspend', 'unsuspend', 'delete', 'complete') or null
 const emit = defineEmits(['close'])
 
 const { hasClaim } = useAuth()
@@ -25,6 +27,22 @@ const loading = ref(true)
 const error = ref('')
 const workflowJson = ref('')
 const isSuspended = ref(false)
+const busyAction = ref(null)
+
+/**
+ * Runs an action while the slideover stays open behind its confirmation, closing it once the action is done.  If
+ * the action is cancelled or fails (the error is shown by the api), the slideover stays open.
+ */
+async function onAction(action) {
+  busyAction.value = action
+  try {
+    if (await props.runAction(action)) emit('close')
+  } catch {
+    // already reported
+  } finally {
+    busyAction.value = null
+  }
+}
 
 const formattedJson = computed(() => {
   try {
@@ -51,7 +69,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <USlideover :title="workflow.name ?? 'Workflow'" :description="workflow.id" :ui="{ content: 'sm:max-w-3xl' }" @update:open="(open) => !open && emit('close', null)">
+  <USlideover :title="workflow.name ?? 'Workflow'" :description="workflow.id" :ui="{ content: 'sm:max-w-3xl' }" @update:open="(open) => !open && emit('close')">
     <template #body>
       <div v-if="loading" class="space-y-2">
         <USkeleton v-for="i in 12" :key="i" class="h-4" :class="i % 3 === 0 ? 'w-1/2' : 'w-full'" />
@@ -82,7 +100,9 @@ onMounted(async () => {
               icon="i-lucide-trash-2"
               color="error"
               variant="soft"
-              @click="emit('close', 'delete')"
+              :loading="busyAction === 'delete'"
+              :disabled="!!busyAction"
+              @click="onAction('delete')"
             />
             <UButton
               v-if="hasClaim(Claims.CompleteWorkflow)"
@@ -90,7 +110,9 @@ onMounted(async () => {
               icon="i-lucide-circle-check"
               color="success"
               variant="soft"
-              @click="emit('close', 'complete')"
+              :loading="busyAction === 'complete'"
+              :disabled="!!busyAction"
+              @click="onAction('complete')"
             />
           </template>
         </div>
@@ -100,17 +122,21 @@ onMounted(async () => {
               v-if="isSuspended && hasClaim(Claims.UnsuspendWorkflow)"
               label="Unsuspend"
               icon="i-lucide-play"
-              @click="emit('close', 'unsuspend')"
+              :loading="busyAction === 'unsuspend'"
+              :disabled="!!busyAction"
+              @click="onAction('unsuspend')"
             />
             <UButton
               v-if="!isSuspended && hasClaim(Claims.SuspendWorkflow)"
               label="Suspend"
               icon="i-lucide-pause"
               color="warning"
-              @click="emit('close', 'suspend')"
+              :loading="busyAction === 'suspend'"
+              :disabled="!!busyAction"
+              @click="onAction('suspend')"
             />
           </template>
-          <UButton label="Close" color="neutral" variant="ghost" @click="emit('close', null)" />
+          <UButton label="Close" color="neutral" variant="ghost" @click="emit('close')" />
         </div>
       </div>
     </template>

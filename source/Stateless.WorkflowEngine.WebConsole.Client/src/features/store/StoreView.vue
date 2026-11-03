@@ -163,11 +163,9 @@ async function runBulkAction(action, ids) {
   return true
 }
 
-async function openWorkflow(workflow) {
-  const action = await detailSlideover.open({ connectionId: props.connectionId, workflow }).result
-  if (action) {
-    await runBulkAction(action, [workflow.id])
-  }
+function openWorkflow(workflow) {
+  // the slideover runs its actions itself, so it stays open while the confirmation shows
+  detailSlideover.open({ connectionId: props.connectionId, workflow, runAction: (action) => runBulkAction(action, [workflow.id]) })
 }
 
 function openDefinition(workflow) {
