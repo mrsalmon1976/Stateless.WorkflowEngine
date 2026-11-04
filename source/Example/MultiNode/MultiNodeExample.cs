@@ -1,5 +1,7 @@
 using Example.Shared;
 using Example.Shared.Workflows.MultiNode;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Raven.Client.Documents;
 using Raven.Client.ServerWide.Operations;
@@ -122,6 +124,14 @@ namespace Example.MultiNode
                 return null;
             }
             return (storeType == Constants.StoreTypeMongoDb ? StoreMongo : StoreRaven);
+        }
+
+        /// <summary>
+        /// Converts a multi-node store name (mongo|raven) to the store type used by <see cref="ExampleServices"/>.
+        /// </summary>
+        private static string ToStoreType(string store)
+        {
+            return (store == StoreMongo ? Constants.StoreTypeMongoDb : Constants.StoreTypeRavenDb);
         }
 
         /// <summary>
@@ -255,30 +265,34 @@ namespace Example.MultiNode
                 SlowStepRate = double.Parse(GetOption(options, "slow-rate", "0.005"), System.Globalization.CultureInfo.InvariantCulture),
                 SlowStepDuration = nodeTimeout * 2
             };
-            MultiNodeContext.Current = context;
             ledger.RegisterProcess(context.ProcessKey, name, crashAfter);
 
-            WorkflowServerOptions serverOptions = new WorkflowServerOptions()
+            // the engine logs (suspensions, lost locks, evictions, monitor errors, retries of the deliberate errors) go
+            // through the context, so they are written to the node's log file
+            using (ServiceProvider serviceProvider = ExampleServices.Create(ToStoreType(store), DbName,
+                engine => engine
+                    .AddWorkflowType<MultiNodeWorkflow>()
+                    .AddWorkflowActionsFromAssemblyOf<MultiNodeWorkflow>(ExampleServices.InNamespaceOf<MultiNodeWorkflow>),
+                LogLevel.Warning,
+                services =>
+                {
+                    services.Configure<WorkflowServerOptions>(serverOptions =>
+                    {
+                        serverOptions.NodeName = name;
+                        serverOptions.HeartbeatInterval = nodeTimeout / 4;
+                        serverOptions.NodeTimeout = nodeTimeout;
+                        serverOptions.PersistWorkflowDefinitions = false;
+                    });
+                    services.AddSingleton(context);
+                    // the node starting and stopping is logged at Information
+                    services.AddLogging(logging => logging.AddFilter("Stateless.WorkflowEngine.Services.WorkflowNodeMonitor", LogLevel.Information));
+                },
+                new MultiNodeLoggerProvider(context)))
             {
-                NodeName = name,
-                HeartbeatInterval = nodeTimeout / 4,
-                NodeTimeout = nodeTimeout,
-                PersistWorkflowDefinitions = false
-            };
-
-            using (WorkflowServer server = new WorkflowServer(GetStore(store), serverOptions))
-            {
-                server.RegisterWorkflowType<MultiNodeWorkflow>();
+                IWorkflowServer server = serviceProvider.GetRequiredService<IWorkflowServer>();
                 server.WorkflowClaimed += (sender, e) => context.Stats.RecordClaim();
                 server.WorkflowCompleted += (sender, e) => context.Stats.RecordCompleted();
-                server.WorkflowSuspended += (sender, e) => context.Log($"Workflow {e.Workflow.Id} SUSPENDED: {e.Workflow.LastException}", ConsoleColor.Red);
-                server.WorkflowLockLost += (sender, e) =>
-                {
-                    context.Stats.RecordLockLost();
-                    context.Log($"LOCK LOST: workflow {e.Workflow.Id} was claimed by another node while node {e.NodeId} was executing it", ConsoleColor.Red);
-                };
-                server.NodeEvicted += (sender, e) => context.Log($"Node was EVICTED: {e.PreviousNodeId} re-registered as {e.NodeId}", ConsoleColor.Yellow);
-                server.NodeMonitorError += (sender, e) => context.Log($"Node monitor error: {e.Exception.Message}", ConsoleColor.Yellow);
+                server.WorkflowLockLost += (sender, e) => context.Stats.RecordLockLost();
 
                 context.Log($"Node started on {store}: node id {server.NodeId}, batch {batchSize}, concurrency {concurrency}, {(runAsync ? "async" : "sync")}, node timeout {nodeTimeout.TotalSeconds}s, error rate {context.ErrorRate}" + (crashAfter.HasValue ? $", CRASHING after {crashAfter}s" : ""), ConsoleColor.Cyan);
 

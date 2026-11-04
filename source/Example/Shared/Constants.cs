@@ -11,6 +11,11 @@ namespace Example.Shared
         public const string StoreTypeMongoDb = "M";
         public const string StoreTypeRavenDb = "R";
 
+        /// <summary>
+        /// The database used by the client and server examples.
+        /// </summary>
+        public const string ExampleDbName = "StatelessWorkflowExample";
+
         public const string RootPath = "C:\\Temp";
 
     }

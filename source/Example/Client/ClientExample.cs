@@ -1,10 +1,7 @@
 ﻿using Example.Shared;
 using Example.Shared.Workflows.FileCreation;
-using MongoDB.Driver;
-using Raven.Client.Documents;
+using Microsoft.Extensions.DependencyInjection;
 using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.MongoDb;
-using Stateless.WorkflowEngine.RavenDb;
 using Stateless.WorkflowEngine.Stores;
 
 namespace Example.Client
@@ -12,41 +9,17 @@ namespace Example.Client
     internal class ClientExample
     {
 
-        private static IWorkflowClient CreateWorkflowClient(string storeType)
+        private static ServiceProvider CreateServiceProvider(string storeType)
         {
-            IWorkflowStore? workflowStore = null;
-            const string DbName = "StatelessWorkflowExample";
+            ExampleServices.WriteStoreInfo(storeType, Constants.ExampleDbName);
 
-            if (storeType == Constants.StoreTypeMongoDb)
-            {
-                Console.WriteLine($"Using MongoDb - please ensure an unauthenticated version of MongoDb is running " + Environment.NewLine + 
-                    $"on '{AppSettings.MongoDbConnectionString}' (run start.ps1 to start one in Docker); collection '{DbName}' will be created.");
-                var client = new MongoClient(AppSettings.MongoDbConnectionString);
-                var database = client.GetDatabase(DbName);
-                workflowStore = new MongoDbWorkflowStore(database);
-            }
-            else if (storeType == Constants.StoreTypeRavenDb)
-            {
-                Console.WriteLine($"Using RavenDb - please ensure RavenDb is running on '{AppSettings.RavenDbUrl}' (run start.ps1 to start one in Docker); " + Environment.NewLine +
-                    $"database '{DbName}' will be created.");
-                IDocumentStore store = new DocumentStore
-                {
-                    Urls = new String[] { AppSettings.RavenDbUrl },
-                    Database = DbName,
-                };
-                store.Initialize();
-                workflowStore = new RavenDbWorkflowStore(store);
-            }
-            else
-            {
-                throw new InvalidOperationException($"Store type '{storeType}' not supported");
-            }
+            // the client only registers workflows, so it needs no workflow types or actions
+            ServiceProvider serviceProvider = ExampleServices.Create(storeType, Constants.ExampleDbName);
 
             // this call doesn't need to be there in your code - it's just here for the example so the store gets
             // set up correctly.  Usually this will happen when the server boots
-            workflowStore?.Initialise(true, true, true);
-            return new WorkflowClient(workflowStore);
-
+            serviceProvider.GetRequiredService<IWorkflowStore>().Initialise(true, true, true);
+            return serviceProvider;
         }
 
         private static Workflow CreateWorkflow(int fileCount, string fileNamePrefix)
@@ -68,7 +41,8 @@ namespace Example.Client
 
             Console.WriteLine();
 
-            IWorkflowClient workflowClient = CreateWorkflowClient(inputStoreType);
+            using ServiceProvider serviceProvider = CreateServiceProvider(inputStoreType);
+            IWorkflowClient workflowClient = serviceProvider.GetRequiredService<IWorkflowClient>();
             Console.WriteLine();
             Console.WriteLine("Press enter when you are ready to start");
             Console.ReadLine();

@@ -1,56 +1,24 @@
 ﻿using Example.Shared;
 using Example.Shared.Workflows.FileCreation;
-using MongoDB.Driver;
-using Raven.Client.Documents;
+using Microsoft.Extensions.DependencyInjection;
 using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.MongoDb;
-using Stateless.WorkflowEngine.RavenDb;
-using Stateless.WorkflowEngine.Stores;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Example.Server
 {
     internal class ServerExample
     {
 
-        private static IWorkflowServer CreateWorkflowServer(string storeType)
+        private static ServiceProvider CreateServiceProvider(string storeType)
         {
-            IWorkflowStore? workflowStore = null;
-            const string DbName = "StatelessWorkflowExample";
+            ExampleServices.WriteStoreInfo(storeType, Constants.ExampleDbName);
 
-            if (storeType == Constants.StoreTypeMongoDb)
-            {
-                Console.WriteLine($"Using MongoDb - please ensure an unauthenticated version of MongoDb is running " + Environment.NewLine +
-                    $"on '{AppSettings.MongoDbConnectionString}' (run start.ps1 to start one in Docker); collection '{DbName}' will be created.");
-                var client = new MongoClient(AppSettings.MongoDbConnectionString);
-                var database = client.GetDatabase(DbName);
-                workflowStore = new MongoDbWorkflowStore(database);
-            }
-            else if (storeType == Constants.StoreTypeRavenDb)
-            {
-                Console.WriteLine($"Using RavenDb - please ensure RavenDb is running on '{AppSettings.RavenDbUrl}' (run start.ps1 to start one in Docker); " + Environment.NewLine +
-                    $"database '{DbName}' will be created.");
-
-                IDocumentStore store = new DocumentStore
-                {
-                    Urls = new String[] { AppSettings.RavenDbUrl },
-                    Database = DbName
-                };
-                store.Initialize();
-
-                workflowStore = new RavenDbWorkflowStore(store);
-            }
-            else
-            {
-                throw new InvalidOperationException($"Store type '{storeType}' not supported");
-            }
-
-            return new WorkflowServer(workflowStore);
-
+            // the server logs at Information, so you can see what it does: workflows completing and retrying, and the
+            // node starting and stopping
+            return ExampleServices.Create(storeType, Constants.ExampleDbName, engine => engine
+                // register every workflow type the server executes
+                .AddWorkflowType<FileCreationWorkflow>()
+                // register the workflow's actions, so their dependencies are checked when the provider is built
+                .AddWorkflowActionsFromAssemblyOf<FileCreationWorkflow>(ExampleServices.InNamespaceOf<FileCreationWorkflow>));
         }
 
         public static void Run()
@@ -61,9 +29,9 @@ namespace Example.Server
 
             Console.WriteLine();
 
-            using IWorkflowServer workflowServer = CreateWorkflowServer(inputStoreType);
-            // NOTE: register any types - this is currently only necessary for MongoDb
-            workflowServer.RegisterWorkflowType<FileCreationWorkflow>();
+            // disposing the provider disposes the server, which releases its locks
+            using ServiceProvider serviceProvider = CreateServiceProvider(inputStoreType);
+            IWorkflowServer workflowServer = serviceProvider.GetRequiredService<IWorkflowServer>();
 
             Console.WriteLine("Press enter when you are ready to start");
             Console.ReadLine();

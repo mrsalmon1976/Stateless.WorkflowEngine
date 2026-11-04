@@ -10,13 +10,20 @@ namespace Example.Shared.Workflows.MultiNode.Actions
     /// </summary>
     public abstract class MultiNodeStepAction : IWorkflowAction
     {
+        private readonly MultiNodeContext _context;
+
+        protected MultiNodeStepAction(MultiNodeContext context)
+        {
+            _context = context;
+        }
+
         protected abstract string StepName { get; }
 
         protected abstract MultiNodeWorkflow.Trigger NextTrigger { get; }
 
         public void Execute(Workflow workflow)
         {
-            MultiNodeContext context = MultiNodeContext.Current;
+            MultiNodeContext context = _context;
             string nodeId = workflow.LockedBy ?? "(unclaimed)";
             var execution = context.Ledger.BeginStep(workflow.Id, this.StepName, context.ProcessKey, context.NodeName, nodeId, workflow.RetryCount);
             if (execution.OverlappingNodes.Count > 0)
@@ -95,6 +102,10 @@ namespace Example.Shared.Workflows.MultiNode.Actions
 
     public class WriteFileAction : MultiNodeStepAction
     {
+        public WriteFileAction(MultiNodeContext context) : base(context)
+        {
+        }
+
         protected override string StepName => "WriteFile";
 
         protected override MultiNodeWorkflow.Trigger NextTrigger => MultiNodeWorkflow.Trigger.TransformFile;
@@ -107,6 +118,10 @@ namespace Example.Shared.Workflows.MultiNode.Actions
 
     public class TransformFileAction : MultiNodeStepAction
     {
+        public TransformFileAction(MultiNodeContext context) : base(context)
+        {
+        }
+
         protected override string StepName => "TransformFile";
 
         protected override MultiNodeWorkflow.Trigger NextTrigger => MultiNodeWorkflow.Trigger.Finalise;
@@ -125,6 +140,10 @@ namespace Example.Shared.Workflows.MultiNode.Actions
 
     public class FinaliseAction : MultiNodeStepAction
     {
+        public FinaliseAction(MultiNodeContext context) : base(context)
+        {
+        }
+
         protected override string StepName => "Finalise";
 
         protected override MultiNodeWorkflow.Trigger NextTrigger => MultiNodeWorkflow.Trigger.Complete;

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NUnit.Framework;
 using Stateless.WorkflowEngine;
@@ -10,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Test.Stateless.WorkflowEngine.Logging;
 using Test.Stateless.WorkflowEngine.Workflows.Basic;
 
 namespace Test.Stateless.WorkflowEngine.Services
@@ -274,6 +276,70 @@ namespace Test.Stateless.WorkflowEngine.Services
 
             await workflowStore.Received(1).RemoveStaleNodesAsync(_options.NodeTimeout);
             await workflowStore.Received(1).ReleaseLocksAsync("ghost");
+        }
+
+        [Test]
+        public async Task TickAsync_StepFails_LogsErrorEvenWithoutEventHandlers()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.HeartbeatAsync(Arg.Any<string>()).Returns<Task<bool>>(x => throw new TimeoutException("heartbeat failed"));
+            ListLoggerFactory loggerFactory = new ListLoggerFactory();
+
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(workflowStore, _options, loggerFactory.CreateLogger("test"));
+            monitor.EnsureStarted(runLoop: false);
+            await monitor.TickAsync();
+
+            ListLoggerFactory.LogEntry entry = loggerFactory.WithEventId(1105).Single();
+            Assert.That(entry.Level, Is.EqualTo(LogLevel.Error));
+            Assert.That(entry.Exception.Message, Is.EqualTo("heartbeat failed"));
+        }
+
+        [Test]
+        public async Task TickAsync_NodeMonitorErrorHandlerThrows_LogsWarning()
+        {
+            IWorkflowStore workflowStore = Substitute.For<IWorkflowStore>();
+            workflowStore.HeartbeatAsync(Arg.Any<string>()).Returns<Task<bool>>(x => throw new TimeoutException("heartbeat failed"));
+            ListLoggerFactory loggerFactory = new ListLoggerFactory();
+
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(workflowStore, _options, loggerFactory.CreateLogger("test"));
+            monitor.NodeMonitorError += (sender, e) => throw new InvalidOperationException("handler failed");
+            monitor.EnsureStarted(runLoop: false);
+            await monitor.TickAsync();
+
+            ListLoggerFactory.LogEntry entry = loggerFactory.WithEventId(1106).Single();
+            Assert.That(entry.Level, Is.EqualTo(LogLevel.Warning));
+            Assert.That(entry.Exception.Message, Is.EqualTo("handler failed"));
+        }
+
+        [Test]
+        public async Task TickAsync_NodeWasRemoved_LogsWarning()
+        {
+            ListLoggerFactory loggerFactory = new ListLoggerFactory();
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options, loggerFactory.CreateLogger("test"));
+            monitor.EnsureStarted(runLoop: false);
+            string originalNodeId = monitor.NodeId;
+
+            _workflowStore.RemoveNode(originalNodeId);
+            await monitor.TickAsync();
+
+            ListLoggerFactory.LogEntry entry = loggerFactory.WithEventId(1102).Single();
+            Assert.That(entry.Level, Is.EqualTo(LogLevel.Warning));
+            Assert.That(entry.Message, Does.Contain(originalNodeId).And.Contain(monitor.NodeId));
+        }
+
+        [Test]
+        public async Task TickAsync_WorkflowLockedByNodeThatDoesNotExist_LogsRelease()
+        {
+            ListLoggerFactory loggerFactory = new ListLoggerFactory();
+            WorkflowNodeMonitor monitor = new WorkflowNodeMonitor(_workflowStore, _options, loggerFactory.CreateLogger("test"));
+            monitor.EnsureStarted(runLoop: false);
+            SaveLockedWorkflow("ghost", DateTime.UtcNow);
+
+            await monitor.TickAsync();
+
+            ListLoggerFactory.LogEntry entry = loggerFactory.WithEventId(1104).Single();
+            Assert.That(entry.Level, Is.EqualTo(LogLevel.Information));
+            Assert.That(entry.Message, Does.Contain("ghost"));
         }
 
         #endregion

@@ -12,6 +12,13 @@ namespace Example.Shared.Workflows.Volume.Actions
 
         const string SelectSql = "SELECT Id from VolumeTest WHERE Id = @Id";
 
+        private readonly VolumeDb _volumeDb;
+
+        public MarkRecordAsProcessedAction(VolumeDb volumeDb)
+        {
+            _volumeDb = volumeDb;
+        }
+
         public void Execute(Stateless.WorkflowEngine.Workflow workflow)
         {
             VolumeWorkflow mtw = (VolumeWorkflow)workflow;
@@ -23,9 +30,10 @@ namespace Example.Shared.Workflows.Volume.Actions
                 throw new Exception("Contrived exception to ensure retry works...");
             }
 
-            using (var conn = DbHelper.GetConnection(mtw.DbType))
+            // the connection belongs to this action's scope, and is closed once the action has executed
+            var conn = _volumeDb.Connection;
+            using (var tran = conn.BeginTransaction())
             {
-                var tran = conn.BeginTransaction();
                 int? id = conn.Query<int>(SelectSql, new { Id = mtw.RecordId }, tran).FirstOrDefault();
                 if (id == null)
                 {
@@ -33,7 +41,6 @@ namespace Example.Shared.Workflows.Volume.Actions
                 }
                 conn.Execute(UpdateSql, new { ProcessDate = DateTime.Now, Id = mtw.RecordId }, tran);
                 tran.Commit();
-                conn.Close();
             }
 
             mtw.ResumeTrigger = VolumeWorkflow.Trigger.Complete.ToString();

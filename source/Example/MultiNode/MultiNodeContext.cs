@@ -3,8 +3,8 @@ using Example.Shared;
 namespace Example.MultiNode
 {
     /// <summary>
-    /// Settings and services for the multi-node workflow actions running in this process.  Workflow actions are created
-    /// by the engine, so they read these from <c>Current</c>.
+    /// Settings and services for the multi-node workflow actions running in this process.  It is registered as a
+    /// singleton, and the actions take it in their constructor.
     /// </summary>
     public class MultiNodeContext
     {
@@ -24,11 +24,6 @@ namespace Example.MultiNode
                 Directory.CreateDirectory(Path.GetDirectoryName(_logFilePath)!);
             }
         }
-
-        /// <summary>
-        /// Gets/sets the context for this process.
-        /// </summary>
-        public static MultiNodeContext Current { get; set; } = null!;
 
         public ExecutionLedger Ledger { get; }
 

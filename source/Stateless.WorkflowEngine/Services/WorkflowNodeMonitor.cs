@@ -1,5 +1,8 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Stateless.WorkflowEngine.Events;
 using Stateless.WorkflowEngine.Exceptions;
+using Stateless.WorkflowEngine.Logging;
 using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Concurrent;
@@ -35,11 +38,13 @@ namespace Stateless.WorkflowEngine.Services
         private volatile bool _isStarted;
         private volatile bool _isStopping;
         private volatile string _nodeId;
+        private readonly ILogger _logger;
 
-        public WorkflowNodeMonitor(IWorkflowStore workflowStore, WorkflowServerOptions options)
+        public WorkflowNodeMonitor(IWorkflowStore workflowStore, WorkflowServerOptions options, ILogger logger = null)
         {
             _workflowStore = workflowStore;
             _options = options;
+            _logger = logger ?? NullLogger.Instance;
             _nodeId = String.IsNullOrWhiteSpace(options.NodeId) ? Guid.NewGuid().ToString() : options.NodeId;
         }
 
@@ -215,7 +220,7 @@ namespace Stateless.WorkflowEngine.Services
         internal async Task TickAsync()
         {
             await RunStepAsync(HeartbeatAsync);
-            await RunStepAsync(() => _workflowStore.RemoveStaleNodesAsync(_options.NodeTimeout));
+            await RunStepAsync(RemoveStaleNodesAsync);
             await RunStepAsync(ReleaseOrphanedLocksAsync);
             await RunStepAsync(ReleaseOwnStaleLocksAsync);
         }
@@ -265,10 +270,15 @@ namespace Stateless.WorkflowEngine.Services
                 _cancellationTokenSource.Dispose();
             }
 
+            WorkflowNodeMonitorLog.NodeStopping(_logger, _nodeId);
             DateTime waitUntil = DateTime.UtcNow.Add(_options.NodeTimeout);
             while (!this.IsIdle() && DateTime.UtcNow < waitUntil)
             {
                 await Task.Delay(50);
+            }
+            if (!this.IsIdle())
+            {
+                WorkflowNodeMonitorLog.StopTimedOut(_logger, _nodeId, _options.NodeTimeout, _inFlight.Count);
             }
 
             // if any of these fail, the node and its locks are removed by the other nodes after the node timeout
@@ -277,11 +287,16 @@ namespace Stateless.WorkflowEngine.Services
             {
                 nodeIds = _previousNodeIds.Concat(new[] { _nodeId }).ToList();
             }
+            bool stopped = true;
             foreach (string nodeId in nodeIds)
             {
-                await RunStepAsync(() => _workflowStore.ReleaseLocksAsync(nodeId));
+                stopped &= await RunStepAsync(() => _workflowStore.ReleaseLocksAsync(nodeId));
             }
-            await RunStepAsync(() => _workflowStore.RemoveNodeAsync(_nodeId));
+            stopped &= await RunStepAsync(() => _workflowStore.RemoveNodeAsync(_nodeId));
+            if (stopped)
+            {
+                WorkflowNodeMonitorLog.NodeStopped(_logger, _nodeId);
+            }
         }
 
         private bool IsIdle()
@@ -310,15 +325,21 @@ namespace Stateless.WorkflowEngine.Services
             }
         }
 
-        private async Task RunStepAsync(Func<Task> step)
+        /// <summary>
+        /// Runs a monitor step, reporting a failure through NodeMonitorError.
+        /// </summary>
+        /// <returns>False if the step failed.</returns>
+        private async Task<bool> RunStepAsync(Func<Task> step)
         {
             try
             {
                 await step();
+                return true;
             }
             catch (Exception ex)
             {
                 OnNodeMonitorError(ex);
+                return false;
             }
         }
 
@@ -331,6 +352,7 @@ namespace Stateless.WorkflowEngine.Services
                 StartedOn = DateTime.UtcNow
             });
             Interlocked.Exchange(ref _lastHeartbeatTicks, DateTime.UtcNow.Ticks);
+            WorkflowNodeMonitorLog.NodeRegistered(_logger, nodeId, _options.NodeName);
         }
 
         private async Task RegisterAsync(string nodeId)
@@ -349,6 +371,7 @@ namespace Stateless.WorkflowEngine.Services
             if (await _workflowStore.HeartbeatAsync(_nodeId))
             {
                 Interlocked.Exchange(ref _lastHeartbeatTicks, DateTime.UtcNow.Ticks);
+                WorkflowNodeMonitorLog.Heartbeat(_logger, _nodeId);
                 return;
             }
 
@@ -363,7 +386,17 @@ namespace Stateless.WorkflowEngine.Services
                 _previousNodeIds.Add(previousNodeId);
             }
             _nodeId = nodeId;
+            WorkflowNodeMonitorLog.NodeEvicted(_logger, previousNodeId, nodeId);
             NodeEvicted?.Invoke(this, new NodeEvictedEventArgs(previousNodeId, nodeId));
+        }
+
+        private async Task RemoveStaleNodesAsync()
+        {
+            long removed = await _workflowStore.RemoveStaleNodesAsync(_options.NodeTimeout);
+            if (removed > 0)
+            {
+                WorkflowNodeMonitorLog.StaleNodesRemoved(_logger, removed, _options.NodeTimeout);
+            }
         }
 
         private async Task ReleaseOrphanedLocksAsync()
@@ -381,6 +414,7 @@ namespace Stateless.WorkflowEngine.Services
             foreach (string owner in owners.Where(x => !liveNodes.Contains(x)))
             {
                 await _workflowStore.ReleaseLocksAsync(owner);
+                WorkflowNodeMonitorLog.OrphanedLocksReleased(_logger, owner);
             }
         }
 
@@ -396,13 +430,15 @@ namespace Stateless.WorkflowEngine.Services
 
         private void OnNodeMonitorError(Exception ex)
         {
+            WorkflowNodeMonitorLog.MonitorError(_logger, ex, _nodeId);
             try
             {
                 NodeMonitorError?.Invoke(this, new NodeMonitorErrorEventArgs(_nodeId, ex));
             }
-            catch
+            catch (Exception handlerException)
             {
                 // an event handler failing must not stop the monitor
+                WorkflowNodeMonitorLog.MonitorErrorHandlerFailed(_logger, handlerException, _nodeId);
             }
         }
     }

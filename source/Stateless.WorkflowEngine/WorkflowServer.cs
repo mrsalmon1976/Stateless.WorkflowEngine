@@ -8,20 +8,37 @@ using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Events;
 using System.Threading;
 using System.Runtime.ExceptionServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Stateless.WorkflowEngine.Logging;
 
 namespace Stateless.WorkflowEngine
 {
     public class WorkflowServer : IWorkflowServer
     {
         private readonly object _nodeMonitorLock = new object();
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
         private WorkflowNodeMonitor _nodeMonitor;
 
         public WorkflowServer(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowServerOptions())
         {
         }
 
-        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options)
+        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options) : this(workflowStore, options, null)
         {
+        }
+
+        /// <summary>
+        /// Creates a workflow server that logs through the given logger factory.
+        /// </summary>
+        /// <param name="workflowStore"></param>
+        /// <param name="options">The server options, or null for the defaults.</param>
+        /// <param name="loggerFactory">The logger factory, or null to not log.</param>
+        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options, ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            _logger = _loggerFactory.CreateLogger<WorkflowServer>();
             this.WorkflowStore = workflowStore;
             this.Options = options ?? new WorkflowServerOptions();
             this.WorkflowRegistrationService = new WorkflowRegistrationService();
@@ -87,7 +104,7 @@ namespace Stateless.WorkflowEngine
                     {
                         if (_nodeMonitor == null)
                         {
-                            WorkflowNodeMonitor nodeMonitor = new WorkflowNodeMonitor(this.WorkflowStore, this.Options);
+                            WorkflowNodeMonitor nodeMonitor = new WorkflowNodeMonitor(this.WorkflowStore, this.Options, _loggerFactory.CreateLogger<WorkflowNodeMonitor>());
                             nodeMonitor.NodeEvicted += (sender, e) => this.NodeEvicted?.Invoke(this, e);
                             nodeMonitor.NodeMonitorError += (sender, e) => this.NodeMonitorError?.Invoke(this, e);
                             _nodeMonitor = nodeMonitor;
@@ -167,6 +184,7 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     workflow.LastException = null;
+                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, workflow.ResumeTrigger);
                     workflow.Fire(workflow.ResumeTrigger);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
@@ -174,22 +192,7 @@ namespace Stateless.WorkflowEngine
                 catch (Exception ex)
                 {
                     hasError = true;
-                    workflow.CurrentState = initialState;
-                    this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
-
-                    // raise the exception handler
-                    workflow.OnError(ex);
-
-                    // if the workflow is suspended, raise the events
-                    if (workflow.IsSuspended)
-                    {
-                        workflow.OnSuspend();
-                        var suspendedHandler = this.WorkflowSuspended;
-                        if (suspendedHandler != null)
-                        {
-                            suspendedHandler(this, new WorkflowEventArgs(workflow));
-                        }
-                    }
+                    this.HandleExecutionError(workflow, initialState, ex);
                 }
                 finally
                 {
@@ -213,6 +216,7 @@ namespace Stateless.WorkflowEngine
                 {
                     return;
                 }
+                WorkflowServerLog.WorkflowCompleted(_logger, workflow.Id, workflow.GetType().Name);
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
@@ -257,6 +261,7 @@ namespace Stateless.WorkflowEngine
                 try
                 {
                     workflow.LastException = null;
+                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, workflow.ResumeTrigger);
                     await workflow.FireAsync(workflow.ResumeTrigger, cancellationToken);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
@@ -264,22 +269,7 @@ namespace Stateless.WorkflowEngine
                 catch (Exception ex)
                 {
                     hasError = true;
-                    workflow.CurrentState = initialState;
-                    this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
-
-                    // raise the exception handler
-                    workflow.OnError(ex);
-
-                    // if the workflow is suspended, raise the events
-                    if (workflow.IsSuspended)
-                    {
-                        workflow.OnSuspend();
-                        var suspendedHandler = this.WorkflowSuspended;
-                        if (suspendedHandler != null)
-                        {
-                            suspendedHandler(this, new WorkflowEventArgs(workflow));
-                        }
-                    }
+                    this.HandleExecutionError(workflow, initialState, ex);
                 }
                 finally
                 {
@@ -303,6 +293,7 @@ namespace Stateless.WorkflowEngine
                 {
                     return;
                 }
+                WorkflowServerLog.WorkflowCompleted(_logger, workflow.Id, workflow.GetType().Name);
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
@@ -407,6 +398,7 @@ namespace Stateless.WorkflowEngine
                 }
                 catch (Exception ex)
                 {
+                    WorkflowServerLog.ExecutionFailed(_logger, ex, claimed.Workflow.Id, claimed.Workflow.GetType().Name);
                     slots.ExecutionFailed(ex);
                 }
                 finally
@@ -433,6 +425,7 @@ namespace Stateless.WorkflowEngine
                 }
                 catch (Exception ex)
                 {
+                    WorkflowServerLog.ExecutionFailed(_logger, ex, claimed.Workflow.Id, claimed.Workflow.GetType().Name);
                     slots.ExecutionFailed(ex);
                 }
                 finally
@@ -515,6 +508,7 @@ namespace Stateless.WorkflowEngine
             catch (Exception ex)
             {
                 // the slots finish the workflows they are running before the error is raised
+                WorkflowServerLog.ClaimFailed(_logger, ex, nodeMonitor.NodeId);
                 slots.ClaimFailed(ex, batchSize);
             }
             finally
@@ -538,6 +532,7 @@ namespace Stateless.WorkflowEngine
             catch (Exception ex)
             {
                 // the slots finish the workflows they are running before the error is raised
+                WorkflowServerLog.ClaimFailed(_logger, ex, nodeMonitor.NodeId);
                 slots.ClaimFailed(ex, batchSize);
             }
             finally
@@ -552,6 +547,10 @@ namespace Stateless.WorkflowEngine
         /// </summary>
         private void AddClaimed(WorkflowNodeMonitor nodeMonitor, ClaimSlots slots, string nodeId, List<Workflow> workflows, int batchSize)
         {
+            if (workflows.Count > 0)
+            {
+                WorkflowServerLog.BatchClaimed(_logger, nodeId, workflows.Count);
+            }
             foreach (Workflow workflow in workflows)
             {
                 nodeMonitor.Track(workflow.Id);
@@ -763,14 +762,49 @@ namespace Stateless.WorkflowEngine
             {
                 this.WorkflowClaimed?.Invoke(this, new WorkflowClaimedEventArgs(workflow, nodeId));
             }
-            catch
+            catch (Exception ex)
             {
                 // the workflow is locked by this node, so it must be executed (and released) whatever the handler does
+                WorkflowServerLog.WorkflowClaimedHandlerFailed(_logger, ex, workflow.Id);
+            }
+        }
+
+        /// <summary>
+        /// Handles an error raised while firing a workflow: restores its state, sets it up for a retry (or suspends it),
+        /// and raises the workflow's error and suspend hooks and the server's WorkflowSuspended event.
+        /// </summary>
+        private void HandleExecutionError(Workflow workflow, string initialState, Exception ex)
+        {
+            workflow.CurrentState = initialState;
+            this.WorkflowExceptionHandler.HandleWorkflowException(workflow, ex);
+
+            if (workflow.IsSuspended)
+            {
+                WorkflowServerLog.WorkflowSuspended(_logger, ex, workflow.Id, workflow.GetType().Name, initialState);
+            }
+            else
+            {
+                WorkflowServerLog.WorkflowRetrying(_logger, ex, workflow.Id, workflow.GetType().Name, initialState, workflow.RetryCount, workflow.ResumeOn);
+            }
+
+            // raise the exception handler
+            workflow.OnError(ex);
+
+            // if the workflow is suspended, raise the events
+            if (workflow.IsSuspended)
+            {
+                workflow.OnSuspend();
+                var suspendedHandler = this.WorkflowSuspended;
+                if (suspendedHandler != null)
+                {
+                    suspendedHandler(this, new WorkflowEventArgs(workflow));
+                }
             }
         }
 
         private void OnWorkflowLockLost(Workflow workflow, string ownerNodeId)
         {
+            WorkflowServerLog.WorkflowLockLost(_logger, workflow.Id, workflow.GetType().Name, ownerNodeId);
             var lockLostHandler = this.WorkflowLockLost;
             if (lockLostHandler != null)
             {

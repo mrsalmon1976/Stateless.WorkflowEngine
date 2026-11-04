@@ -81,6 +81,12 @@ Test projects:
 
 `benchmarks/run-benchmarks.ps1` compares every `benchmarks/releases/Stateless.WorkflowEngine.MongoDb_v<version>.zip` with the current branch (1000 two-step workflows; nodes×concurrency 1×1, 1×4, 2×2, 1×10, 2×10, 5×10; 3 iterations) and writes `benchmarks/reports/benchmark-YYYYMMDD-HHMM.md`. `Benchmark.Runner` generates and builds one `Benchmark.Agent` per version under `benchmarks/.work` (releases are netstandard2.0 on their own MongoDB driver, so each needs its own process), with `LEGACY_EXECUTE` (<5.0) and `MULTINODE` (current/≥6.0) compile constants. Nodes run in `dotnet/runtime` containers on the MongoDB container's network by default — Docker Desktop stalls host-to-container requests over ~750 bytes by 40 ms, which skews results (`--host local` to run on the host).
 
+### DI and logging
+
+- `AddStatelessWorkflowEngine()` (core, `DependencyInjection/`, namespace `Microsoft.Extensions.DependencyInjection`) registers `IWorkflowServer`/`IWorkflowClient` singletons and returns an `IWorkflowEngineBuilder`; stores are added with `WithMemoryStore`/`WithStore` (core), `WithMongoDbStore` (MongoDb package) and `WithRavenDbStore` (RavenDb package) — each `With*Store` replaces the previous one. `AddWorkflowType<T>` runs `RegisterWorkflowType<T>` when the server is created; `AddWorkflowActionsFromAssemblyOf<T>(filter)` registers actions as transient (TryAdd).
+- `ServiceProviderDependencyResolver` implements `IWorkflowEngineScopedDependencyResolver`: `Workflow.ExecuteWorkflowAction*` creates a scope per action when the resolver is scoped (sync scopes are disposed via `DisposeAsync`), and unregistered actions are created with `ActivatorUtilities`.
+- `WorkflowServer(store, options, loggerFactory)` logs via `[LoggerMessage]` methods in `Logging/WorkflowServerLog` (event ids 1000s) and `Logging/WorkflowNodeMonitorLog` (1100s); the README "Logging" table lists them — keep it in sync.
+
 ### Workflow Event Hooks
 
 `OnActionExecuting()`, `OnActionExecuted()`, `OnError()`, `OnSuspend()`, `OnComplete()`. Server events: `WorkflowSuspended`, `WorkflowCompleted`, `WorkflowClaimed`, `WorkflowLockLost`, `NodeEvicted`, `NodeMonitorError`.
@@ -89,14 +95,14 @@ Test projects:
 
 - **`Stateless.WorkflowEngine.WebConsole`** (net10.0) — ASP.NET Core (Kestrel) host and API for the web console: monitoring workflows, managing connections, user auth. See "Web Console" below.
 - **`Stateless.WorkflowEngine.WebConsole.Client`** — Vue 3 + Vite + Nuxt UI (JavaScript) SPA, built into the WebConsole's `wwwroot`
-- **`Example`** (net10.0) — interactive console app demonstrating all features and stores
+- **`Example`** (net10.0) — interactive console app demonstrating all features and stores. Every example builds its services with `Shared/ExampleServices.Create` (DI, console logging, `ValidateOnBuild`); the examples share one assembly, so each scans only its own workflow's action namespace (`InNamespaceOf<T>`)
 
 ## Key Patterns
 
 - **Strategy pattern** for store implementations (all implement `IWorkflowStore`)
 - **Template method** for workflow configuration (override `Initialise()`)
 - **Event-driven**: `WorkflowSuspended`, `WorkflowCompleted`, `WorkflowClaimed`, `WorkflowLockLost`, `NodeEvicted` and `NodeMonitorError` events on `IWorkflowServer`
-- **DI support**: `IWorkflowEngineDependencyResolver` or override `CreateWorkflowActionInstance<T>()`
+- **DI support**: `AddStatelessWorkflowEngine()` (see "DI and logging"), a custom `IWorkflowEngineDependencyResolver`, or override `CreateWorkflowActionInstance<T>()`
 - Serialization via Newtonsoft.Json; MongoDB workflows should use `[BsonIgnoreExtraElements]` for forward compatibility
 - MongoDB Guids: driver 3 needs an explicit Guid representation. Workflow/definition ids use `MongoDbWorkflowStore.IdGuidRepresentation` (CSharpLegacy, binary subtype 3 — the format existing 2.x-era data uses) via class maps in the store's static constructor, `[BsonGuidRepresentation]` on `MongoWorkflow.Id`/`UIWorkflow.Id`, and `ToBsonId()` for raw `BsonDocument` queries. Never register a global Guid serializer from library code (the driver forbids changing it once used) — apps with Guid properties register it themselves (README "Guids"). `Fixtures/WorkflowSavedByDriver2.json` in the MongoDb tests is a real document saved by driver 2.30
 

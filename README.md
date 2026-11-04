@@ -53,6 +53,8 @@ There is a full example console application in the source code, in the `source/E
 4. same as previous, except using sync methods 
 5. the multi-node stress test, which runs several workflow servers against the same store and proves that no workflow step is ever executed by two servers at the same time - see [Multi-node stress test](#multi-node-stress-test)
 
+Every example sets up the engine with `AddStatelessWorkflowEngine` and logs through `ILogger` (`Shared/ExampleServices.cs`); the high volume examples use a scoped database connection in their actions (`Shared/VolumeDb.cs`).
+
 The examples connect to MongoDb on `mongodb://localhost:27017` and RavenDb on `http://localhost:8080` - the containers started by `start.ps1` (see [Development](#development)).  These can be overridden with the `STATELESS_MONGODB_CONNECTIONSTRING` and `STATELESS_RAVENDB_URL` environment variables, or in `AppSettings.cs`.
 
 # Getting Started
@@ -139,13 +141,22 @@ If an action throws, the workflow stays in its current state and is retried afte
 
 ## 3. Register workflows
 
-Register a workflow with a `WorkflowClient` wherever it should start - it is saved to the store, and the server will pick it up:
+Register a workflow with a `WorkflowClient` wherever it should start - it is saved to the store, and the server will pick it up.  In an application that uses dependency injection (e.g. ASP.NET Core), add the engine with the same store as the server, and inject `IWorkflowClient`:
+
+```csharp
+// Program.cs
+builder.Services.AddStatelessWorkflowEngine()
+    .WithMongoDbStore(builder.Configuration.GetConnectionString("Workflows"), "MyApp");
+
+// wherever the workflow starts
+await workflowClient.RegisterAsync(new WelcomeEmailWorkflow { EmailAddress = user.EmailAddress });
+```
+
+Without dependency injection, create the store and client yourself:
 
 ```csharp
 IWorkflowStore store = new MongoDbWorkflowStore(new MongoClient(connectionString).GetDatabase("MyApp"));
 IWorkflowClient workflowClient = new WorkflowClient(store);
-
-await workflowClient.RegisterAsync(new WelcomeEmailWorkflow { EmailAddress = user.EmailAddress });
 ```
 
 ## 4. Run the WorkflowServer as a Windows service
@@ -159,37 +170,24 @@ dotnet add package Microsoft.Extensions.Hosting.WindowsServices
 dotnet add package Stateless.WorkflowEngine.MongoDb
 ```
 
-Add a reference to the project containing your workflows, and replace `Program.cs` with the following, which sets up the store and server as singletons and lets the server create workflow actions from the service provider (see [Dependency Injection](#dependency-injection)):
+Add a reference to the project containing your workflows, and replace `Program.cs` with the following. `AddStatelessWorkflowEngine` registers the server and client as singletons, the store is added with `WithMongoDbStore`, and the server creates workflow actions from the service provider, each in its own scope (see [Dependency Injection](#dependency-injection)):
 
 ```csharp
-using MongoDB.Driver;
 using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.MongoDb;
-using Stateless.WorkflowEngine.Stores;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 // runs as a Windows service when installed as one, or as a console app when run directly
 builder.Services.AddWindowsService(options => options.ServiceName = "MyWorkflowServer");
 
-builder.Services.AddSingleton<IWorkflowStore>(sp =>
-{
-    var client = new MongoClient(builder.Configuration.GetConnectionString("Workflows"));
-    return new MongoDbWorkflowStore(client.GetDatabase("MyApp"));
-});
-
-builder.Services.AddSingleton<IWorkflowServer>(sp =>
-{
-    var workflowServer = new WorkflowServer(sp.GetRequiredService<IWorkflowStore>());
-    workflowServer.DependencyResolver = new ServiceProviderResolver(sp);
-
+builder.Services.AddStatelessWorkflowEngine()
+    .WithMongoDbStore(builder.Configuration.GetConnectionString("Workflows"), "MyApp")
     // register each workflow type the server runs
-    workflowServer.RegisterWorkflowType<WelcomeEmailWorkflow>();
-    return workflowServer;
-});
+    .AddWorkflowType<WelcomeEmailWorkflow>()
+    // register the workflow actions, so missing dependencies are found at startup
+    .AddWorkflowActionsFromAssemblyOf<WelcomeEmailWorkflow>();
 
-// workflow actions are created by the dependency resolver, so register them and their dependencies
-builder.Services.AddTransient<SendWelcomeEmailAction>();
+// the dependencies of your workflow actions
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
 builder.Services.AddHostedService<WorkflowWorker>();
@@ -215,9 +213,7 @@ public class WorkflowWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _workflowServer.WorkflowCompleted += (sender, e) => _logger.LogInformation("Workflow {Id} completed", e.Workflow.Id);
-        _workflowServer.WorkflowSuspended += (sender, e) => _logger.LogError("Workflow {Id} suspended: {Error}", e.Workflow.Id, e.Workflow.LastException);
-
+        // the server logs completed, retried and suspended workflows itself (see Logging)
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -240,21 +236,6 @@ public class WorkflowWorker : BackgroundService
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }
-    }
-}
-
-public class ServiceProviderResolver : IWorkflowEngineDependencyResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-
-    public ServiceProviderResolver(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-
-    public T GetInstance<T>() where T : class
-    {
-        return _serviceProvider.GetRequiredService<T>();
     }
 }
 ```
@@ -283,9 +264,9 @@ The `failure` command restarts the service if it crashes.  By default the servic
 Things to keep in mind:
 
 * **You can run as many WorkflowServers against one store as you like** (e.g. several instances of the service, or containers) - each workflow is locked by the server executing it.  See [Running Multiple Servers](#running-multiple-servers).
-* The `WorkflowServer` should be a **singleton** - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).  When the service stops, `stoppingToken` is cancelled, which shuts the server's node down and releases its workflows straight away for the other servers (the host also disposes it, which does the same).
-* Call `RegisterWorkflowType<T>()` for every workflow type.  This registers the type with the store (required for MongoDb), and saves the workflow's definition so the web console can show its graph.
-* Workflow actions are resolved from the root service provider, so register them as transient or singleton - not scoped.  To use scoped services (e.g. an Entity Framework `DbContext`), create a scope in the action with `IServiceScopeFactory`.
+* The `WorkflowServer` is a **singleton** (`AddStatelessWorkflowEngine` registers it as one) - its constructor initialises the store (creating tables and indexes if `WorkflowServerOptions` allows it).  When the service stops, `stoppingToken` is cancelled, which shuts the server's node down and releases its workflows straight away for the other servers (the host also disposes it, which does the same).
+* Call `AddWorkflowType<T>()` for every workflow type.  This registers the type with the store (required for MongoDb), and saves the workflow's definition so the web console can show its graph.
+* Each workflow action is created in its own DI scope, so actions can take scoped services (e.g. an Entity Framework `DbContext`) in their constructor - they are disposed once the action has executed.
 * Make actions safe to retry: if an action fails part-way through, it runs again from the start.
 * When workflow classes change, deploy the new version to both the server and the applications that register workflows.  Workflows already in the store are loaded into the new class, so avoid renaming or removing states and triggers that existing workflows may be in.
 
@@ -400,7 +381,7 @@ workflowClient.Delete(workflowId);                                // remove an i
 long suspended = workflowClient.GetSuspendedCount();              // also GetIncompleteCount() and GetCompletedCount()
 ```
 
-Like the server, the client should be created once and reused.
+Like the server, the client should be created once and reused - `AddStatelessWorkflowEngine` registers it as a singleton (see [Dependency Injection](#dependency-injection)).
 
 ## Workflow Actions
 
@@ -491,60 +472,84 @@ To cater for this, workflows have a "Priority" property that can be set.  This d
 
 ## Dependency Injection
 
-Most of the classes in the code implement an interface, which allows for the inversion of control.  One exception to this is 
-the **_Workflow_** class, which needed to be concrete class.  This class contains the method to create a workflow action, using 
-Activator.CreateInstance() which isn't great for DI.  For this purpose, the class provides the 
+With `Microsoft.Extensions.DependencyInjection`, `AddStatelessWorkflowEngine` registers the workflow server (`IWorkflowServer`) and client (`IWorkflowClient`) as singletons, and returns a builder to add a store, workflow types and workflow actions (see [Getting Started](#getting-started) for a complete example):
 
 ```csharp
-CreateWorkflowActionInstance<T>()
+services.AddStatelessWorkflowEngine(options => options.ClaimBatchSize = 20)
+    .WithMongoDbStore(connectionString, "MyApp")
+    .AddWorkflowType<WelcomeEmailWorkflow>()
+    .AddWorkflowActionsFromAssemblyOf<WelcomeEmailWorkflow>();
 ```
 
-method which can be overridden if you want to take control over how workflow actions are instantiated.
+| Method | Description |
+|--------|-------------|
+| `AddStatelessWorkflowEngine(configure)` | Adds the server and client.  `configure` sets the `WorkflowServerOptions` - they can also be bound to configuration with `services.Configure<WorkflowServerOptions>(configuration.GetSection("Workflows"))`. |
+| `WithMongoDbStore(connectionString, databaseName, configure)` | Stores workflows in MongoDb (`Stateless.WorkflowEngine.MongoDb` package).  `configure` can change the collection names.  To share a client you have registered, pass a factory instead: `WithMongoDbStore(sp => sp.GetRequiredService<IMongoClient>().GetDatabase("MyApp"))`. |
+| `WithRavenDbStore(urls, database, certificate)` | Stores workflows in RavenDb (`Stateless.WorkflowEngine.RavenDb` package).  To share a document store you have registered, pass a factory instead: `WithRavenDbStore(sp => sp.GetRequiredService<IDocumentStore>())`. |
+| `WithMemoryStore()` | Stores workflows in memory - they are lost when the application stops. |
+| `WithStore<TStore>()` / `WithStore(sp => ...)` | Uses your own `IWorkflowStore`. |
+| `AddWorkflowType<T>()` | Registers a workflow type with the server when it is created (see `RegisterWorkflowType` below).  Add every workflow type the server executes. |
+| `AddWorkflowActionsFromAssemblyOf<T>(filter)` | Registers every `IWorkflowAction` and `IWorkflowActionAsync` in the assembly as transient (unless already registered).  `filter` limits it to some of the types, e.g. one namespace. |
 
-As of version 1.3.0, however, there is a better option.  The `WorkflowServer` class (required for the execution of workflows), has a `DependencyResolver` property, that implements the `IWorkflowEngineDependencyResolver` interface.  This can be set as part of your application's bootstrapping process:
+The store is a singleton shared by the server and client.  The server, and any `MongoClient` or `DocumentStore` created from a connection string or urls, are disposed with the service provider - disposing the server releases its workflows for other servers (see [Running Multiple Servers](#running-multiple-servers)).  An application that only registers workflows can use the same setup and just resolve `IWorkflowClient` - the server is only created when it is resolved.
+
+### Workflow actions
+
+The server creates workflow actions with a `ServiceProviderDependencyResolver`:
+
+* **Each action runs in its own scope**, which is disposed once the action has executed, so an action can take scoped services (e.g. an Entity Framework `DbContext`) in its constructor and gets new ones every time it runs.
+* **Actions don't have to be registered** - an action that isn't registered is created with its constructor dependencies resolved from the scope.  Registering them (`AddWorkflowActionsFromAssemblyOf<T>()`, or `services.AddTransient<MyAction>()`) means the service provider's `ValidateOnBuild` (on by default in the Development environment) checks their dependencies when the application starts.  Otherwise, an action with a missing dependency throws when it runs, and the workflow is retried and eventually suspended.
+
+### Without Microsoft.Extensions.DependencyInjection
+
+The `WorkflowServer` has a `DependencyResolver` property that takes an `IWorkflowEngineDependencyResolver`, which has one method - `T GetInstance<T>()` - that you can implement with your own DI framework.  If your resolver implements `IWorkflowEngineScopedDependencyResolver`, its `CreateScope()` is called for every action, the action is resolved from the scope, and the scope is disposed after the action has executed.
 
 ```csharp
-MyDependencyResolver resolver = new MyDependencyResolver();
-workflowServer.DependencyResolver = resolver;
+workflowServer.DependencyResolver = new MyDependencyResolver();
 ```
 
-The interface has one method: `T GetInstance<T>` - which allows you to use your own DI framework to instantiate the action class.
+Without a resolver, actions are created with `Activator.CreateInstance()`, so they need a parameterless constructor - or override `CreateWorkflowActionInstance<T>()` on your workflow to create them yourself.
 
-With `Microsoft.Extensions.DependencyInjection`, pass the service provider to the resolver when the server is created (see [Getting Started](#getting-started) for a complete example), and register your action classes and their dependencies:
+## Logging
 
-```csharp
-services.AddSingleton<IWorkflowServer>((sp) => 
+The server logs through `ILogger` - `AddStatelessWorkflowEngine` uses the application's `ILoggerFactory`, or pass one to the `WorkflowServer(store, options, loggerFactory)` constructor.  There are two categories:
+
+| Category | Level | Event id | Message |
+|----------|-------|----------|---------|
+| `Stateless.WorkflowEngine.WorkflowServer` | Debug | 1000 | A batch of workflows was claimed |
+| | Debug | 1001 | A workflow step is executing (state and trigger) |
+| | Information | 1002 | A workflow completed |
+| | Warning | 1003 | A workflow action failed, and the workflow will be retried (with the exception, and when it will retry) |
+| | Error | 1004 | A workflow action failed, and the workflow has been suspended |
+| | Warning | 1005 | A workflow's lock was lost to another node, so its result wasn't saved |
+| | Warning | 1006 | A `WorkflowClaimed` event handler threw |
+| | Error | 1007 | Claiming workflows failed (e.g. the database is unavailable) |
+| | Error | 1008 | A claimed workflow couldn't be executed or saved |
+| `Stateless.WorkflowEngine.Services.WorkflowNodeMonitor` | Information | 1100 | The node registered |
+| | Debug | 1101 | The node heartbeated |
+| | Warning | 1102 | The node was removed by another node, and re-registered with a new id |
+| | Information | 1103 | Nodes that stopped heartbeating were removed |
+| | Information | 1104 | Workflows locked by a node that no longer exists were released |
+| | Error | 1105 | A heartbeat or monitoring operation failed |
+| | Warning | 1106 | A `NodeMonitorError` event handler threw |
+| | Information | 1107 | The node is stopping |
+| | Warning | 1108 | The node stopped waiting for its running workflows after `NodeTimeout` |
+| | Information | 1109 | The node stopped, released its locks and removed itself |
+
+With a high volume of workflows, Information logs a line for every completed workflow - set the `Stateless.WorkflowEngine.WorkflowServer` category to `Warning` to only log problems, e.g. in `appsettings.json`:
+
+```json
 {
-    var workflowServer = new WorkflowServer(sp.GetRequiredService<IWorkflowStore>());
-    workflowServer.DependencyResolver = new MyResolver(sp);
-    return workflowServer;
-});
-services.AddTransient<MyWorkflowAction>();
-```
-
-Your resolver would look like this:
-
-```csharp
-private class MyResolver : IWorkflowEngineDependencyResolver
-{
-  private readonly IServiceProvider _serviceProvider;
-
-  public MyResolver(IServiceProvider serviceProvider)
-  {
-    this._serviceProvider = serviceProvider;
-  }
-
-  public T GetInstance<T>() where T : class
-  {
-    var result = _serviceProvider.GetService<T>();
-    if (result == null)
-    {
-      throw new Exception("Class " + typeof(T).ToString() + " has not been registered with the container");
+  "Logging": {
+    "LogLevel": {
+      "Stateless.WorkflowEngine.WorkflowServer": "Warning"
     }
-    return result;
   }
 }
 ```
+
+The server's events (see below) are still raised, for anything you want to do beyond logging.
+
 ## Events
 
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 

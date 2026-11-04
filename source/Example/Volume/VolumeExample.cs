@@ -1,11 +1,11 @@
 ﻿using Dapper;
 using Example.Shared;
 using Example.Shared.Workflows.Volume;
-using MongoDB.Driver;
+using Example.Shared.Workflows.VolumeAsync;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Stateless.TestHarness.Multithread;
 using Stateless.WorkflowEngine;
-using Stateless.WorkflowEngine.MongoDb;
-using Stateless.WorkflowEngine.Stores;
 
 namespace Example.Volume
 {
@@ -20,12 +20,18 @@ namespace Example.Volume
             _dbType = dbType;
             _isComplete = false;
             const int TestRecordCount = 1000;
-            var mongoClient = new MongoClient(AppSettings.MongoDbConnectionString);
-            var database = mongoClient.GetDatabase(AppSettings.VolumeExampleMongoDbName);
-            IWorkflowStore workflowStore = new MongoDbWorkflowStore(database);
-            IWorkflowClient workflowClient = new WorkflowClient(workflowStore);
-            using IWorkflowServer workflowServer = new WorkflowServer(workflowStore);
-            workflowServer.RegisterWorkflowType<VolumeWorkflow>();
+
+            // the engine only logs warnings and errors here, so 1000 workflows don't flood the console
+            using ServiceProvider serviceProvider = ExampleServices.Create(Constants.StoreTypeMongoDb, AppSettings.VolumeExampleMongoDbName,
+                engine => engine
+                    .AddWorkflowType<VolumeWorkflow>()
+                    .AddWorkflowType<VolumeAsyncWorkflow>()
+                    .AddWorkflowActionsFromAssemblyOf<VolumeWorkflow>(type => ExampleServices.InNamespaceOf<VolumeWorkflow>(type) || ExampleServices.InNamespaceOf<VolumeAsyncWorkflow>(type)),
+                LogLevel.Warning,
+                // scoped: each action gets its own connection, closed when the action's scope is disposed
+                services => services.AddScoped(sp => new VolumeDb(dbType)));
+            IWorkflowClient workflowClient = serviceProvider.GetRequiredService<IWorkflowClient>();
+            IWorkflowServer workflowServer = serviceProvider.GetRequiredService<IWorkflowServer>();
 
             VolumeDbMigrator.Run(dbType);
 

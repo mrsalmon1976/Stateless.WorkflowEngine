@@ -202,11 +202,22 @@ namespace Stateless.WorkflowEngine
         public abstract Task FireAsync(string triggerName, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// 
+        /// Creates and executes a workflow action.  If the dependency resolver is an
+        /// <see cref="IWorkflowEngineScopedDependencyResolver"/>, the action is resolved from a new scope, which is
+        /// disposed once the action has executed.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         protected virtual void ExecuteWorkflowAction<T>() where T : class, IWorkflowAction
         {
+            if (this.DependencyResolver is IWorkflowEngineScopedDependencyResolver scopedResolver)
+            {
+                using (IWorkflowEngineDependencyScope scope = scopedResolver.CreateScope())
+                {
+                    this.RunWorkflowAction(scope.GetInstance<T>());
+                }
+                return;
+            }
+
             IWorkflowAction workflowAction;
 
             if (this.DependencyResolver == null)
@@ -218,17 +229,26 @@ namespace Stateless.WorkflowEngine
                 workflowAction = this.DependencyResolver.GetInstance<T>();
             }
 
-            this.OnActionExecuting(workflowAction);
-            workflowAction.Execute(this);
-            this.OnActionExecuted(workflowAction);
+            this.RunWorkflowAction(workflowAction);
         }
 
         /// <summary>
-        /// 
+        /// Creates and executes a workflow action.  If the dependency resolver is an
+        /// <see cref="IWorkflowEngineScopedDependencyResolver"/>, the action is resolved from a new scope, which is
+        /// disposed once the action has executed.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         protected async virtual Task ExecuteWorkflowActionAsync<T>(CancellationToken cancellationToken = default) where T : class, IWorkflowActionAsync
         {
+            if (this.DependencyResolver is IWorkflowEngineScopedDependencyResolver scopedResolver)
+            {
+                await using (IWorkflowEngineDependencyScope scope = scopedResolver.CreateScope())
+                {
+                    await this.RunWorkflowActionAsync(scope.GetInstance<T>(), cancellationToken);
+                }
+                return;
+            }
+
             IWorkflowActionAsync workflowAction;
 
             if (this.DependencyResolver == null)
@@ -240,6 +260,18 @@ namespace Stateless.WorkflowEngine
                 workflowAction = this.DependencyResolver.GetInstance<T>();
             }
 
+            await this.RunWorkflowActionAsync(workflowAction, cancellationToken);
+        }
+
+        private void RunWorkflowAction(IWorkflowAction workflowAction)
+        {
+            this.OnActionExecuting(workflowAction);
+            workflowAction.Execute(this);
+            this.OnActionExecuted(workflowAction);
+        }
+
+        private async Task RunWorkflowActionAsync(IWorkflowActionAsync workflowAction, CancellationToken cancellationToken)
+        {
             await this.OnActionExecutingAsync(workflowAction, cancellationToken);
             await workflowAction.ExecuteAsync(this, cancellationToken);
             await this.OnActionExecutedAsync(workflowAction, cancellationToken);

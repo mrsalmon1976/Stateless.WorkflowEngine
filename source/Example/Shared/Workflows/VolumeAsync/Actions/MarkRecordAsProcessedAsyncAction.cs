@@ -13,6 +13,13 @@ namespace Example.Shared.Workflows.VolumeAsync.Actions
 
         const string SelectSql = "SELECT Id from VolumeTest WHERE Id = @Id";
 
+        private readonly VolumeDb _volumeDb;
+
+        public MarkRecordAsProcessedAsyncAction(VolumeDb volumeDb)
+        {
+            _volumeDb = volumeDb;
+        }
+
         public async Task ExecuteAsync(Stateless.WorkflowEngine.Workflow workflow, CancellationToken cancellationToken = default)
         {
             VolumeAsyncWorkflow mtw = (VolumeAsyncWorkflow)workflow;
@@ -24,9 +31,10 @@ namespace Example.Shared.Workflows.VolumeAsync.Actions
                 throw new Exception("Contrived exception to ensure retry works...");
             }
 
-            using (var conn = DbHelper.GetConnection(mtw.DbType))
+            // the connection belongs to this action's scope, and is closed once the action has executed
+            var conn = _volumeDb.Connection;
+            using (var tran = conn.BeginTransaction())
             {
-                var tran = conn.BeginTransaction();
                 int? id = await conn.QueryFirstOrDefaultAsync<int>(SelectSql, new { Id = mtw.RecordId }, tran);
                 if (id == null)
                 {
@@ -34,7 +42,6 @@ namespace Example.Shared.Workflows.VolumeAsync.Actions
                 }
                 await conn.ExecuteAsync(UpdateSql, new { ProcessDate = DateTime.Now, Id = mtw.RecordId }, tran);
                 tran.Commit();
-                conn.Close();
             }
 
             mtw.ResumeTrigger = VolumeAsyncWorkflow.Trigger.Complete.ToString();
