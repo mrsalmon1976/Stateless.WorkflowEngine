@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,11 +46,10 @@ namespace Stateless.WorkflowEngine
         public virtual DateTime? CompletedOn { get; internal set; }
 
         /// <summary>
-        /// Gets/sets the class used to resolve dependencies.  This will be set by the workflow server before 
-        /// executing a workflow step, and if a value is supplied, this will be used to create the workflow 
-        /// action.
+        /// Gets/sets the service provider that workflow actions are created from.  This is set by the workflow server
+        /// before executing a workflow step.
         /// </summary>
-        internal IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+        internal IServiceProvider ServiceProvider { get; set; }
 
         /// <summary>
         /// Marks a workflow as suspended.  This will be set to true when the maximum retry count is exceeded.
@@ -158,23 +158,38 @@ namespace Stateless.WorkflowEngine
         public virtual DateTime? LockedOn { get; set; }
 
         /// <summary>
-        /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
-        /// own DI framework to create the actions.
+        /// Creates a new WorkflowAction instance.  The action is resolved from <paramref name="serviceProvider"/> (or
+        /// created with its constructor dependencies from it if it isn't registered); if the workflow server has no
+        /// service provider, it is created with its parameterless constructor.  This can be overridden if you'd like
+        /// to create the actions yourself.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        protected virtual IWorkflowAction CreateWorkflowActionInstance<T>() where T : IWorkflowAction
+        /// <param name="serviceProvider">The scope the action executes in, or null if the workflow server has no
+        /// service provider.</param>
+        protected virtual T CreateWorkflowActionInstance<T>(IServiceProvider serviceProvider) where T : class, IWorkflowAction
         {
-            return Activator.CreateInstance<T>();
+            return CreateInstance<T>(serviceProvider);
         }
 
         /// <summary>
-        /// Creates a new WorkflowAction instance.  This can be overridden if you'd like to use your 
-        /// own DI framework to create the actions.
+        /// Creates a new WorkflowActionAsync instance.  The action is resolved from <paramref name="serviceProvider"/>
+        /// (or created with its constructor dependencies from it if it isn't registered); if the workflow server has
+        /// no service provider, it is created with its parameterless constructor.  This can be overridden if you'd
+        /// like to create the actions yourself.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        protected virtual IWorkflowActionAsync CreateWorkflowActionAsyncInstance<T>() where T : IWorkflowActionAsync
+        /// <param name="serviceProvider">The scope the action executes in, or null if the workflow server has no
+        /// service provider.</param>
+        protected virtual T CreateWorkflowActionAsyncInstance<T>(IServiceProvider serviceProvider) where T : class, IWorkflowActionAsync
         {
-            return Activator.CreateInstance<T>();
+            return CreateInstance<T>(serviceProvider);
+        }
+
+        private static T CreateInstance<T>(IServiceProvider serviceProvider) where T : class
+        {
+            return serviceProvider == null
+                ? Activator.CreateInstance<T>()
+                : ActivatorUtilities.GetServiceOrCreateInstance<T>(serviceProvider);
         }
 
         /// <summary>
@@ -202,65 +217,49 @@ namespace Stateless.WorkflowEngine
         public abstract Task FireAsync(string triggerName, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates and executes a workflow action.  If the dependency resolver is an
-        /// <see cref="IWorkflowEngineScopedDependencyResolver"/>, the action is resolved from a new scope, which is
-        /// disposed once the action has executed.
+        /// Creates (with <see cref="CreateWorkflowActionInstance{T}"/>) and executes a workflow action.  If the
+        /// workflow server has a service provider, the action is created in a new scope, which is disposed once the
+        /// action has executed.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         protected virtual void ExecuteWorkflowAction<T>() where T : class, IWorkflowAction
         {
-            if (this.DependencyResolver is IWorkflowEngineScopedDependencyResolver scopedResolver)
+            if (this.ServiceProvider == null)
             {
-                using (IWorkflowEngineDependencyScope scope = scopedResolver.CreateScope())
-                {
-                    this.RunWorkflowAction(scope.GetInstance<T>());
-                }
+                this.RunWorkflowAction(this.CreateWorkflowActionInstance<T>(null));
                 return;
             }
 
-            IWorkflowAction workflowAction;
-
-            if (this.DependencyResolver == null)
+            AsyncServiceScope scope = this.ServiceProvider.CreateAsyncScope();
+            try
             {
-                workflowAction = this.CreateWorkflowActionInstance<T>();
+                this.RunWorkflowAction(this.CreateWorkflowActionInstance<T>(scope.ServiceProvider));
             }
-            else
+            finally
             {
-                workflowAction = this.DependencyResolver.GetInstance<T>();
+                // disposed asynchronously so services that are only IAsyncDisposable don't throw
+                scope.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
-
-            this.RunWorkflowAction(workflowAction);
         }
 
         /// <summary>
-        /// Creates and executes a workflow action.  If the dependency resolver is an
-        /// <see cref="IWorkflowEngineScopedDependencyResolver"/>, the action is resolved from a new scope, which is
-        /// disposed once the action has executed.
+        /// Creates (with <see cref="CreateWorkflowActionAsyncInstance{T}"/>) and executes a workflow action.  If the
+        /// workflow server has a service provider, the action is created in a new scope, which is disposed once the
+        /// action has executed.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         protected async virtual Task ExecuteWorkflowActionAsync<T>(CancellationToken cancellationToken = default) where T : class, IWorkflowActionAsync
         {
-            if (this.DependencyResolver is IWorkflowEngineScopedDependencyResolver scopedResolver)
+            if (this.ServiceProvider == null)
             {
-                await using (IWorkflowEngineDependencyScope scope = scopedResolver.CreateScope())
-                {
-                    await this.RunWorkflowActionAsync(scope.GetInstance<T>(), cancellationToken);
-                }
+                await this.RunWorkflowActionAsync(this.CreateWorkflowActionAsyncInstance<T>(null), cancellationToken);
                 return;
             }
 
-            IWorkflowActionAsync workflowAction;
-
-            if (this.DependencyResolver == null)
+            await using (AsyncServiceScope scope = this.ServiceProvider.CreateAsyncScope())
             {
-                workflowAction = this.CreateWorkflowActionAsyncInstance<T>();
+                await this.RunWorkflowActionAsync(this.CreateWorkflowActionAsyncInstance<T>(scope.ServiceProvider), cancellationToken);
             }
-            else
-            {
-                workflowAction = this.DependencyResolver.GetInstance<T>();
-            }
-
-            await this.RunWorkflowActionAsync(workflowAction, cancellationToken);
         }
 
         private void RunWorkflowAction(IWorkflowAction workflowAction)

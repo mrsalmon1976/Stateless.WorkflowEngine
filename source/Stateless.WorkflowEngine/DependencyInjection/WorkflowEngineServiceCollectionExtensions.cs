@@ -15,8 +15,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Adds the workflow server (<see cref="IWorkflowServer"/>) and client (<see cref="IWorkflowClient"/>) as
         /// singletons.  A store must also be added, with <c>WithMongoDbStore</c>, <c>WithRavenDbStore</c>,
         /// <c>WithMemoryStore</c> or <c>WithStore</c>.  The server logs through the registered <see cref="ILoggerFactory"/>,
-        /// and creates workflow actions with a <see cref="ServiceProviderDependencyResolver"/>, so each action runs in its
-        /// own scope.
+        /// and creates workflow actions from the service provider, each in its own scope.
         /// </summary>
         /// <param name="services"></param>
         /// <param name="configure">Configures the server options - they can also be configured (e.g. bound to
@@ -29,12 +28,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Configure(configure);
             }
 
-            services.TryAddSingleton<IWorkflowEngineDependencyResolver>(sp => new ServiceProviderDependencyResolver(sp));
-
             services.TryAddSingleton<IWorkflowServer>(sp =>
             {
                 WorkflowServer workflowServer = new WorkflowServer(GetWorkflowStore(sp), sp.GetRequiredService<IOptions<WorkflowServerOptions>>().Value, sp.GetService<ILoggerFactory>());
-                workflowServer.DependencyResolver = sp.GetRequiredService<IWorkflowEngineDependencyResolver>();
+                workflowServer.ServiceProvider = sp;
                 foreach (WorkflowTypeRegistration registration in sp.GetServices<WorkflowTypeRegistration>())
                 {
                     registration.Register(workflowServer);

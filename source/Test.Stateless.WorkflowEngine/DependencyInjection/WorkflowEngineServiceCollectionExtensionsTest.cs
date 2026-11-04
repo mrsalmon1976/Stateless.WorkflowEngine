@@ -51,15 +51,16 @@ namespace Test.Stateless.WorkflowEngine.DependencyInjection
         }
 
         [Test]
-        public void AddStatelessWorkflowEngine_Server_UsesServiceProviderDependencyResolver()
+        public void AddStatelessWorkflowEngine_Server_UsesServiceProvider()
         {
             ServiceCollection services = new ServiceCollection();
             services.AddStatelessWorkflowEngine().WithMemoryStore();
 
             using ServiceProvider serviceProvider = services.BuildServiceProvider();
-            WorkflowServer server = (WorkflowServer)serviceProvider.GetRequiredService<IWorkflowServer>();
+            IWorkflowServer server = serviceProvider.GetRequiredService<IWorkflowServer>();
 
-            Assert.That(server.DependencyResolver, Is.InstanceOf<ServiceProviderDependencyResolver>());
+            // singleton factories get the root scope rather than the provider itself, which resolves the same singletons
+            Assert.That(server.ServiceProvider.GetRequiredService<IWorkflowStore>(), Is.SameAs(serviceProvider.GetRequiredService<IWorkflowStore>()));
         }
 
         [Test]
@@ -281,6 +282,44 @@ namespace Test.Stateless.WorkflowEngine.DependencyInjection
             Assert.DoesNotThrow(() => workflow.RunAction<ScopedAction>());
         }
 
+        [Test]
+        public void ExecuteWorkflowAction_CreateWorkflowActionInstanceOverridden_OverrideGivenActionScope()
+        {
+            using ServiceProvider serviceProvider = BuildScopedServiceProvider(validateScopes: true);
+            ActionCreatingScopedWorkflow workflow = new ActionCreatingScopedWorkflow();
+            workflow.ServiceProvider = serviceProvider;
+
+            workflow.RunAction<ScopedAction>();
+
+            Assert.That(workflow.ServiceProviders.Single(), Is.Not.Null.And.Not.SameAs(serviceProvider));
+            Assert.That(workflow.Dependencies.Single().IsDisposed, Is.True);
+        }
+
+        [Test]
+        public async Task ExecuteWorkflowActionAsync_CreateWorkflowActionAsyncInstanceOverridden_OverrideGivenActionScope()
+        {
+            using ServiceProvider serviceProvider = BuildScopedServiceProvider(validateScopes: true);
+            ActionCreatingScopedWorkflow workflow = new ActionCreatingScopedWorkflow();
+            workflow.ServiceProvider = serviceProvider;
+
+            await workflow.RunActionAsync<ScopedAsyncAction>();
+
+            Assert.That(workflow.ServiceProviders.Single(), Is.Not.Null.And.Not.SameAs(serviceProvider));
+            Assert.That(workflow.Dependencies.Single().IsDisposed, Is.True);
+        }
+
+        [Test]
+        public async Task ExecuteWorkflowAction_CreateWorkflowActionInstanceOverriddenAndNoServiceProvider_OverrideGivenNull()
+        {
+            ActionCreatingScopedWorkflow workflow = new ActionCreatingScopedWorkflow();
+
+            workflow.RunAction<ScopedAction>();
+            await workflow.RunActionAsync<ScopedAsyncAction>();
+
+            Assert.That(workflow.ServiceProviders, Is.EqualTo(new IServiceProvider[] { null, null }));
+            Assert.That(workflow.Dependencies.Count, Is.EqualTo(2));
+        }
+
         #endregion
 
         #region Private Methods
@@ -298,7 +337,7 @@ namespace Test.Stateless.WorkflowEngine.DependencyInjection
         private static ScopedWorkflow CreateWorkflow(IServiceProvider serviceProvider)
         {
             ScopedWorkflow workflow = new ScopedWorkflow();
-            workflow.DependencyResolver = serviceProvider.GetRequiredService<IWorkflowEngineDependencyResolver>();
+            workflow.ServiceProvider = serviceProvider;
             return workflow;
         }
 

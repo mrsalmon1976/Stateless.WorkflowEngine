@@ -35,6 +35,26 @@ namespace Test.Stateless.WorkflowEngine.Workflows.Scoped
     }
 
     /// <summary>
+    /// Workflow that creates its actions itself, recording the service providers it was given.
+    /// </summary>
+    public class ActionCreatingScopedWorkflow : ScopedWorkflow
+    {
+        public List<IServiceProvider> ServiceProviders { get; } = new List<IServiceProvider>();
+
+        protected override T CreateWorkflowActionInstance<T>(IServiceProvider serviceProvider)
+        {
+            this.ServiceProviders.Add(serviceProvider);
+            return (T)(object)new ScopedAction(serviceProvider?.GetService(typeof(ScopedDependency)) as ScopedDependency ?? new ScopedDependency(new AsyncOnlyDependency()));
+        }
+
+        protected override T CreateWorkflowActionAsyncInstance<T>(IServiceProvider serviceProvider)
+        {
+            this.ServiceProviders.Add(serviceProvider);
+            return (T)(object)new ScopedAsyncAction(serviceProvider?.GetService(typeof(ScopedDependency)) as ScopedDependency ?? new ScopedDependency(new AsyncOnlyDependency()));
+        }
+    }
+
+    /// <summary>
     /// A dependency registered as scoped, which records when it is disposed.
     /// </summary>
     public class ScopedDependency : IDisposable

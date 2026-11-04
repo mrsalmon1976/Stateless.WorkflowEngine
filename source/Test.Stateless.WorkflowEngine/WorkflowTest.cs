@@ -12,7 +12,7 @@ using Test.Stateless.WorkflowEngine.Workflows.Async;
 using Test.Stateless.WorkflowEngine.Workflows.Async.Actions;
 using Stateless.WorkflowEngine;
 using Test.Stateless.WorkflowEngine.Workflows.DependencyInjection.Actions;
-using NSubstitute;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Test.Stateless.WorkflowEngine
 {
@@ -31,23 +31,25 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public void ExecuteWorkflowAction_ActionWithoutDefaultConstructorAndNoDependencyResolver_ThrowsMissingMethodException()
+        public void ExecuteWorkflowAction_ActionWithoutDefaultConstructorAndNoServiceProvider_ThrowsMissingMethodException()
         {
             DependencyInjectionWorkflow wf = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
-            wf.DependencyResolver = null;
+            wf.ServiceProvider = null;
             Action del = () => wf.Fire(DependencyInjectionWorkflow.Trigger.DoStuff);
             Assert.Throws<MissingMethodException>(del);
         }
 
         [Test]
-        public void ExecuteWorkflowAction_WithDependencyResolver_UsesResolver()
+        public void ExecuteWorkflowAction_WithServiceProvider_ActionResolvedFromServiceProvider()
         {
-            IWorkflowEngineDependencyResolver resolver = Substitute.For<IWorkflowEngineDependencyResolver>();
-            resolver.GetInstance<NoDefaultConstructorAction>().Returns(new NoDefaultConstructorAction("test", 1));
+            int created = 0;
+            using ServiceProvider serviceProvider = new ServiceCollection()
+                .AddTransient(sp => { created++; return new NoDefaultConstructorAction("test", 1); })
+                .BuildServiceProvider();
             DependencyInjectionWorkflow wf = new DependencyInjectionWorkflow(DependencyInjectionWorkflow.State.Start);
-            wf.DependencyResolver = resolver;
+            wf.ServiceProvider = serviceProvider;
             wf.Fire(DependencyInjectionWorkflow.Trigger.DoStuff);
-            resolver.Received(1).GetInstance<NoDefaultConstructorAction>();
+            Assert.That(created, Is.EqualTo(1));
         }
 
         #endregion
@@ -58,11 +60,10 @@ namespace Test.Stateless.WorkflowEngine
         public async Task ExecuteWorkflowActionAsync_ExecutesAction()
         {
             AsyncDoingStuffAction action = new AsyncDoingStuffAction();
-            IWorkflowEngineDependencyResolver resolver = Substitute.For<IWorkflowEngineDependencyResolver>();
-            resolver.GetInstance<AsyncDoingStuffAction>().Returns(action);
+            using ServiceProvider serviceProvider = ProviderWith(action);
 
             TestableAsyncWorkflow wf = new TestableAsyncWorkflow();
-            wf.DependencyResolver = resolver;
+            wf.ServiceProvider = serviceProvider;
             await wf.RunActionAsync<AsyncDoingStuffAction>();
 
             Assert.That(action.WasExecuted, Is.True);
@@ -78,23 +79,25 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         [Test]
-        public async Task ExecuteWorkflowActionAsync_WithDependencyResolver_UsesResolver()
+        public async Task ExecuteWorkflowActionAsync_WithServiceProvider_ActionResolvedFromServiceProvider()
         {
-            IWorkflowEngineDependencyResolver resolver = Substitute.For<IWorkflowEngineDependencyResolver>();
-            resolver.GetInstance<AsyncDoingStuffAction>().Returns(new AsyncDoingStuffAction());
+            int created = 0;
+            using ServiceProvider serviceProvider = new ServiceCollection()
+                .AddTransient(sp => { created++; return new NoDefaultConstructorAsyncAction("test"); })
+                .BuildServiceProvider();
 
             TestableAsyncWorkflow wf = new TestableAsyncWorkflow();
-            wf.DependencyResolver = resolver;
-            await wf.RunActionAsync<AsyncDoingStuffAction>();
+            wf.ServiceProvider = serviceProvider;
+            await wf.RunActionAsync<NoDefaultConstructorAsyncAction>();
 
-            resolver.Received(1).GetInstance<AsyncDoingStuffAction>();
+            Assert.That(created, Is.EqualTo(1));
         }
 
         [Test]
-        public void ExecuteWorkflowActionAsync_WithoutDefaultConstructorAndNoDependencyResolver_ThrowsMissingMethodException()
+        public void ExecuteWorkflowActionAsync_WithoutDefaultConstructorAndNoServiceProvider_ThrowsMissingMethodException()
         {
             TestableAsyncWorkflow wf = new TestableAsyncWorkflow();
-            wf.DependencyResolver = null;
+            wf.ServiceProvider = null;
             Action del = () => wf.RunActionAsync<NoDefaultConstructorAsyncAction>().GetAwaiter().GetResult();
             Assert.Throws<MissingMethodException>(del);
         }
@@ -103,11 +106,10 @@ namespace Test.Stateless.WorkflowEngine
         public async Task ExecuteWorkflowActionAsync_PassesCancellationTokenToAction()
         {
             AsyncDoingStuffAction action = new AsyncDoingStuffAction();
-            IWorkflowEngineDependencyResolver resolver = Substitute.For<IWorkflowEngineDependencyResolver>();
-            resolver.GetInstance<AsyncDoingStuffAction>().Returns(action);
+            using ServiceProvider serviceProvider = ProviderWith(action);
 
             TestableAsyncWorkflow wf = new TestableAsyncWorkflow();
-            wf.DependencyResolver = resolver;
+            wf.ServiceProvider = serviceProvider;
 
             CancellationToken expectedToken = new CancellationTokenSource().Token;
             await wf.RunActionAsync<AsyncDoingStuffAction>(expectedToken);
@@ -116,6 +118,11 @@ namespace Test.Stateless.WorkflowEngine
         }
 
         #endregion
+
+        private static ServiceProvider ProviderWith<T>(T action) where T : class
+        {
+            return new ServiceCollection().AddSingleton(action).BuildServiceProvider();
+        }
 
     }
 }

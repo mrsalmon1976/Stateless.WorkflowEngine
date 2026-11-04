@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.Stores;
 using NUnit.Framework;
@@ -1152,7 +1153,7 @@ namespace Test.Stateless.WorkflowEngine
 
         [TestCase(true)]
         [TestCase(false)]
-        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndNoDependencyResolver_ThrowsException(bool isAsync)
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndNoServiceProvider_ThrowsException(bool isAsync)
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -1177,7 +1178,7 @@ namespace Test.Stateless.WorkflowEngine
 
         [TestCase(true)]
         [TestCase(false)]
-        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndDependencyResolver_ExecutesAction(bool isAsync)
+        public void ExecuteWorkflows_ActionWithNoDefaultConstructorAndServiceProvider_ExecutesAction(bool isAsync)
         {
             // set up the store and the workflows
             IWorkflowStore workflowStore = new MemoryWorkflowStore();
@@ -1189,15 +1190,17 @@ namespace Test.Stateless.WorkflowEngine
             workflow.ResumeTrigger = DependencyInjectionWorkflow.Trigger.DoStuff.ToString();
             workflowStore.Save(workflow);
 
-            MyDependencyResolver resolver = new MyDependencyResolver();// Substitute.For<IWorkflowEngineDependencyResolver>();
-            //resolver.GetInstance<NoDefaultConstructorAction>().Returns(new NoDefaultConstructorAction("test", 1));
-            workflowServer.DependencyResolver = resolver;
+            int runCount = 0;
+            using ServiceProvider serviceProvider = new ServiceCollection()
+                .AddTransient(sp => { runCount++; return new NoDefaultConstructorAction("test", 1); })
+                .BuildServiceProvider();
+            workflowServer.ServiceProvider = serviceProvider;
 
             // execute
-            Assert.That(resolver.RunCount, Is.EqualTo(0));
+            Assert.That(runCount, Is.EqualTo(0));
             int result = (isAsync ? workflowServer.ExecuteWorkflowsAsync(10).Result : workflowServer.ExecuteWorkflows(10));
             Assert.That(result, Is.EqualTo(1));
-            Assert.That(resolver.RunCount, Is.EqualTo(1));
+            Assert.That(runCount, Is.EqualTo(1));
 
         }
 
@@ -1947,22 +1950,6 @@ namespace Test.Stateless.WorkflowEngine
             workflowServer.WorkflowRegistrationService = workflowRegistrationService;
             workflowServer.WorkflowExceptionHandler = workflowExceptionHandler;
             return workflowServer;
-        }
-
-        private class MyDependencyResolver : IWorkflowEngineDependencyResolver
-        {
-            public int RunCount { get; set; }
-            public T GetInstance<T>() where T : class
-            {
-                RunCount++;
-
-                if (typeof(T) == typeof(NoDefaultConstructorAction))
-                {
-                    return (T)Convert.ChangeType(new NoDefaultConstructorAction("test", 1), typeof(T));
-                }
-
-                throw new NotImplementedException();
-            }
         }
     }
 }

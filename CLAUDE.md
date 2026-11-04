@@ -84,7 +84,7 @@ Test projects:
 ### DI and logging
 
 - `AddStatelessWorkflowEngine()` (core, `DependencyInjection/`, namespace `Microsoft.Extensions.DependencyInjection`) registers `IWorkflowServer`/`IWorkflowClient` singletons and returns an `IWorkflowEngineBuilder`; stores are added with `WithMemoryStore`/`WithStore` (core), `WithMongoDbStore` (MongoDb package) and `WithRavenDbStore` (RavenDb package) — each `With*Store` replaces the previous one. `AddWorkflowType<T>` runs `RegisterWorkflowType<T>` when the server is created; `AddWorkflowActionsFromAssemblyOf<T>(filter)` registers actions as transient (TryAdd).
-- `ServiceProviderDependencyResolver` implements `IWorkflowEngineScopedDependencyResolver`: `Workflow.ExecuteWorkflowAction*` creates a scope per action when the resolver is scoped (sync scopes are disposed via `DisposeAsync`), and unregistered actions are created with `ActivatorUtilities`.
+- Actions are created from `IWorkflowServer.ServiceProvider` (set by `AddStatelessWorkflowEngine`; there is no resolver interface since v6): `Workflow.ExecuteWorkflowAction*` creates a scope per action (sync scopes are disposed via `DisposeAsync`) and uses `ActivatorUtilities.GetServiceOrCreateInstance`, so unregistered actions still get constructor injection. Every action is created by the overridable `CreateWorkflowActionInstance<T>(IServiceProvider scope)` / `CreateWorkflowActionAsyncInstance<T>`, which gets the action scope (null with no provider, when `Activator` is used).
 - `WorkflowServer(store, options, loggerFactory)` logs via `[LoggerMessage]` methods in `Logging/WorkflowServerLog` (event ids 1000s) and `Logging/WorkflowNodeMonitorLog` (1100s); the README "Logging" table lists them — keep it in sync.
 
 ### Workflow Event Hooks
@@ -102,7 +102,7 @@ Test projects:
 - **Strategy pattern** for store implementations (all implement `IWorkflowStore`)
 - **Template method** for workflow configuration (override `Initialise()`)
 - **Event-driven**: `WorkflowSuspended`, `WorkflowCompleted`, `WorkflowClaimed`, `WorkflowLockLost`, `NodeEvicted` and `NodeMonitorError` events on `IWorkflowServer`
-- **DI support**: `AddStatelessWorkflowEngine()` (see "DI and logging"), a custom `IWorkflowEngineDependencyResolver`, or override `CreateWorkflowActionInstance<T>()`
+- **DI support**: `AddStatelessWorkflowEngine()` (see "DI and logging"), setting `IWorkflowServer.ServiceProvider`, or override `CreateWorkflowActionInstance<T>(IServiceProvider)`
 - Serialization via Newtonsoft.Json; MongoDB workflows should use `[BsonIgnoreExtraElements]` for forward compatibility
 - MongoDB Guids: driver 3 needs an explicit Guid representation. Workflow/definition ids use `MongoDbWorkflowStore.IdGuidRepresentation` (CSharpLegacy, binary subtype 3 — the format existing 2.x-era data uses) via class maps in the store's static constructor, `[BsonGuidRepresentation]` on `MongoWorkflow.Id`/`UIWorkflow.Id`, and `ToBsonId()` for raw `BsonDocument` queries. Never register a global Guid serializer from library code (the driver forbids changing it once used) — apps with Guid properties register it themselves (README "Guids"). `Fixtures/WorkflowSavedByDriver2.json` in the MongoDb tests is a real document saved by driver 2.30
 

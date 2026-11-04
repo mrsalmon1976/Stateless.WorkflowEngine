@@ -9,11 +9,12 @@ namespace Stateless.WorkflowEngine
     public interface IWorkflowServer : IDisposable
     {
         /// <summary>
-        /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
-        /// This defaults to null, in which case classes are created with reflection.  Setting this property
-        /// to your own resolver will allow you to control how workflow actions are created.
+        /// Gets/sets the service provider that workflow actions are created from - each action is resolved from its own
+        /// scope, and actions that aren't registered are created with their constructor dependencies from the scope.
+        /// This defaults to null, in which case actions are created with their parameterless constructor (see
+        /// <c>Workflow.CreateWorkflowActionInstance</c>).  <c>AddStatelessWorkflowEngine</c> sets it.
         /// </summary>
-        IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+        IServiceProvider ServiceProvider { get; set; }
 
         /// <summary>
         /// Gets/sets the options applicable to the workflow server.

@@ -37,6 +37,8 @@ This table shows the client version and the associated driver/client versions us
 
 From version 6.0, all packages target **.NET 10** (`net10.0`).  Version 5.x targeted .NET Standard 2.0 (and .NET Framework 4.8 for RavenDb) - applications running on .NET Framework should stay on 5.x.
 
+Version 6.0 replaces `IWorkflowEngineDependencyResolver` with `IServiceProvider` - see [Dependency Injection](#dependency-injection).
+
 Version 6.0 of the MongoDb store uses version 3 of the MongoDb driver, which requires **MongoDb Server 4.4 or later** - stay on 5.x for older servers.  Applications using the store must also use version 3 of the driver (see the [driver's upgrade guide](https://www.mongodb.com/docs/drivers/csharp/current/reference/upgrade/v3/) for any changes needed in your own MongoDb code), and existing workflows remain readable (see [Guids](#guids)).
 
 # Workflow Configuration
@@ -495,20 +497,22 @@ The store is a singleton shared by the server and client.  The server, and any `
 
 ### Workflow actions
 
-The server creates workflow actions with a `ServiceProviderDependencyResolver`:
+The server creates workflow actions from the service provider (`AddStatelessWorkflowEngine` sets `IWorkflowServer.ServiceProvider`):
 
 * **Each action runs in its own scope**, which is disposed once the action has executed, so an action can take scoped services (e.g. an Entity Framework `DbContext`) in its constructor and gets new ones every time it runs.
 * **Actions don't have to be registered** - an action that isn't registered is created with its constructor dependencies resolved from the scope.  Registering them (`AddWorkflowActionsFromAssemblyOf<T>()`, or `services.AddTransient<MyAction>()`) means the service provider's `ValidateOnBuild` (on by default in the Development environment) checks their dependencies when the application starts.  Otherwise, an action with a missing dependency throws when it runs, and the workflow is retried and eventually suspended.
 
-### Without Microsoft.Extensions.DependencyInjection
+### Other containers, or no container
 
-The `WorkflowServer` has a `DependencyResolver` property that takes an `IWorkflowEngineDependencyResolver`, which has one method - `T GetInstance<T>()` - that you can implement with your own DI framework.  If your resolver implements `IWorkflowEngineScopedDependencyResolver`, its `CreateScope()` is called for every action, the action is resolved from the scope, and the scope is disposed after the action has executed.
+If you create the `WorkflowServer` yourself, set its `ServiceProvider` property to have actions created the same way.  Containers such as Autofac, Lamar and DryIoc provide an `IServiceProvider` through their `Microsoft.Extensions.DependencyInjection` integration, so they can be used here too:
 
 ```csharp
-workflowServer.DependencyResolver = new MyDependencyResolver();
+workflowServer.ServiceProvider = serviceProvider;
 ```
 
-Without a resolver, actions are created with `Activator.CreateInstance()`, so they need a parameterless constructor - or override `CreateWorkflowActionInstance<T>()` on your workflow to create them yourself.
+Without a service provider, actions are created with their parameterless constructor.  To create actions yourself, override `CreateWorkflowActionInstance<T>(IServiceProvider)` (and `CreateWorkflowActionAsyncInstance<T>(IServiceProvider)`) on your workflow - it is given the scope the action executes in, or null if there is no service provider.
+
+**Upgrading from 5.x:** `IWorkflowEngineDependencyResolver` and the `DependencyResolver` property have been removed.  Use `AddStatelessWorkflowEngine`, or set `ServiceProvider` to your container's `IServiceProvider` - your resolver's `GetInstance<T>()` is replaced by the container resolving (or creating) each action in its own scope.  `CreateWorkflowActionInstance<T>()` and `CreateWorkflowActionAsyncInstance<T>()` now take the action scope (`IServiceProvider`), and are called whether or not there is a service provider.
 
 ## Logging
 

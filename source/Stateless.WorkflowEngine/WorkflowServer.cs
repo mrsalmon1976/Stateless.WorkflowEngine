@@ -116,11 +116,12 @@ namespace Stateless.WorkflowEngine
         }
 
         /// <summary>
-        /// Gets/sets the resolver used to instantiate new instances of classes required for workflow execution.
-        /// This defaults to null, in which case classes are created with reflection.  Setting this property
-        /// to your own resolver will allow you to control how workflow actions are created.
+        /// Gets/sets the service provider that workflow actions are created from - each action is resolved from its own
+        /// scope, and actions that aren't registered are created with their constructor dependencies from the scope.
+        /// This defaults to null, in which case actions are created with their parameterless constructor (see
+        /// <c>Workflow.CreateWorkflowActionInstance</c>).  <c>AddStatelessWorkflowEngine</c> sets it.
         /// </summary>
-        public IWorkflowEngineDependencyResolver DependencyResolver { get; set; }
+        public IServiceProvider ServiceProvider { get; set; }
 
         /// <summary>
         /// Gets the id of this server's node, used to lock the workflows it claims.  This changes if the node is evicted.
@@ -170,8 +171,8 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentNullException("Workflow server cannot execute null workflow object");
             }
 
-            // set the dependency resolver on the workflow to allow for dependency injection
-            workflow.DependencyResolver = this.DependencyResolver;
+            // set the service provider on the workflow, so its actions are created from it
+            workflow.ServiceProvider = this.ServiceProvider;
             int priorityBeforeFire = workflow.Priority;
             bool continueExecution = false;
 
@@ -247,8 +248,8 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentNullException("Workflow server cannot execute null workflow object");
             }
 
-            // set the dependency resolver on the workflow to allow for dependency injection
-            workflow.DependencyResolver = this.DependencyResolver;
+            // set the service provider on the workflow, so its actions are created from it
+            workflow.ServiceProvider = this.ServiceProvider;
             int priorityBeforeFire = workflow.Priority;
             bool continueExecution = false;
 
