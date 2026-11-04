@@ -1015,7 +1015,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 2 });
 
             // execute
-            TestDelegate execute = () =>
+            Action execute = () =>
             {
                 if (isAsync)
                 {
@@ -1119,7 +1119,7 @@ namespace Test.Stateless.WorkflowEngine
             IWorkflowStore workflowStore = CreateBatchClaimingStore();
             IWorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = claimBatchSize });
 
-            TestDelegate execute = () =>
+            Action execute = () =>
             {
                 if (isAsync)
                 {
@@ -1592,7 +1592,7 @@ namespace Test.Stateless.WorkflowEngine
 
             using (WorkflowServer workflowServer = new WorkflowServer(workflowStore, new WorkflowServerOptions() { ClaimBatchSize = 3 }))
             {
-                TestDelegate execute = () =>
+                Action execute = () =>
                 {
                     if (isAsync)
                     {
