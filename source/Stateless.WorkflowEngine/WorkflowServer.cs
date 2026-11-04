@@ -11,6 +11,8 @@ using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stateless.WorkflowEngine.Logging;
+using Stateless.WorkflowEngine.Diagnostics;
+using System.Diagnostics;
 
 namespace Stateless.WorkflowEngine
 {
@@ -35,13 +37,23 @@ namespace Stateless.WorkflowEngine
         /// <param name="workflowStore"></param>
         /// <param name="options">The server options, or null for the defaults.</param>
         /// <param name="loggerFactory">The logger factory, or null to not log.</param>
-        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options, ILoggerFactory loggerFactory)
+        public WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options, ILoggerFactory loggerFactory) : this(workflowStore, options, loggerFactory, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a workflow server that logs through the given logger factory, and records metrics and activities
+        /// through the given instrumentation.
+        /// </summary>
+        /// <param name="instrumentation">The instrumentation, or null for <see cref="WorkflowEngineInstrumentation.Default"/>.</param>
+        internal WorkflowServer(IWorkflowStore workflowStore, WorkflowServerOptions options, ILoggerFactory loggerFactory, WorkflowEngineInstrumentation instrumentation)
         {
             _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
             _logger = _loggerFactory.CreateLogger<WorkflowServer>();
+            this.Instrumentation = instrumentation ?? WorkflowEngineInstrumentation.Default;
             this.WorkflowStore = workflowStore;
             this.Options = options ?? new WorkflowServerOptions();
-            this.WorkflowRegistrationService = new WorkflowRegistrationService();
+            this.WorkflowRegistrationService = new WorkflowRegistrationService(this.Instrumentation);
             this.WorkflowExceptionHandler = new WorkflowExceptionHandler();
 
             workflowStore.Initialise(this.Options.AutoCreateTables, this.Options.AutoCreateIndexes, this.Options.PersistWorkflowDefinitions);
@@ -89,6 +101,11 @@ namespace Stateless.WorkflowEngine
         /// Gets/sets the workflow registration service
         /// </summary>
         internal IWorkflowExceptionHandler WorkflowExceptionHandler { get; set; }
+
+        /// <summary>
+        /// Gets the instrumentation that records the server's metrics and activities.
+        /// </summary>
+        internal WorkflowEngineInstrumentation Instrumentation { get; }
 
         /// <summary>
         /// Gets the monitor that registers this server as a node and keeps its heartbeat up to date.  It is created on
@@ -171,8 +188,31 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentNullException("Workflow server cannot execute null workflow object");
             }
 
+            // the step's activity ends before the next step executes, so consecutive steps are siblings
+            bool continueExecution;
+            using (Activity activity = this.Instrumentation.StartStep(workflow, ownerNodeId))
+            {
+                continueExecution = this.ExecuteStep(workflow, ownerNodeId, activity);
+            }
+
+            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
+            // hits - but if the priority has changed then rather allow for another poll
+            if (continueExecution)
+            {
+                this.ExecuteWorkflow(workflow, ownerNodeId);
+            }
+        }
+
+        /// <summary>
+        /// Executes one step of a workflow: fires its trigger and saves it, or archives it if it is complete.
+        /// </summary>
+        /// <param name="activity">The step's activity, or null if nothing is listening.</param>
+        /// <returns>True if the workflow's next step can be executed immediately.</returns>
+        private bool ExecuteStep(Workflow workflow, string ownerNodeId, Activity activity)
+        {
             // set the service provider on the workflow, so its actions are created from it
             workflow.ServiceProvider = this.ServiceProvider;
+            workflow.Instrumentation = this.Instrumentation;
             int priorityBeforeFire = workflow.Priority;
             bool continueExecution = false;
 
@@ -180,13 +220,16 @@ namespace Stateless.WorkflowEngine
             if (!workflow.IsComplete)
             {
                 string initialState = workflow.CurrentState;
+                string trigger = workflow.ResumeTrigger;
+                long startTimestamp = Stopwatch.GetTimestamp();
                 bool hasError = false;
                 bool isSaved = false;
                 try
                 {
                     workflow.LastException = null;
-                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, workflow.ResumeTrigger);
-                    workflow.Fire(workflow.ResumeTrigger);
+                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, trigger);
+                    workflow.Fire(trigger);
+                    this.Instrumentation.StepSucceeded(activity, workflow, initialState, trigger, startTimestamp);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
                 }
@@ -194,6 +237,7 @@ namespace Stateless.WorkflowEngine
                 {
                     hasError = true;
                     this.HandleExecutionError(workflow, initialState, ex);
+                    this.Instrumentation.StepFailed(activity, workflow, initialState, ex, startTimestamp);
                 }
                 finally
                 {
@@ -205,7 +249,7 @@ namespace Stateless.WorkflowEngine
                 // exit out on an error or if the workflow has been claimed by another node, nothing else to do here
                 if (hasError || !isSaved)
                 {
-                    return;
+                    return false;
                 }
             }
 
@@ -215,24 +259,20 @@ namespace Stateless.WorkflowEngine
                 workflow.CompletedOn = DateTime.UtcNow;
                 if (!this.ArchiveWorkflow(workflow, ownerNodeId))
                 {
-                    return;
+                    return false;
                 }
                 WorkflowServerLog.WorkflowCompleted(_logger, workflow.Id, workflow.GetType().Name);
+                this.Instrumentation.WorkflowCompleted(activity, workflow);
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
                 {
                     completedHandler(this, new WorkflowEventArgs(workflow));
                 }
-                return;
+                return false;
             }
 
-            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
-            // hits - but if the priority has changed then rather allow for another poll
-            if (continueExecution)
-            {
-                this.ExecuteWorkflow(workflow, ownerNodeId);
-            }
+            return continueExecution;
         }
 
         /// <summary>
@@ -248,8 +288,31 @@ namespace Stateless.WorkflowEngine
                 throw new ArgumentNullException("Workflow server cannot execute null workflow object");
             }
 
+            // the step's activity ends before the next step executes, so consecutive steps are siblings
+            bool continueExecution;
+            using (Activity activity = this.Instrumentation.StartStep(workflow, ownerNodeId))
+            {
+                continueExecution = await this.ExecuteStepAsync(workflow, ownerNodeId, activity, cancellationToken);
+            }
+
+            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
+            // hits - but if the priority has changed then rather allow for another poll
+            if (continueExecution)
+            {
+                await this.ExecuteWorkflowAsync(workflow, ownerNodeId, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Executes one step of a workflow: fires its trigger and saves it, or archives it if it is complete.
+        /// </summary>
+        /// <param name="activity">The step's activity, or null if nothing is listening.</param>
+        /// <returns>True if the workflow's next step can be executed immediately.</returns>
+        private async Task<bool> ExecuteStepAsync(Workflow workflow, string ownerNodeId, Activity activity, CancellationToken cancellationToken)
+        {
             // set the service provider on the workflow, so its actions are created from it
             workflow.ServiceProvider = this.ServiceProvider;
+            workflow.Instrumentation = this.Instrumentation;
             int priorityBeforeFire = workflow.Priority;
             bool continueExecution = false;
 
@@ -257,13 +320,16 @@ namespace Stateless.WorkflowEngine
             if (!workflow.IsComplete)
             {
                 string initialState = workflow.CurrentState;
+                string trigger = workflow.ResumeTrigger;
+                long startTimestamp = Stopwatch.GetTimestamp();
                 bool hasError = false;
                 bool isSaved = false;
                 try
                 {
                     workflow.LastException = null;
-                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, workflow.ResumeTrigger);
-                    await workflow.FireAsync(workflow.ResumeTrigger, cancellationToken);
+                    WorkflowServerLog.ExecutingStep(_logger, workflow.Id, workflow.GetType().Name, initialState, trigger);
+                    await workflow.FireAsync(trigger, cancellationToken);
+                    this.Instrumentation.StepSucceeded(activity, workflow, initialState, trigger, startTimestamp);
 
                     workflow.RetryCount = 0;    // success!  make sure the RetryCount is reset
                 }
@@ -271,6 +337,7 @@ namespace Stateless.WorkflowEngine
                 {
                     hasError = true;
                     this.HandleExecutionError(workflow, initialState, ex);
+                    this.Instrumentation.StepFailed(activity, workflow, initialState, ex, startTimestamp);
                 }
                 finally
                 {
@@ -282,7 +349,7 @@ namespace Stateless.WorkflowEngine
                 // exit out on an error or if the workflow has been claimed by another node, nothing else to do here
                 if (hasError || !isSaved)
                 {
-                    return;
+                    return false;
                 }
             }
 
@@ -292,24 +359,20 @@ namespace Stateless.WorkflowEngine
                 workflow.CompletedOn = DateTime.UtcNow;
                 if (!await this.ArchiveWorkflowAsync(workflow, ownerNodeId))
                 {
-                    return;
+                    return false;
                 }
                 WorkflowServerLog.WorkflowCompleted(_logger, workflow.Id, workflow.GetType().Name);
+                this.Instrumentation.WorkflowCompleted(activity, workflow);
                 workflow.OnComplete();
                 var completedHandler = this.WorkflowCompleted;
                 if (completedHandler != null)
                 {
                     completedHandler(this, new WorkflowEventArgs(workflow));
                 }
-                return;
+                return false;
             }
 
-            // if the workflow is ready to resume immediately, just execute immediately instead of waiting for polling - saves database
-            // hits - but if the priority has changed then rather allow for another poll
-            if (continueExecution)
-            {
-                await this.ExecuteWorkflowAsync(workflow, ownerNodeId, cancellationToken);
-            }
+            return continueExecution;
         }
 
         /// <summary>
@@ -806,6 +869,7 @@ namespace Stateless.WorkflowEngine
         private void OnWorkflowLockLost(Workflow workflow, string ownerNodeId)
         {
             WorkflowServerLog.WorkflowLockLost(_logger, workflow.Id, workflow.GetType().Name, ownerNodeId);
+            this.Instrumentation.WorkflowLockLost(workflow);
             var lockLostHandler = this.WorkflowLockLost;
             if (lockLostHandler != null)
             {

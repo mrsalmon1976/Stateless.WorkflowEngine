@@ -38,6 +38,17 @@ services:
       - ravendb
     restart: unless-stopped
 
+  # receives the engine's metrics and traces from the Example app over OTLP (gRPC on 4317) - UI on 18888
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    container_name: stateless_aspire_dashboard
+    ports:
+      - "18888:18888"
+      - "4317:18889"
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    restart: unless-stopped
+
 volumes:
   mongodb_data:
   ravendb_data:

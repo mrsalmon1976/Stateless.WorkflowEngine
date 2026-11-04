@@ -554,6 +554,47 @@ With a high volume of workflows, Information logs a line for every completed wor
 
 The server's events (see below) are still raised, for anything you want to do beyond logging.
 
+## Metrics and tracing
+
+The engine emits metrics and traces with the built-in .NET `System.Diagnostics` APIs, so the library has no OpenTelemetry dependency and they cost almost nothing until something listens.  Both the meter and the activity source are named `Stateless.WorkflowEngine` (`WorkflowEngineDiagnostics.Name`).  To export them with [OpenTelemetry](https://opentelemetry.io/docs/languages/dotnet/):
+
+```csharp
+services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddMeter(WorkflowEngineDiagnostics.Name))
+    .WithTracing(tracing => tracing.AddSource(WorkflowEngineDiagnostics.Name))
+    .UseOtlpExporter();
+```
+
+If you also export logs with OpenTelemetry, set `IncludeFormattedMessage` (e.g. `.WithLogging(configureBuilder: null, configureOptions: o => o.IncludeFormattedMessage = true)`) - otherwise the log body is the message template (`Workflow {WorkflowId} ... completed`), and some viewers (e.g. the Aspire dashboard) show it unformatted.  The values are always sent as attributes.
+
+They can also be watched without OpenTelemetry, e.g. `dotnet-counters monitor --counters Stateless.WorkflowEngine -n <process>`.  With `AddStatelessWorkflowEngine`, the meter is created from the application's `IMeterFactory` if one is registered (hosts register it).
+
+### Metrics
+
+| Instrument | Type (unit) | Tags | Recorded when |
+|------------|-------------|------|---------------|
+| `stateless.workflow.created` | Counter | `workflow.type` | A workflow is registered with a client or server |
+| `stateless.workflow.transitions` | Counter | `workflow.type`, `workflow.state.from`, `workflow.state.to`, `workflow.trigger` | A workflow step fires successfully |
+| `stateless.workflow.step.duration` | Histogram (s) | `workflow.type`, `workflow.state.from`, `outcome`, `error.type` | A workflow step fires, whether or not it succeeds |
+| `stateless.workflow.completed` | Counter | `workflow.type` | A workflow completes and is archived |
+| `stateless.workflow.duration` | Histogram (s) | `workflow.type` | A workflow completes - the time since it was created |
+| `stateless.workflow.retried` | Counter | `workflow.type`, `workflow.state`, `error.type` | A workflow step fails, and will be retried |
+| `stateless.workflow.suspended` | Counter | `workflow.type`, `workflow.state`, `error.type` | A workflow step fails on its last retry, and the workflow is suspended |
+| `stateless.workflow.unsuspended` | Counter | `workflow.type` | A workflow is unsuspended with a client |
+| `stateless.workflow.lock_lost` | Counter | `workflow.type` | A workflow isn't saved because another node claimed it |
+| `stateless.workflow.action.duration` | Histogram (s) | `workflow.type`, `action.type`, `outcome`, `error.type` | A workflow action executes (including its `OnActionExecuting`/`OnActionExecuted` hooks) |
+
+`outcome` is `success` or `error`, and `error.type` is the full name of the exception type when it is `error`.  The number of actions executed (and failed) is the count of `stateless.workflow.action.duration`.  Workflow ids are not metric tags, as they would make every workflow its own time series - they are on the traces.  The instrument and tag names are constants on `WorkflowEngineDiagnostics`.
+
+### Traces
+
+- `workflow.step` - one per workflow step, named `<workflow type> <trigger>`: firing the trigger and saving (or archiving) the workflow.  Tagged with `workflow.id`, `workflow.type`, `workflow.trigger`, `workflow.state.from`, `workflow.state.to`, `workflow.retry_count` and `workflow.node_id` (when executed by `ExecuteWorkflows`).  A failed step has error status with an `exception` event; `workflow.completed`, `workflow.suspended` and `workflow.lock_lost` events are added when they happen.  Steps executed one after the other are siblings.
+- `workflow.action` - one per action, named after the action type, as a child of its step.  Anything the action traces (e.g. HttpClient or database calls) is a child of it.
+
+### Viewing them locally
+
+`start.ps1` also starts the [Aspire dashboard](https://aspire.dev/dashboard/standalone/) in Docker, and the Example app exports its metrics and traces to it (override the OTLP endpoint with `STATELESS_OTLP_ENDPOINT`).  Run an example, then open http://localhost:18888.
+
 ## Events
 
 Workflows move through states, but there are also events that occur in the lifecycle that are raised, allowing you to take 

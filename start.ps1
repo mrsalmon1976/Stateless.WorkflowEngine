@@ -3,8 +3,9 @@
     Starts the Stateless.WorkflowEngine development environment in Docker.
 
 .DESCRIPTION
-    Starts MongoDB (localhost:27017), RavenDB (http://localhost:8080) and the web console
-    (http://localhost:8811) using docker-compose.yml.  The Example app and the MongoDb/RavenDb test projects
+    Starts MongoDB (localhost:27017), RavenDB (http://localhost:8080), the web console
+    (http://localhost:8811) and the Aspire dashboard (http://localhost:18888, which shows the metrics and traces
+    the Example app exports to localhost:4317) using docker-compose.yml.  The Example app and the MongoDb/RavenDb test projects
     point at these containers by default (override with the STATELESS_MONGODB_CONNECTIONSTRING and
     STATELESS_RAVENDB_URL environment variables).
 
@@ -34,6 +35,7 @@ $composeFile = "$root\docker-compose.yml"
 $consoleUrl = "http://localhost:8811"
 $devClientUrl = "http://localhost:5173"
 $ravenUrl = "http://localhost:8080"
+$dashboardUrl = "http://localhost:18888"
 $consoleProject = "$root\source\Stateless.WorkflowEngine.WebConsole"
 $clientProject = "$root\source\Stateless.WorkflowEngine.WebConsole.Client"
 
@@ -164,7 +166,7 @@ Write-Host "Starting Docker services..." -ForegroundColor Cyan
 if ($Dev) {
     # the console runs from source on the same port, so the container must not be running
     docker compose -f $composeFile stop webconsole
-    $composeArgs = @("compose", "-f", $composeFile, "up", "-d", "mongodb", "ravendb")
+    $composeArgs = @("compose", "-f", $composeFile, "up", "-d", "mongodb", "ravendb", "aspire-dashboard")
 }
 else {
     $composeArgs = @("compose", "-f", $composeFile, "up", "-d")
@@ -222,6 +224,7 @@ else {
 }
 Write-Host "  MongoDB     : mongodb://localhost:27017"
 Write-Host "  RavenDB     : $ravenUrl (studio)"
+Write-Host "  Telemetry   : $dashboardUrl (Aspire dashboard - metrics and traces from the Example app)"
 Write-Host ""
 Write-Host "Seed workflows with the Example app:  dotnet run --project source\Example" -ForegroundColor Gray
 Write-Host "Run the store tests (they use these containers) from Visual Studio or 'dotnet test'." -ForegroundColor Gray

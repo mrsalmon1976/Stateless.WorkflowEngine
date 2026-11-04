@@ -1,4 +1,5 @@
-﻿using Stateless.WorkflowEngine.Exceptions;
+﻿using Stateless.WorkflowEngine.Diagnostics;
+using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System;
 using System.Collections.Generic;
@@ -42,6 +43,19 @@ namespace Stateless.WorkflowEngine.Services
 
     public class WorkflowRegistrationService : IWorkflowRegistrationService
     {
+        private readonly WorkflowEngineInstrumentation _instrumentation;
+
+        public WorkflowRegistrationService() : this(null)
+        {
+        }
+
+        /// <param name="instrumentation">The instrumentation that records registered workflows, or null for
+        /// <see cref="WorkflowEngineInstrumentation.Default"/>.</param>
+        internal WorkflowRegistrationService(WorkflowEngineInstrumentation instrumentation)
+        {
+            _instrumentation = instrumentation ?? WorkflowEngineInstrumentation.Default;
+        }
+
         /// <summary>
         /// Checks to see if a single-instance workflow has already been registered.
         /// </summary>
@@ -91,6 +105,7 @@ namespace Stateless.WorkflowEngine.Services
             // save the workflow, this can be handled now by the engine
             //workflow.Info.State = workflow.GetCurrentState();
             workflowStore.Save(workflow);
+            _instrumentation.WorkflowCreated(workflow);
         }
 
         /// <summary>
@@ -111,6 +126,7 @@ namespace Stateless.WorkflowEngine.Services
             }
 
             await workflowStore.SaveAsync(workflow);
+            _instrumentation.WorkflowCreated(workflow);
         }
     }
 }

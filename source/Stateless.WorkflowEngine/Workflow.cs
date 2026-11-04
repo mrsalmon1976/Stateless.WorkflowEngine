@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Stateless.WorkflowEngine.Diagnostics;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +12,7 @@ namespace Stateless.WorkflowEngine
 {
     public abstract class Workflow
     {
+        private WorkflowEngineInstrumentation _instrumentation;
 
         public Workflow() : this("Start")
         {
@@ -50,6 +53,16 @@ namespace Stateless.WorkflowEngine
         /// before executing a workflow step.
         /// </summary>
         internal IServiceProvider ServiceProvider { get; set; }
+
+        /// <summary>
+        /// Gets/sets the instrumentation that records the workflow's action metrics and activities.  This is set by the
+        /// workflow server before executing a workflow step - if it isn't, the default instrumentation is used.
+        /// </summary>
+        internal WorkflowEngineInstrumentation Instrumentation
+        {
+            get => _instrumentation ?? WorkflowEngineInstrumentation.Default;
+            set => _instrumentation = value;
+        }
 
         /// <summary>
         /// Marks a workflow as suspended.  This will be set to true when the maximum retry count is exceeded.
@@ -264,16 +277,40 @@ namespace Stateless.WorkflowEngine
 
         private void RunWorkflowAction(IWorkflowAction workflowAction)
         {
-            this.OnActionExecuting(workflowAction);
-            workflowAction.Execute(this);
-            this.OnActionExecuted(workflowAction);
+            WorkflowEngineInstrumentation instrumentation = this.Instrumentation;
+            using Activity activity = instrumentation.StartAction(this, workflowAction);
+            long startTimestamp = Stopwatch.GetTimestamp();
+            try
+            {
+                this.OnActionExecuting(workflowAction);
+                workflowAction.Execute(this);
+                this.OnActionExecuted(workflowAction);
+            }
+            catch (Exception ex)
+            {
+                instrumentation.ActionExecuted(activity, this, workflowAction, startTimestamp, ex);
+                throw;
+            }
+            instrumentation.ActionExecuted(activity, this, workflowAction, startTimestamp, null);
         }
 
         private async Task RunWorkflowActionAsync(IWorkflowActionAsync workflowAction, CancellationToken cancellationToken)
         {
-            await this.OnActionExecutingAsync(workflowAction, cancellationToken);
-            await workflowAction.ExecuteAsync(this, cancellationToken);
-            await this.OnActionExecutedAsync(workflowAction, cancellationToken);
+            WorkflowEngineInstrumentation instrumentation = this.Instrumentation;
+            using Activity activity = instrumentation.StartAction(this, workflowAction);
+            long startTimestamp = Stopwatch.GetTimestamp();
+            try
+            {
+                await this.OnActionExecutingAsync(workflowAction, cancellationToken);
+                await workflowAction.ExecuteAsync(this, cancellationToken);
+                await this.OnActionExecutedAsync(workflowAction, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                instrumentation.ActionExecuted(activity, this, workflowAction, startTimestamp, ex);
+                throw;
+            }
+            instrumentation.ActionExecuted(activity, this, workflowAction, startTimestamp, null);
         }
 
         /// <summary>

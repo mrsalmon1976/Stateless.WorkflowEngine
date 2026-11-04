@@ -1,3 +1,4 @@
+using Stateless.WorkflowEngine.Diagnostics;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Services;
 using Stateless.WorkflowEngine.Stores;
@@ -9,15 +10,27 @@ namespace Stateless.WorkflowEngine
     public class WorkflowClient : IWorkflowClient
     {
         private readonly IWorkflowRegistrationService _workflowRegistrationService;
+        private readonly WorkflowEngineInstrumentation _instrumentation;
 
-        public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, new WorkflowRegistrationService())
+        public WorkflowClient(IWorkflowStore workflowStore) : this(workflowStore, (WorkflowEngineInstrumentation)null)
         {
         }
 
-        public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService)
+        public WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService) : this(workflowStore, workflowRegistrationService, null)
+        {
+        }
+
+        /// <param name="instrumentation">The instrumentation that records registered and unsuspended workflows, or
+        /// null for <see cref="WorkflowEngineInstrumentation.Default"/>.</param>
+        internal WorkflowClient(IWorkflowStore workflowStore, WorkflowEngineInstrumentation instrumentation) : this(workflowStore, new WorkflowRegistrationService(instrumentation), instrumentation)
+        {
+        }
+
+        private WorkflowClient(IWorkflowStore workflowStore, IWorkflowRegistrationService workflowRegistrationService, WorkflowEngineInstrumentation instrumentation)
         {
             this.WorkflowStore = workflowStore;
             _workflowRegistrationService = workflowRegistrationService;
+            _instrumentation = instrumentation ?? WorkflowEngineInstrumentation.Default;
         }
 
         /// <summary>
@@ -200,6 +213,7 @@ namespace Stateless.WorkflowEngine
             workflow.IsSuspended = false;
             workflow.ResumeOn = DateTime.UtcNow;
             this.WorkflowStore.Save(workflow);
+            _instrumentation.WorkflowUnsuspended(workflow);
 
             return workflow;
         }
@@ -221,6 +235,7 @@ namespace Stateless.WorkflowEngine
             workflow.IsSuspended = false;
             workflow.ResumeOn = DateTime.UtcNow;
             await this.WorkflowStore.SaveAsync(workflow);
+            _instrumentation.WorkflowUnsuspended(workflow);
 
             return workflow;
         }

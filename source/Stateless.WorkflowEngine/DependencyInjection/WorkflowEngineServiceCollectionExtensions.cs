@@ -3,9 +3,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stateless.WorkflowEngine;
 using Stateless.WorkflowEngine.DependencyInjection;
+using Stateless.WorkflowEngine.Diagnostics;
 using Stateless.WorkflowEngine.Exceptions;
 using Stateless.WorkflowEngine.Stores;
 using System;
+using System.Diagnostics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -28,9 +30,17 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Configure(configure);
             }
 
+            // metrics are created from the application's meter factory when there is one (hosts add it), so the
+            // container owns the meter
+            services.TryAddSingleton(sp =>
+            {
+                IMeterFactory meterFactory = sp.GetService<IMeterFactory>();
+                return meterFactory == null ? WorkflowEngineInstrumentation.Default : new WorkflowEngineInstrumentation(meterFactory);
+            });
+
             services.TryAddSingleton<IWorkflowServer>(sp =>
             {
-                WorkflowServer workflowServer = new WorkflowServer(GetWorkflowStore(sp), sp.GetRequiredService<IOptions<WorkflowServerOptions>>().Value, sp.GetService<ILoggerFactory>());
+                WorkflowServer workflowServer = new WorkflowServer(GetWorkflowStore(sp), sp.GetRequiredService<IOptions<WorkflowServerOptions>>().Value, sp.GetService<ILoggerFactory>(), sp.GetRequiredService<WorkflowEngineInstrumentation>());
                 workflowServer.ServiceProvider = sp;
                 foreach (WorkflowTypeRegistration registration in sp.GetServices<WorkflowTypeRegistration>())
                 {
@@ -39,7 +49,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 return workflowServer;
             });
 
-            services.TryAddSingleton<IWorkflowClient>(sp => new WorkflowClient(GetWorkflowStore(sp)));
+            services.TryAddSingleton<IWorkflowClient>(sp => new WorkflowClient(GetWorkflowStore(sp), sp.GetRequiredService<WorkflowEngineInstrumentation>()));
 
             return new WorkflowEngineBuilder(services);
         }

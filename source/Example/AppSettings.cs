@@ -27,5 +27,11 @@ namespace Example
         /// RavenDB url - defaults to the container started by start.ps1 / docker-compose.yml.
         /// </summary>
         public static string RavenDbUrl = Environment.GetEnvironmentVariable("STATELESS_RAVENDB_URL") ?? "http://localhost:8080";
+
+        /// <summary>
+        /// OTLP (gRPC) endpoint that metrics and traces are exported to - defaults to the Aspire dashboard started by
+        /// start.ps1 / docker-compose.yml (view them on http://localhost:18888).
+        /// </summary>
+        public static string OtlpEndpoint = Environment.GetEnvironmentVariable("STATELESS_OTLP_ENDPOINT") ?? "http://localhost:4317";
     }
 }

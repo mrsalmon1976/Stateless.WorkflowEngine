@@ -1,5 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Stateless.WorkflowEngine.Diagnostics;
 
 namespace Example.Shared
 {
@@ -52,9 +58,23 @@ namespace Example.Shared
             configureEngine?.Invoke(engine);
             configureServices?.Invoke(services);
 
+            // the engine's logs, metrics and traces are exported to the Aspire dashboard (if it isn't running, export fails
+            // quietly) - logs include the formatted message, as the body is otherwise the message template
+            services.AddOpenTelemetry()
+                .ConfigureResource(resource => resource.AddService("Stateless.WorkflowEngine.Example"))
+                .WithLogging(configureBuilder: null, configureOptions: options => options.IncludeFormattedMessage = true)
+                .WithMetrics(metrics => metrics.AddMeter(WorkflowEngineDiagnostics.Name))
+                .WithTracing(tracing => tracing.AddSource(WorkflowEngineDiagnostics.Name))
+                .UseOtlpExporter(OtlpExportProtocol.Grpc, new Uri(AppSettings.OtlpEndpoint));
+
             // validation checks that every registered workflow action can be created, and that scoped services are
             // only used by actions (each action runs in its own scope)
-            return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+            ServiceProvider serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+            // without a host, the providers only start listening once resolved - they flush when the service provider is disposed
+            serviceProvider.GetRequiredService<MeterProvider>();
+            serviceProvider.GetRequiredService<TracerProvider>();
+            return serviceProvider;
         }
 
         /// <summary>
