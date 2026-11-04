@@ -1,0 +1,23 @@
+{
+  // Debugs the web console client (Vue) in Edge.  The API must be running on http://localhost:8811 - e.g. the
+  // WebConsole profile in Visual Studio - as Vite proxies /api calls to it.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web console client (start Vite)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/Stateless.WorkflowEngine.WebConsole.Client",
+      "preLaunchTask": "vite: dev server"
+    },
+    {
+      // use when Vite is already running, e.g. from start.ps1 -Dev
+      "name": "Web console client (Vite already running)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/Stateless.WorkflowEngine.WebConsole.Client"
+    }
+  ]
+}

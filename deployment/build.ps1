@@ -22,22 +22,24 @@ function UpdateProjectVersion
 		throw "$filePath does not exist - unable to update project file"
 	}
 
-	$doc = New-Object System.Xml.XmlDocument
-	$doc.Load($filePath)
-	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/Version" -newValue $versionWithSuffix
-	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/AssemblyVersion" -newValue $version
-	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//PropertyGroup/FileVersion" -newValue $version
-	UpdateXmlNodeIfExists -xmlDoc $doc -xpath "//package/metadata/version" -newValue $version
-	$doc.Save($filePath)
+	# replace the element values as text - saving through XmlDocument reformats the file (blank lines, line endings
+	# and escaping), which makes every release's diff noisy
+	$content = [System.IO.File]::ReadAllText($filePath)
+	$updated = $content -replace '<Version>[^<]*</Version>', "<Version>$versionWithSuffix</Version>"
+	$updated = $updated -replace '<AssemblyVersion>[^<]*</AssemblyVersion>', "<AssemblyVersion>$version</AssemblyVersion>"
+	$updated = $updated -replace '<FileVersion>[^<]*</FileVersion>', "<FileVersion>$version</FileVersion>"
+	if ($updated -notmatch "<Version>$([regex]::Escape($versionWithSuffix))</Version>") {
+		throw "$filePath has no <Version> element - unable to set the version"
+	}
+	[System.IO.File]::WriteAllText($filePath, $updated)
 }
 
-function UpdateXmlNodeIfExists
+function AssertSuccess
 {
-	param($xmlDoc, $xpath, $newValue)
-	$node = $xmlDoc.SelectSingleNode($xpath)
-	if ($null -ne $node)
-	{
-		$node.InnerText = $newValue
+	param([string]$step)
+	if ($LASTEXITCODE -ne 0) {
+		Write-Host "$step failed (exit code $LASTEXITCODE)" -ForegroundColor White -BackgroundColor Red
+		Exit 1
 	}
 }
 
@@ -60,16 +62,23 @@ function ZipFile
 		Exit 1
 	}
 
-	set-alias sz $exeloc  
+	set-alias sz $exeloc
 	sz a -xr!'Data' -tzip -r $zipFile $sourceFile | Out-Null
+	AssertSuccess -step "Zipping $zipFile"
 }
 
 $root = $PSScriptRoot
 $publish = "$root\publish"
 if (Test-Path -Path $publish) { Remove-Item $publish -Recurse -Force }
 $source = [System.IO.Path]::Combine($root.Replace("deployment", ""), "source") 
-$version = Read-Host -Prompt "What version are we building? [e.g. 2.3.0]"
-$preReleaseSuffix = Read-Host -Prompt "Enter a pre-release suffix (e.g. alpha1) if you would like one, or just hit ENTER for no release suffix"
+# the version must be numeric (it becomes the file version, which Update.ps1 compares with the release tag), and
+# the suffix must be valid in a NuGet version
+do {
+	$version = (Read-Host -Prompt "What version are we building? [e.g. 2.3.0]").Trim()
+} while ($version -notmatch '^\d+\.\d+\.\d+$')
+do {
+	$preReleaseSuffix = (Read-Host -Prompt "Enter a pre-release suffix (e.g. alpha1) if you would like one, or just hit ENTER for no release suffix").Trim()
+} while ($preReleaseSuffix -notmatch '^[0-9A-Za-z.-]*$')
 $versionWithSuffix = "$version-$preReleaseSuffix".TrimEnd("-")
 
 
@@ -83,6 +92,7 @@ UpdateProjectVersion -filePath "$source\Stateless.WorkflowEngine.WebConsole\Stat
 Write-Host "Building Stateless.Workflow.MongoDb version $versionWithSuffix"
 $mongodbPublishDir = "$publish\Stateless.WorkflowEngine.MongoDb"
 & dotnet publish "$source\Stateless.WorkflowEngine.MongoDb\Stateless.WorkflowEngine.MongoDb.csproj" -c Release -o "$mongodbPublishDir"
+AssertSuccess -step "Publishing MongoDb"
 if (!(Test-Path -Path "$mongodbPublishDir\Stateless.WorkflowEngine.MongoDb.dll")) {
 	Write-Host "MongoDb publish location/files not found at $mongodbPublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit
@@ -95,6 +105,7 @@ ZipFile -sourcefile "$mongodbPublishDir\*.*" -zipfile $zip
 Write-Host "Building Stateless.Workflow.RavenDB version $versionWithSuffix"
 $ravendbPublishDir = "$publish\Stateless.WorkflowEngine.RavenDb"
 & dotnet publish "$source\Stateless.WorkflowEngine.RavenDb\Stateless.WorkflowEngine.RavenDb.csproj" -c Release -o "$ravendbPublishDir"
+AssertSuccess -step "Publishing RavenDb"
 if (!(Test-Path -Path $ravendbPublishDir) -or !(Test-Path -Path "$ravendbPublishDir\Stateless.WorkflowEngine.RavenDb.dll")) {
 	Write-Host "RavenDb publish location/files not found at $ravendbPublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit
@@ -107,6 +118,7 @@ ZipFile -sourcefile "$ravendbPublishDir\*.*" -zipfile $zip
 Write-Host "Building Stateless.Workflow.WebConsole version $versionWithSuffix"
 $webconsolePublishDir = "$publish\Stateless.WorkflowEngine.WebConsole"
 & dotnet publish "$source\Stateless.WorkflowEngine.WebConsole\Stateless.WorkflowEngine.WebConsole.csproj" -c Release -r win-x64 --self-contained false -o "$webconsolePublishDir"
+AssertSuccess -step "Publishing the web console"
 if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe") -or !(Test-Path -Path "$webconsolePublishDir\wwwroot\index.html")) {
 	Write-Host "WebConsole publish location/files not found at $webconsolePublishDir" -ForegroundColor White -BackgroundColor Red
 	Exit

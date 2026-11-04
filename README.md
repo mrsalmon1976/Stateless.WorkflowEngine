@@ -816,7 +816,7 @@ Users and connections are stored in `Data\users.json`.  Connection passwords are
 
 ## Upgrading
 
-The console shows a banner when a new version is available, but upgrades are run manually: in an elevated PowerShell prompt in the install folder, run `.\Update.ps1`.  This downloads the latest release, backs up the current install to `Backup\{version}`, and replaces the application files, keeping `Data`, `logs` and `appsettings.Production.json`.
+The console shows a banner when a new version is available, but upgrades are run manually: in an elevated PowerShell prompt in the install folder, run `.\Update.ps1`.  This downloads the latest release (verifying its SHA-256 hash), checks the .NET runtime it needs is installed, backs up the current install to `Backup\{version}`, and replaces the application files, keeping `Data`, `logs` and `appsettings.Production.json` - settings changed in `appsettings.json` are overwritten.  If the update fails after the service is stopped (including the new version failing to start), the backup is restored and the service restarted.  `Update.ps1` is replaced by the release's copy, so the next update runs the latest script.
 
 **Upgrading from version 5.x or earlier** (the .NET Framework console):
 
@@ -874,10 +874,10 @@ Nothing is lost, but the action keeps re-running (another reason to [make action
 * The web console on `http://localhost:8811`, built from source, with connections to the example MongoDb and RavenDb databases
 
 ```powershell
-.\start.ps1            # start everything, rebuilding the console image
-.\start.ps1 -NoBuild   # start without rebuilding the console image
-.\start.ps1 -Stop      # stop the containers (data volumes are kept)
+.\start.ps1   # choose from a menu what to start (or stop)
 ```
+
+See [development.md](development.md) for the full setup, including running the console from source and debugging it.
 
 The example application and the MongoDb/RavenDb test projects use these containers by default.  Tests that need a database are marked with the `RequiresMongoDb` and `RequiresRavenDb` categories.
 

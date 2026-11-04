@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     ContentRootPath = WindowsServiceHelpers.IsWindowsService() ? AppContext.BaseDirectory : null
 });
 
-builder.Host.UseWindowsService(o => o.ServiceName = "Stateless.WorkflowEngine.Console");
+builder.Services.AddWindowsService(o => o.ServiceName = "Stateless.WorkflowEngine.Console");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 

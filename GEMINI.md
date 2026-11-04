@@ -15,7 +15,7 @@ Stateless.WorkflowEngine is a .NET workflow engine built on top of the [stateles
 ## Architecture & Key Components
 
 - **Workflow:** The base class for defining workflows. Workflows are configured in the `Initialise` override.
-- **WorkflowServer:** Processes workflows. Typically runs as a singleton in a background service (e.g., using Topshelf).
+- **WorkflowServer:** Processes workflows. Typically runs as a singleton in a `BackgroundService`, hosted as a Windows service with `AddWindowsService` (see the README).
 - **WorkflowClient:** Used to register workflows for processing by the `WorkflowServer`.
 - **WorkflowStore:** Interface for persistence implementations (`IWorkflowStore`).
 

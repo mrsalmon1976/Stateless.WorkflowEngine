@@ -17,17 +17,57 @@
     windows to stop them.  The local console keeps its own users/connections in the WebConsole project's
     Data folder, separate from the container's.
 
+    With -ClientOnly, the same as -Dev but only the client window (Vite) is started - run the API yourself,
+    e.g. the WebConsole profile in Visual Studio, which can then be debugged.
+
+    Run without parameters to choose from a menu - the switches skip it.
+
 .EXAMPLE
-    .\start.ps1             # start everything, rebuilding the console image if the source has changed
-    .\start.ps1 -NoBuild    # start without rebuilding the console image
+    .\start.ps1             # choose what to start from a menu
+    .\start.ps1 -Full       # start everything, rebuilding the console image if the source has changed
+    .\start.ps1 -NoBuild    # start everything without rebuilding the console image
     .\start.ps1 -Dev        # start the databases in Docker and run the console from source with live reload
+    .\start.ps1 -ClientOnly # as -Dev, but run the API yourself (e.g. from Visual Studio)
     .\start.ps1 -Stop       # stop the containers (data volumes are kept)
 #>
 param(
+    [switch]$Full,
     [switch]$NoBuild,
     [switch]$Dev,
+    [switch]$ClientOnly,
     [switch]$Stop
 )
+
+if (-not ($Full -or $NoBuild -or $Dev -or $ClientOnly -or $Stop)) {
+    $options = [ordered]@{
+        "1" = "Everything in Docker, rebuilding the console image if the source has changed"
+        "2" = "Everything in Docker, without rebuilding the console image"
+        "3" = "Console from source with live reload (API and client windows)"
+        "4" = "Client only with live reload - run the API yourself, e.g. to debug it in Visual Studio"
+        "5" = "Stop the containers"
+    }
+    Write-Host "What do you want to start?" -ForegroundColor Cyan
+    foreach ($key in $options.Keys) {
+        Write-Host "  $key. $($options[$key])"
+    }
+    do {
+        $choice = Read-Host "Choose 1-5 [1]"
+        if (!$choice) {
+            $choice = "1"
+        }
+    } while (-not $options.Contains($choice))
+
+    switch ($choice) {
+        "2" { $NoBuild = [switch]$true }
+        "3" { $Dev = [switch]$true }
+        "4" { $ClientOnly = [switch]$true }
+        "5" { $Stop = [switch]$true }
+    }
+}
+
+if ($ClientOnly) {
+    $Dev = [switch]$true
+}
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
@@ -186,7 +226,10 @@ WaitFor -name "RavenDB" -test { (Invoke-WebRequest -Uri "$ravenUrl/build/version
 
 if ($Dev) {
     # skip anything already running from a previous -Dev run
-    if (IsListening 8811) {
+    if ($ClientOnly) {
+        Write-Host "Not starting the console API - run it yourself on port 8811 (e.g. the WebConsole profile in Visual Studio)." -ForegroundColor Yellow
+    }
+    elseif (IsListening 8811) {
         Write-Host "Something is already listening on port 8811 - assuming it is the console API." -ForegroundColor Yellow
     }
     else {
@@ -202,9 +245,15 @@ if ($Dev) {
     }
 
     # the first build can take a while
-    WaitFor -name "Web console API" -timeoutSeconds 300 -test { IsListening 8811 }
     WaitFor -name "Vite dev server" -timeoutSeconds 300 -test { IsListening 5173 }
-    AddExampleConnections -mongoHost "localhost" -ravenHost "localhost"
+    if ($ClientOnly -and -not (IsListening 8811)) {
+        # the example connections need the API - they are added by the next run once it is up
+        Write-Host "The console API isn't running yet - skipping the example connections." -ForegroundColor Yellow
+    }
+    else {
+        WaitFor -name "Web console API" -timeoutSeconds 300 -test { IsListening 8811 }
+        AddExampleConnections -mongoHost "localhost" -ravenHost "localhost"
+    }
 }
 else {
     WaitFor -name "Web console" -test { (Invoke-WebRequest -Uri $consoleUrl -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop).StatusCode -eq 200 }
@@ -217,7 +266,7 @@ Write-Host ""
 Write-Host "Environment ready:" -ForegroundColor Cyan
 if ($Dev) {
     Write-Host "  Web console : $devClientUrl (live reload - admin/admin on first run)"
-    Write-Host "  Console API : $consoleUrl (dotnet watch)"
+    Write-Host "  Console API : $consoleUrl $(if ($ClientOnly) { '(run it yourself)' } else { '(dotnet watch)' })"
 }
 else {
     Write-Host "  Web console : $consoleUrl (admin/admin on first run)"
@@ -229,7 +278,7 @@ Write-Host ""
 Write-Host "Seed workflows with the Example app:  dotnet run --project source\Example" -ForegroundColor Gray
 Write-Host "Run the store tests (they use these containers) from Visual Studio or 'dotnet test'." -ForegroundColor Gray
 if ($Dev) {
-    Write-Host "Stop the console by closing its two windows, and the containers with:  .\start.ps1 -Stop" -ForegroundColor Gray
+    Write-Host "Stop the console by closing its window(s), and the containers with:  .\start.ps1 -Stop" -ForegroundColor Gray
     Start-Process $devClientUrl
 }
 else {

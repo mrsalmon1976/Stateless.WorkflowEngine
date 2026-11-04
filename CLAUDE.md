@@ -24,7 +24,7 @@ powershell -File deployment/publish.ps1
 - **Framework**: NUnit 4.6.1 with NSubstitute 5.3.0 for mocking
 - **Test projects** are SDK-style net10.0. `Test.Stateless.WorkflowEngine.MongoDb`/`.RavenDb` reference `Test.Stateless.WorkflowEngine` for the shared `WorkflowStoreTestBase`; `Test.Stateless.WorkflowEngine.WebConsole` includes `WebApplicationFactory` integration tests
 
-`start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The console container is a baked image, so it only reflects source changes after a rebuild; `start.ps1 -Dev` instead stops that container and runs the console from source with live reload (`dotnet watch` on 8811 + Vite on 5173). The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
+`start.ps1` (repo root) starts MongoDB (27017), RavenDB (8080) and the web console (8811) in Docker via `docker-compose.yml`. The console container is a baked image, so it only reflects source changes after a rebuild; `start.ps1` (a menu; switches `-Full`/`-NoBuild`/`-Dev`/`-ClientOnly`/`-Stop` skip it) can instead stop that container and runs the console from source with live reload (`dotnet watch` on 8811 + Vite on 5173); `-ClientOnly` starts only Vite, for running the API from Visual Studio (`source/.vscode` debugs the client in Edge). The Example app and the `RequiresMongoDb`/`RequiresRavenDb` tests use these containers by default (override with `STATELESS_MONGODB_CONNECTIONSTRING` / `STATELESS_RAVENDB_URL`).
 
 ```bash
 # Run all tests (from solution root)

@@ -1,10 +1,15 @@
+0. Run the tests (with the start.ps1 containers running for the MongoDb/RavenDb tests) - build.ps1 doesn't:
+	dotnet test source\Stateless.WorkflowEngine.sln
 1. Run "build.ps1", which will
-	a. Prompt for the new version number (enter in format 1.2.3)
-	b. Automatically update the relevant source files
+	a. Prompt for the new version number (format 1.2.3 - it asks again until it is) and an optional pre-release
+	   suffix (e.g. alpha1)
+	b. Automatically update the version in the project files (only the version lines change)
 	c. Build a release version of the solution
-	d. Create the zip files (WebConsole, RavenDb, MongoDb) - the WebConsole build requires the .NET 10 SDK and Node.js/npm
+	d. Create the zip files (WebConsole, RavenDb, MongoDb) - the WebConsole build requires the .NET 10 SDK and Node.js/npm,
+	   and reinstalls the client's node_modules (npm ci), so stop any running Vite dev server first
 	e. Optionally build the WebConsole Docker image
-2. Push all changes to GitHub
+	It stops if any publish or zip step fails
+2. Commit and push the version changes to GitHub
 3. Run publish.ps1 to push the Nuget packages (Stateless.WorkflowEngine, Stateless.WorkflowEngine.MongoDb and
    Stateless.WorkflowEngine.RavenDb)
 	* The version is read from the project files set by build.ps1, and confirmed when prompted
@@ -14,6 +19,10 @@
 4. Go to GitHub and add these as new release files
 	* The tag name should be the version number, e.g. "2.3.0" (a "v" prefix is tolerated) - this is used by the
 	  console's update check and by Update.ps1
+	* Keep the zip names build.ps1 gives them - Update.ps1 downloads the zip with "webconsole" in its name
+	* Tick "Set as a pre-release" for pre-release builds - the update check and Update.ps1 use GitHub's latest
+	  release, which excludes pre-releases, so installed consoles won't be offered them
+	* Publish the release (not a draft) - GitHub records each file's SHA-256 hash, which Update.ps1 verifies
 
 Web console installation (Windows service)
 ------------------------------------------
@@ -27,12 +36,21 @@ Web console installation (Windows service)
 Web console upgrades
 --------------------
 * The console shows a banner when a new version is available - upgrades are not triggered from the UI
-* In an elevated PowerShell prompt in the install folder, run .\Update.ps1
+* In an elevated PowerShell prompt in the install folder, run .\Update.ps1, which
+	* Checks the runtime the new release needs is installed before changing anything
+	* Backs up the install to Backup\{version} and replaces the application files, keeping Data, logs and
+	  appsettings.Production.json - changes made to appsettings.json are overwritten
+	* Restores the backup and restarts the service if the update fails, including the new version not starting
+	* Replaces itself with the release's copy, so the next update runs the latest script
+	* Logs to updates.log in the install folder
 * Upgrading from the .NET Framework (Nancy/Topshelf) console, version 5.x or earlier:
 	* Install the ASP.NET Core 10 runtime first
 	* Copy Update.ps1 from the new release zip over the old one before running it (the old script can't install
-	  the new service), then run it - Data\users.json is kept, the Topshelf service is re-registered, and saved
-	  connection passwords are re-encrypted on first start
+	  the new service), then run it - Data\users.json is kept, the Topshelf service is changed to run the new
+	  console (keeping its account and startup settings), and saved connection passwords are re-encrypted on
+	  first start
+	* The old console's port (Port in the .exe.config) isn't carried over - if it wasn't 8811, set "Urls" in
+	  appsettings.Production.json
 	* Back up Data\users.json beforehand - once migrated, connection passwords can't be read by the old console
 
 Web console in Docker

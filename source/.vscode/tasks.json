@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // the web console client's Vite dev server (http://localhost:5173), which proxies /api to the API on 8811
+      "label": "vite: dev server",
+      "type": "npm",
+      "script": "dev",
+      "path": "Stateless.WorkflowEngine.WebConsole.Client",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activeBegins": true,
+          // Vite's output is coloured, so the patterns avoid spanning the colour codes
+          "beginsPattern": "VITE",
+          "endsPattern": "Local"
+        }
+      }
+    }
+  ]
+}
