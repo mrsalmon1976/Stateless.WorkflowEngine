@@ -22,11 +22,12 @@ namespace Test.Stateless.WorkflowEngine.WebConsole.Integration
     {
         private const string Password = "password1";
 
-        private static readonly Guid ConnectionId = Guid.NewGuid();
-        private static readonly Guid DashboardId = Guid.NewGuid();
-        private static readonly Guid WorkflowId = Guid.NewGuid();
-        private static readonly Guid LimitedUserId = Guid.NewGuid();
-        private static readonly Guid TargetUserId = Guid.NewGuid();
+        // fixed ids: they appear in the test case names, which must be the same when tests are discovered and run
+        private static readonly Guid ConnectionId = new Guid("6c1f4a52-0d3e-4b8a-9f21-3a7e5c9b1d01");
+        private static readonly Guid DashboardId = new Guid("6c1f4a52-0d3e-4b8a-9f21-3a7e5c9b1d02");
+        private static readonly Guid WorkflowId = new Guid("6c1f4a52-0d3e-4b8a-9f21-3a7e5c9b1d03");
+        private static readonly Guid LimitedUserId = new Guid("6c1f4a52-0d3e-4b8a-9f21-3a7e5c9b1d04");
+        private static readonly Guid TargetUserId = new Guid("6c1f4a52-0d3e-4b8a-9f21-3a7e5c9b1d05");
 
         private string _rootPath = null!;
         private WebApplicationFactory<Program> _factory = null!;

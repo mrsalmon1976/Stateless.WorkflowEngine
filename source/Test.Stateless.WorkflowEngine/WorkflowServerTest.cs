@@ -942,21 +942,30 @@ namespace Test.Stateless.WorkflowEngine
         public void ExecuteWorkflows_LastClaimedWorkflowTaken_NextBatchClaimedWhileWorkflowsExecute(bool isAsync)
         {
             // the first batch's workflows wait (in their save) for the second claim - it must start while they are still
-            // executing, rather than when a slot runs out of workflows
-            ManualResetEventSlim secondClaimStarted = new ManualResetEventSlim();
+            // executing, rather than when a slot runs out of workflows.  The async save waits without blocking a thread, and
+            // the sync one (which must block) has a long timeout, so a starved thread pool on a busy build agent can't
+            // delay the background claim past the wait
+            TaskCompletionSource secondClaimStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            TimeSpan timeout = TimeSpan.FromSeconds(30);
             int claims = 0;
             Func<CallInfo, List<Workflow>> claim = x =>
             {
                 if (Interlocked.Increment(ref claims) == 2)
                 {
-                    secondClaimStarted.Set();
+                    secondClaimStarted.TrySetResult();
                 }
                 return Enumerable.Range(0, x.ArgAt<int>(1)).Select(i => (Workflow)CreateBasicWorkflow()).ToList();
             };
             System.Collections.Concurrent.ConcurrentBag<bool> overlapped = new System.Collections.Concurrent.ConcurrentBag<bool>();
             Func<CallInfo, bool> save = x =>
             {
-                overlapped.Add(secondClaimStarted.Wait(TimeSpan.FromSeconds(5)));
+                overlapped.Add(secondClaimStarted.Task.Wait(timeout));
+                return true;
+            };
+            Func<CallInfo, Task<bool>> saveAsync = async x =>
+            {
+                Task completed = await Task.WhenAny(secondClaimStarted.Task, Task.Delay(timeout));
+                overlapped.Add(completed == secondClaimStarted.Task);
                 return true;
             };
 
@@ -964,7 +973,7 @@ namespace Test.Stateless.WorkflowEngine
             workflowStore.ClaimNext(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
             workflowStore.ClaimNextAsync(Arg.Any<string>(), Arg.Any<int>()).Returns(x => claim(x));
             workflowStore.SaveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => save(x));
-            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => save(x));
+            workflowStore.SaveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(x => saveAsync(x));
             workflowStore.ArchiveClaimed(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
             workflowStore.ArchiveClaimedAsync(Arg.Any<Workflow>(), Arg.Any<string>()).Returns(true);
 
