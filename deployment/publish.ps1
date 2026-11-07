@@ -44,10 +44,17 @@ if ((Read-Host -Prompt "Publishing version $version - continue? [Y/y]").ToLower(
 $isProduction = ((Read-Host -Prompt "Is this a production push?  [Y/y]").ToLower() -eq "y")
 
 # pack into a clean folder so a stale package can never be pushed - ContinuousIntegrationBuild makes the build
-# deterministic (no local paths in the symbols, so source link maps to GitHub)
+# deterministic (no local paths in the symbols, so source link maps to GitHub).  The rebuild is forced
+# (--no-incremental) because changing that property alone doesn't make MSBuild recompile, so pack would otherwise
+# reuse the non-deterministic assemblies left in obj by build.ps1
 if (Test-Path -Path $packageFolder) { Remove-Item $packageFolder -Recurse -Force }
 foreach ($package in $packages) {
-	& dotnet pack "$sourceFolder\$package\$package.csproj" --configuration Release --output $packageFolder -p:ContinuousIntegrationBuild=true
+	& dotnet build "$sourceFolder\$package\$package.csproj" --configuration Release --no-incremental -p:ContinuousIntegrationBuild=true
+	if ($LASTEXITCODE -ne 0) {
+		Write-Host "Failed to build $package" -ForegroundColor White -BackgroundColor Red
+		Exit 1
+	}
+	& dotnet pack "$sourceFolder\$package\$package.csproj" --configuration Release --no-build --output $packageFolder -p:ContinuousIntegrationBuild=true
 	$nupkg = "$packageFolder\$package.$version.nupkg"
 	if ($LASTEXITCODE -ne 0 -or !(Test-Path -Path $nupkg)) {
 		Write-Host "$package nuget package not found at $nupkg" -ForegroundColor White -BackgroundColor Red
@@ -62,9 +69,14 @@ foreach ($package in $packages) {
 		& dotnet nuget push $nupkg --source https://api.nuget.org/v3/index.json --api-key $apiKey
 	}
 	else {
-		# pushing to a folder creates a local feed for the NugetTest app
-		New-Item -ItemType Directory -Force -Path "$root\NugetTest\NugetPackageTest" | Out-Null
-		& dotnet nuget push $nupkg --source "$root\NugetTest\NugetPackageTest"
+		# pushing to a folder creates a local feed for the NugetTest app - a version pushed before is replaced, and
+		# removed from the app's packages folder (see its nuget.config) so the next restore picks up the new build
+		$feed = "$root\NugetTest\NugetPackageTest"
+		New-Item -ItemType Directory -Force -Path $feed | Out-Null
+		foreach ($folder in @("$feed\$($package.ToLower())\$version", "$root\NugetTest\NugetTestApp\.packages\$($package.ToLower())\$version")) {
+			if (Test-Path -Path $folder) { Remove-Item $folder -Recurse -Force }
+		}
+		& dotnet nuget push $nupkg --source $feed
 	}
 	if ($LASTEXITCODE -ne 0) {
 		Write-Host "Failed to push $nupkg" -ForegroundColor White -BackgroundColor Red

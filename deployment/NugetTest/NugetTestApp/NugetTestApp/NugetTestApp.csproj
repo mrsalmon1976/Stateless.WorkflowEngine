@@ -7,9 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- floating versions resolve to the newest package (pre-releases included) in the local feed created by a
+       non-production run of deployment/publish.ps1 - see ..\nuget.config -->
   <ItemGroup>
-    <PackageReference Include="Stateless.WorkflowEngine" Version="0.0.3-alpha" />
-    <PackageReference Include="Stateless.WorkflowEngine.MongoDb" Version="0.0.3-alpha" />
+    <PackageReference Include="Stateless.WorkflowEngine" Version="*-*" />
+    <PackageReference Include="Stateless.WorkflowEngine.MongoDb" Version="*-*" />
   </ItemGroup>
 
 </Project>

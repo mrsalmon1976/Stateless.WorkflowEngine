@@ -95,7 +95,7 @@ $mongodbPublishDir = "$publish\Stateless.WorkflowEngine.MongoDb"
 AssertSuccess -step "Publishing MongoDb"
 if (!(Test-Path -Path "$mongodbPublishDir\Stateless.WorkflowEngine.MongoDb.dll")) {
 	Write-Host "MongoDb publish location/files not found at $mongodbPublishDir" -ForegroundColor White -BackgroundColor Red
-	Exit
+	Exit 1
 }
 $zip = "$root\Stateless.WorkflowEngine.MongoDb_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
@@ -108,7 +108,7 @@ $ravendbPublishDir = "$publish\Stateless.WorkflowEngine.RavenDb"
 AssertSuccess -step "Publishing RavenDb"
 if (!(Test-Path -Path $ravendbPublishDir) -or !(Test-Path -Path "$ravendbPublishDir\Stateless.WorkflowEngine.RavenDb.dll")) {
 	Write-Host "RavenDb publish location/files not found at $ravendbPublishDir" -ForegroundColor White -BackgroundColor Red
-	Exit
+	Exit 1
 }
 $zip = "$root\Stateless.WorkflowEngine.RavenDb_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
@@ -121,7 +121,7 @@ $webconsolePublishDir = "$publish\Stateless.WorkflowEngine.WebConsole"
 AssertSuccess -step "Publishing the web console"
 if (!(Test-Path -Path "$webconsolePublishDir\Stateless.WorkflowEngine.WebConsole.exe") -or !(Test-Path -Path "$webconsolePublishDir\wwwroot\index.html")) {
 	Write-Host "WebConsole publish location/files not found at $webconsolePublishDir" -ForegroundColor White -BackgroundColor Red
-	Exit
+	Exit 1
 }
 UpdateJsonSetting -filePath "$webconsolePublishDir\appsettings.json" -key "LatestVersionUrl" -value "https://api.github.com/repos/mrsalmon1976/Stateless.WorkflowEngine/releases/latest"
 
@@ -132,6 +132,7 @@ ZipFile -sourcefile "$webconsolePublishDir\*" -zipfile $zip
 $buildDocker = Read-Host -Prompt "Build the web console Docker image? [y/N]"
 if ($buildDocker -eq "y") {
 	& docker build -f "$source\Stateless.WorkflowEngine.WebConsole\Dockerfile" -t "stateless-workflowengine-webconsole:$versionWithSuffix" -t "stateless-workflowengine-webconsole:latest" "$source"
+	AssertSuccess -step "Building the web console Docker image"
 }
 
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White

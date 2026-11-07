@@ -4,7 +4,8 @@ source/TestResult.xml
 source/Stateless.Workflow.Tests.VisualState.xml
 /deployment/Output
 /deployment/publish
-/deployment/NuGetTest/NugetPackageTest
+/deployment/NugetTest/NugetPackageTest
+/deployment/NugetTest/NugetTestApp/.packages
 /deployment/NuGetTest/NugetTestApp/.vs/
 /deployment/_apikey.txt
 source/CompiledIndexCache/

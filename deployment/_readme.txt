@@ -14,8 +14,9 @@
    Stateless.WorkflowEngine.RavenDb)
 	* The version is read from the project files set by build.ps1, and confirmed when prompted
 	* Package metadata and dependencies come from the .csproj files - there are no .nuspec files to maintain
+	* The packages are rebuilt from scratch (deterministic, for source link) before packing
 	* A non-production push creates a local feed in NugetTest\NugetPackageTest, which the NugetTestApp restores
-	  from (update its package versions to match)
+	  from - it always uses the newest version in that feed, and re-pushing a version replaces it
 4. Go to GitHub and add these as new release files
 	* The tag name should be the version number, e.g. "2.3.0" (a "v" prefix is tolerated) - this is used by the
 	  console's update check and by Update.ps1
