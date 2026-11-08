@@ -43,6 +43,18 @@ function AssertSuccess
 	}
 }
 
+function Get7ZipPath
+{
+	if (Test-Path -Path "C:\Program Files\7-Zip\7z.exe") {
+		return "C:\Program Files\7-Zip\7z.exe"
+	}
+	if (Test-Path -Path "C:\Program Files (x86)\7-Zip\7z.exe") {
+		return "C:\Program Files (x86)\7-Zip\7z.exe"
+	}
+	Write-Host "Unable to find 7-zip executable" -BackgroundColor Red -ForegroundColor White
+	Exit 1
+}
+
 function ZipFile
 {
 	param(
@@ -50,21 +62,20 @@ function ZipFile
 		[String]$zipFile
 	)
 
-	$exeloc = ""
-	if (Test-Path -Path "C:\Program Files\7-Zip\7z.exe") {
-		$exeloc = "C:\Program Files\7-Zip\7z.exe"
-	}
-	elseif (Test-Path -Path "C:\Program Files (x86)\7-Zip\7z.exe") {
-		$exeloc = "C:\Program Files (x86)\7-Zip\7z.exe"
-	}
-	else {
-		Write-Host "Unable to find 7-zip executable" -BackgroundColor Red -ForegroundColor White
-		Exit 1
-	}
-
-	set-alias sz $exeloc
-	sz a -xr!'Data' -tzip -r $zipFile $sourceFile | Out-Null
+	& (Get7ZipPath) a -xr!'Data' -tzip -r $zipFile $sourceFile | Out-Null
 	AssertSuccess -step "Zipping $zipFile"
+}
+
+# the Docker image is built last - check the daemon is running now rather than after every other step has run
+$dockerRunning = $false
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+	# stderr is discarded via cmd so the "Stop" preference doesn't turn docker's error output into an exception
+	cmd /c "docker info --format {{.ServerVersion}} >nul 2>&1"
+	$dockerRunning = ($LASTEXITCODE -eq 0)
+}
+if (!$dockerRunning) {
+	Write-Host "Docker is not running (or not installed) - start Docker Desktop and run the build again" -ForegroundColor White -BackgroundColor Red
+	Exit 1
 }
 
 $root = $PSScriptRoot
@@ -129,10 +140,21 @@ $zip = "$root\Stateless.WorkflowEngine.WebConsole_v$versionWithSuffix.zip"
 [system.io.file]::Delete($zip)
 ZipFile -sourcefile "$webconsolePublishDir\*" -zipfile $zip 
 
-$buildDocker = Read-Host -Prompt "Build the web console Docker image? [y/N]"
-if ($buildDocker -eq "y") {
-	& docker build -f "$source\Stateless.WorkflowEngine.WebConsole\Dockerfile" -t "stateless-workflowengine-webconsole:$versionWithSuffix" -t "stateless-workflowengine-webconsole:latest" "$source"
-	AssertSuccess -step "Building the web console Docker image"
-}
+# build the web console Docker image
+Write-Host "Building the web console Docker image stateless-workflowengine-webconsole:$versionWithSuffix"
+& docker build -f "$source\Stateless.WorkflowEngine.WebConsole\Dockerfile" -t "stateless-workflowengine-webconsole:$versionWithSuffix" -t "stateless-workflowengine-webconsole:latest" "$source"
+AssertSuccess -step "Building the web console Docker image"
+
+# export the image as a release file (load it with "docker load -i <file>") - named after the image rather than
+# "Stateless.WorkflowEngine.WebConsole..." so the console's update check and Update.ps1 never mistake it for the zip
+$imageTar = "$publish\stateless-workflowengine-webconsole_v$versionWithSuffix.tar"
+$imageFile = "$root\stateless-workflowengine-webconsole_v$versionWithSuffix.tar.gz"
+Write-Host "Exporting the web console Docker image to $imageFile"
+& docker save -o "$imageTar" "stateless-workflowengine-webconsole:$versionWithSuffix"
+AssertSuccess -step "Exporting the web console Docker image"
+[system.io.file]::Delete($imageFile)
+& (Get7ZipPath) a -tgzip $imageFile $imageTar | Out-Null
+AssertSuccess -step "Compressing the web console Docker image"
+Remove-Item $imageTar
 
 Write-Host "Done" -BackgroundColor Green -ForegroundColor White

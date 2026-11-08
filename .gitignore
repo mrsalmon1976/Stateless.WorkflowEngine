@@ -11,6 +11,7 @@ source/Stateless.Workflow.Tests.VisualState.xml
 source/CompiledIndexCache/
 source/.vs/
 deployment/*.zip
+deployment/*.tar.gz
 deployment/Archive/*
 InternalTrace.*
 .vs/

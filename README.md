@@ -827,12 +827,63 @@ The console shows a banner when a new version is available, but upgrades are run
 
 ## Running in Docker
 
+Each release includes the image as `stateless-workflowengine-webconsole_v{version}.tar.gz`.  Load it and run it with a volume for the data:
+
 ```bash
-docker build -f source/Stateless.WorkflowEngine.WebConsole/Dockerfile -t stateless-workflowengine-webconsole source
-docker run -d -p 8811:8080 -v webconsole_data:/app/Data stateless-workflowengine-webconsole
+docker load -i stateless-workflowengine-webconsole_v6.0.0.tar.gz
+docker run -d --name webconsole -p 8811:8080 -v webconsole_data:/app/Data stateless-workflowengine-webconsole:6.0.0
 ```
 
-The `/app/Data` volume holds users, connections and the encryption keys, so it must be persisted.  Settings can be overridden with environment variables, e.g. `-e LatestVersionUrl=...`.  Note that inside a container, `localhost` refers to the container itself - connect to MongoDb or RavenDb using a host name reachable from the container.
+Or build the image from source (the build context is the `source` folder):
+
+```bash
+docker build -f source/Stateless.WorkflowEngine.WebConsole/Dockerfile -t stateless-workflowengine-webconsole source
+```
+
+The `docker-compose.yml` in the repository root also has a `webconsole` service - from the console, connect to the compose MongoDb service with host `mongodb`.
+
+### Data
+
+`/app/Data` holds everything the console stores, so it must be on a volume or bind mount - without one, Docker creates an anonymous volume and the next `docker run` starts with empty data:
+
+| Path | Contents |
+|------|----------|
+| `/app/Data/users.json` | Users, dashboards and connections |
+| `/app/Data/keys/` | The data protection keys that encrypt connection passwords - without them, saved passwords must be re-entered |
+
+The keys are stored unencrypted (they aren't tied to a machine), so the folder can be moved between Windows and containers, but anyone with a copy of it can decrypt the connection passwords - protect and back up the whole folder.
+
+On first start with an empty folder, the console creates an **admin / admin** user.
+
+### Moving an existing install into a container
+
+Put the existing data in a host folder and bind-mount it:
+
+```bash
+docker run -d --name webconsole -p 8811:8080 -v D:\webconsole\Data:/app/Data stateless-workflowengine-webconsole:6.0.0
+```
+
+* **From a 6.x Windows install** - copy the whole `Data` folder, including `keys`
+* **From a 5.x (or earlier) console** - copy `Data\users.json` (back it up first).  It is migrated on first start, as when [upgrading](#upgrading) on Windows
+
+To use a named volume instead, copy the data into it once and restart the container: `docker cp D:\webconsole\Data\. webconsole:/app/Data`, then `docker restart webconsole`.
+
+### Upgrading a container
+
+`Update.ps1` isn't used in containers.  Load (or build) the new image, then replace the container, mounting the same volume:
+
+```bash
+docker load -i stateless-workflowengine-webconsole_v{version}.tar.gz
+docker rm -f webconsole
+docker run -d --name webconsole -p 8811:8080 -v webconsole_data:/app/Data stateless-workflowengine-webconsole:{version}
+```
+
+### Other notes
+
+* Settings can be overridden with environment variables, e.g. `-e LatestVersionUrl=...`
+* Logs are written to `/app/logs` in the container and are lost when it is replaced - add `-v webconsole_logs:/app/logs` to keep them
+* Inside a container, `localhost` refers to the container itself - connect to MongoDb or RavenDb using a host name reachable from the container.  Short host names (e.g. `dbserver` rather than `dbserver.mydomain.local`) that resolve on Windows often don't resolve in a container (the error includes `Name or service not known`) - use the fully qualified name or IP address, or map the name with `--add-host dbserver:10.0.0.5`.  For a replica set, every member name the replica set reports must resolve
+* The container runs as root, so bind-mounted folders don't need any permission changes
 
 ## Performance on large stores
 
