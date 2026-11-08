@@ -348,6 +348,13 @@ function Run {
 
         if ([System.Version]::Parse($versionInstalled) -ge [System.Version]::Parse($latestVersionInfo.version)) {
             LogMessage -msg "The latest version is already installed" -level "WARN"
+            # an update run by the 5.x script copies the new files but leaves the Topshelf service registration (and
+            # may leave the service stopped) - finish converting it
+            InstallService
+            if ($global:legacyServicePath -and (Get-Service -Name $global:serviceName).Status -ne 'Running') {
+                StopService
+                StartService
+            }
             Exit
         }
 

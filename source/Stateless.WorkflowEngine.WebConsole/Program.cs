@@ -5,6 +5,15 @@ using Stateless.WorkflowEngine.WebConsole.Configuration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+// the 5.x Update.ps1 runs "<exe> install" and "<exe> start" (Topshelf commands) and waits for them to exit - without
+// this the console would ignore the command, run in a console window and hang the old script
+string[] legacyServiceCommands = ["install", "uninstall", "start", "stop"];
+if (args.Length > 0 && legacyServiceCommands.Contains(args[0], StringComparer.OrdinalIgnoreCase))
+{
+    Console.Error.WriteLine($"'{args[0]}' is not supported - the console is now a standard Windows service.  Run Update.ps1 or install-service.ps1 from the new release to install or convert the service.");
+    return 1;
+}
+
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
@@ -38,6 +47,7 @@ app.Map("/api/{**path}", (HttpContext ctx) => Results.NotFound());
 app.MapFallbackToFile("index.html");
 
 app.Run();
+return 0;
 
 public partial class Program
 {

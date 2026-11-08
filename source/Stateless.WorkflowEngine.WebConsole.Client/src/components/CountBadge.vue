@@ -19,8 +19,18 @@ const color = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1 rounded-md border border-default px-3 py-2 min-w-0">
-    <span class="text-xs text-muted uppercase tracking-wide">{{ label }}</span>
+  <div
+    class="flex flex-col gap-1 rounded-md border px-3 py-2 min-w-0"
+    :class="{
+      'border-default': color === 'neutral',
+      'border-error/50 bg-error/10': color === 'error',
+      'border-warning/50 bg-warning/10': color === 'warning'
+    }"
+  >
+    <span class="flex items-center gap-1 text-xs uppercase tracking-wide" :class="{ 'text-muted': color === 'neutral', 'text-error': color === 'error', 'text-warning': color === 'warning' }">
+      <UIcon v-if="color !== 'neutral'" name="i-lucide-triangle-alert" class="size-3.5 shrink-0" />
+      {{ label }}
+    </span>
     <USkeleton v-if="loading" class="h-6 w-12" />
     <span v-else class="text-lg font-semibold tabular-nums" :class="{ 'text-error': color === 'error', 'text-warning': color === 'warning' }">
       {{ formatNumber(value) }}

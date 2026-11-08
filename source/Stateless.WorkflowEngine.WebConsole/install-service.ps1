@@ -53,4 +53,4 @@ else {
 }
 
 Start-Service -Name $serviceName
-Write-Host "Service '$serviceName' started - browse to the url configured in appsettings.json (default http://localhost:8811)"
+Write-Host "Service '$serviceName' started - browse to the url configured in appsettings.json (default port 8811, e.g. http://localhost:8811) - open the port in Windows Firewall to allow access from other machines"

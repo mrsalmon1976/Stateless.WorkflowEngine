@@ -807,7 +807,7 @@ Settings are in `appsettings.json`.  To override them, create an `appsettings.Pr
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `Urls` | `http://localhost:8811` | The url(s) the console listens on.  Use e.g. `http://*:8811` to allow access from other machines |
+| `Urls` | `http://*:8811` | The url(s) the console listens on.  The default accepts connections from other machines (open port 8811 in the firewall); use `http://localhost:8811` to only allow access from the server itself |
 | `DataPath` | `Data` | Folder for users, connections and encryption keys (relative to the install folder) |
 | `LatestVersionUrl` | GitHub releases API | Used to check for new versions |
 | `UpdateCheckIntervalInMinutes` | `60` | How long the version check is cached for |
@@ -822,7 +822,8 @@ The console shows a banner when a new version is available, but upgrades are run
 
 * Install the ASP.NET Core 10 runtime first
 * Back up `Data\users.json`
-* Copy `Update.ps1` from the new release zip over the old one before running it - the old script can't install the new service
+* Copy `Update.ps1` from the new release zip over the old one before running it - the old script can't install the new service.  If you ran the old script and it opened a console window that hangs, close that window, then run the new `Update.ps1` - it finishes converting the service even though the new version is already installed
+* The console listens on all addresses on port 8811, as before.  The firewall rule for the old console may be tied to its executable - if the console isn't reachable from other machines, allow inbound TCP port 8811
 * Existing users and connections are kept.  Saved connection passwords are re-encrypted on first start, after which the old console can no longer read them
 
 ## Running in Docker
