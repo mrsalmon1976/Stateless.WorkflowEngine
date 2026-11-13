@@ -88,7 +88,7 @@ onMounted(async () => {
           @click="copy(formattedJson)"
         />
         <!-- eslint-disable-next-line vue/no-v-html -- highlight.js output is escaped -->
-        <pre class="json-viewer text-xs leading-relaxed p-4 rounded-md bg-muted overflow-auto"><code v-html="highlightedJson" /></pre>
+        <pre class="json-viewer text-xs leading-relaxed p-4 rounded-md bg-muted overflow-auto" style="white-space: pre-wrap; overflow-wrap: break-word;"><code v-html="highlightedJson" /></pre>
       </div>
     </template>
 
