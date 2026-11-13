@@ -160,6 +160,8 @@ async function runBulkAction(action, ids) {
 
   if (!(await confirm({ title, description, confirmLabel: verb, color }))) return false
   await fn(ids)
+  // deselect the rows the action was applied to (a failed action throws above and keeps its selection)
+  rowSelection.value = Object.fromEntries(Object.entries(rowSelection.value).filter(([id]) => !ids.includes(id)))
   notifySuccess(`${countLabel} ${done}`)
   await refresh()
   return true
