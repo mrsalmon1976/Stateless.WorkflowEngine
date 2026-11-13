@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>6.0.0</Version>
+    <Version>6.1.0</Version>
     <Authors>Matt Salmon</Authors>
     <AssemblyName>Stateless.WorkflowEngine.WebConsole</AssemblyName>
     <RootNamespace>Stateless.WorkflowEngine.WebConsole</RootNamespace>
