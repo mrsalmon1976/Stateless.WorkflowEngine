@@ -180,8 +180,47 @@ function GetCurrentVersion {
     return $version.ToString(3)
 }
 
+function GetResponseHeader {
+    param ($response, [System.String]$name)
+
+    # PowerShell 7 returns HttpResponseHeaders (TryGetValues); Windows PowerShell 5.1 returns a WebHeaderCollection (indexer)
+    $headers = $response.Headers
+    if ($headers -is [System.Net.WebHeaderCollection]) {
+        return "$($headers[$name])"
+    }
+    $values = $null
+    if ($headers.TryGetValues($name, [ref]$values)) {
+        return ($values -join ",")
+    }
+    return ""
+}
+
+function GetLatestRelease {
+    # GitHub rejects API requests without a User-Agent header (Windows PowerShell 5.1 doesn't send one by default)
+    $headers = @{
+        "User-Agent" = "Stateless.WorkflowEngine.WebConsole"
+        "Accept" = "application/vnd.github+json"
+    }
+    try {
+        return Invoke-RestMethod -Uri $global:latestVersionUrl -Headers $headers -UseBasicParsing
+    }
+    catch {
+        $response = $_.Exception.Response
+        if ($response -and [int]$response.StatusCode -eq 403) {
+            # unauthenticated API calls share a quota of 60 an hour per IP address, so a 403 is usually the quota
+            $remaining = GetResponseHeader -response $response -name "X-RateLimit-Remaining"
+            $reset = GetResponseHeader -response $response -name "X-RateLimit-Reset"
+            if ($remaining -eq "0") {
+                $resetAt = [System.DateTimeOffset]::FromUnixTimeSeconds([long]$reset).ToLocalTime()
+                throw "GitHub's API rate limit has been reached for this IP address - try again after $resetAt"
+            }
+        }
+        throw "Unable to check the latest release at '$global:latestVersionUrl' - $($_.Exception.Message)"
+    }
+}
+
 function GetLatestVersion {
-    $data = Invoke-RestMethod -Uri $global:latestVersionUrl -UseBasicParsing
+    $data = GetLatestRelease
     $asset = $data.assets | Where-Object { $_.name -like "*webconsole*.zip" } | Select-Object -First 1
     if (!$asset) {
         throw "The latest release ($($data.tag_name)) does not contain a web console package"

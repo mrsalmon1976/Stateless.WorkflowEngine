@@ -103,6 +103,12 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
     {
         public const string CacheKey = "CheckIfNewVersionAvailable";
 
+        /// <summary>
+        /// How long a failed check is cached before GitHub is asked again. Unauthenticated GitHub API calls share a
+        /// quota per IP address, so retrying on every page load can exhaust it.
+        /// </summary>
+        public static readonly TimeSpan FailureCacheInterval = TimeSpan.FromMinutes(10);
+
         private readonly IAppSettings _appSettings;
         private readonly IMemoryCache _memoryCache;
         private readonly IWebConsoleVersionService _webConsoleVersionService;
@@ -122,7 +128,17 @@ namespace Stateless.WorkflowEngine.WebConsole.Services
             }
 
             string installedVersion = _webConsoleVersionService.GetWebConsoleVersion();
-            WebConsoleVersionInfo latest = await _webConsoleVersionService.GetLatestVersion(_appSettings.LatestVersionUrl);
+            WebConsoleVersionInfo latest;
+            try
+            {
+                latest = await _webConsoleVersionService.GetLatestVersion(_appSettings.LatestVersionUrl);
+            }
+            catch
+            {
+                // cache the failure briefly so the next page loads don't call GitHub again; the caller still sees the exception
+                _memoryCache.Set(CacheKey, new VersionCheckResult { InstalledVersionNumber = installedVersion }, FailureCacheInterval);
+                throw;
+            }
 
             var result = new VersionCheckResult
             {
