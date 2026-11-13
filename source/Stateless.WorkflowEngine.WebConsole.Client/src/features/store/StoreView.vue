@@ -42,12 +42,14 @@ if (!(count.value > 0 && count.value <= MaxWorkflowCount)) count.value = 50
 // a workflow looked up on the server by id, when the filter is an id that isn't in the loaded rows
 const idLookup = ref(null)
 
-// highlight suspended workflows
-const tableMeta = { class: { tr: (row) => (row.original.isSuspended ? 'bg-error/10' : '') } }
 
 const countItems = [25, 50, 100, 250, 500, MaxWorkflowCount].map((x) => ({ label: `Show ${x}`, value: x }))
 
 const GuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// highlight suspended workflows. The tint is on the cells, not the row: a selected row's background (set on the <tr>)
+// would otherwise hide it.
+const suspendedCellClass = (cell) => (cell.row.original.isSuspended ? 'bg-error/10' : '')
 
 const columns = [
   { id: 'select', enableSorting: false, enableGlobalFilter: false },
@@ -61,7 +63,7 @@ const columns = [
   { accessorKey: 'retryCount', header: 'Retries', enableGlobalFilter: false },
   { accessorKey: 'retryIntervals', header: 'Retry intervals', enableSorting: false, enableGlobalFilter: false },
   { accessorKey: 'createdOn', header: 'Created', enableGlobalFilter: false }
-]
+].map((column) => ({ ...column, meta: { class: { td: suspendedCellClass } } }))
 
 const connectionDashboard = computed(() => dashboards.value.find((d) => d.id === connection.value?.dashboardId) ?? null)
 
@@ -269,7 +271,6 @@ onMounted(refresh)
           sticky
           empty="No incomplete workflows"
           class="border border-default rounded-md flex-1"
-          :meta="tableMeta"
           :ui="{ tr: 'cursor-pointer' }"
           @select="onSelectRow"
         >
