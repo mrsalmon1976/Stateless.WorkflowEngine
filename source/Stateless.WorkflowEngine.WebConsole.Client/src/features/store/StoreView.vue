@@ -210,31 +210,41 @@ onMounted(refresh)
       <template v-else>
         <UAlert v-if="info?.connectionError" color="error" variant="subtle" icon="i-lucide-unplug" title="Unable to connect" :description="info.connectionError" />
 
-        <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-xl">
-          <CountBadge label="Active" :value="info?.activeCount" :warning-threshold="ActiveWarningThreshold" :error-threshold="ActiveErrorThreshold" :loading="!info" />
-          <CountBadge label="Suspended" :value="info?.suspendedCount" :error-threshold="0" :loading="!info" />
-          <CountBadge label="Complete" :value="info?.completeCount" :loading="!info" />
-        </div>
+        <!-- filters, selection actions and counts share one row; the counts wrap onto the next row on narrow screens -->
+        <div class="flex flex-wrap items-start gap-3">
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <UInput
+                v-model="globalFilter"
+                icon="i-lucide-search"
+                placeholder="Filter loaded rows, or paste a workflow id…"
+                :loading="idLookup?.loading"
+                class="w-full sm:w-80"
+              />
+              <USelect v-model="count" :items="countItems" class="w-32" />
+              <UDropdownMenu v-if="definitions.length" :items="definitions">
+                <UButton label="Definitions" icon="i-lucide-git-fork" trailing-icon="i-lucide-chevron-down" color="neutral" variant="outline" />
+              </UDropdownMenu>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <UInput
-            v-model="globalFilter"
-            icon="i-lucide-search"
-            placeholder="Filter loaded rows, or paste a workflow id…"
-            :loading="idLookup?.loading"
-            class="w-full sm:w-80"
-          />
-          <USelect v-model="count" :items="countItems" class="w-32" />
-          <UDropdownMenu v-if="definitions.length" :items="definitions">
-            <UButton label="Definitions" icon="i-lucide-git-fork" trailing-icon="i-lucide-chevron-down" color="neutral" variant="outline" />
-          </UDropdownMenu>
+              <div v-if="selectedIds.length" class="flex flex-wrap items-center gap-2">
+                <span class="text-sm text-muted">{{ selectedIds.length }} selected</span>
+                <UButton v-if="hasClaim(Claims.SuspendWorkflow)" label="Suspend" icon="i-lucide-pause" color="warning" variant="soft" @click="runBulkAction('suspend', selectedIds)" />
+                <UButton v-if="hasClaim(Claims.UnsuspendWorkflow)" label="Unsuspend" icon="i-lucide-play" color="primary" variant="soft" @click="runBulkAction('unsuspend', selectedIds)" />
+                <UButton v-if="hasClaim(Claims.CompleteWorkflow)" label="Mark as completed" icon="i-lucide-circle-check" color="success" variant="soft" @click="runBulkAction('complete', selectedIds)" />
+                <UButton v-if="hasClaim(Claims.RemoveWorkflow)" label="Delete" icon="i-lucide-trash-2" color="error" variant="soft" @click="runBulkAction('delete', selectedIds)" />
+              </div>
+            </div>
+            <p v-if="!idLookup?.workflow && !idLookup?.notFound" class="text-xs text-muted">
+              Showing the first {{ formatNumber(workflows.length) }}
+              <template v-if="incompleteCount !== null">of {{ formatNumber(incompleteCount) }}</template>
+              incomplete workflows. Sorting and filtering apply to these rows only - paste a full workflow id to find one that isn't listed.
+            </p>
+          </div>
 
-          <div v-if="selectedIds.length" class="flex flex-wrap items-center gap-2 sm:ms-auto">
-            <span class="text-sm text-muted">{{ selectedIds.length }} selected</span>
-            <UButton v-if="hasClaim(Claims.SuspendWorkflow)" label="Suspend" icon="i-lucide-pause" color="warning" variant="soft" @click="runBulkAction('suspend', selectedIds)" />
-            <UButton v-if="hasClaim(Claims.UnsuspendWorkflow)" label="Unsuspend" icon="i-lucide-play" color="primary" variant="soft" @click="runBulkAction('unsuspend', selectedIds)" />
-            <UButton v-if="hasClaim(Claims.CompleteWorkflow)" label="Mark as completed" icon="i-lucide-circle-check" color="success" variant="soft" @click="runBulkAction('complete', selectedIds)" />
-            <UButton v-if="hasClaim(Claims.RemoveWorkflow)" label="Delete" icon="i-lucide-trash-2" color="error" variant="soft" @click="runBulkAction('delete', selectedIds)" />
+          <div v-if="!info?.connectionError" class="grid grid-cols-3 gap-2 ms-auto">
+            <CountBadge compact label="Active" :value="info?.activeCount" :warning-threshold="ActiveWarningThreshold" :error-threshold="ActiveErrorThreshold" :loading="!info" />
+            <CountBadge compact label="Suspended" :value="info?.suspendedCount" :error-threshold="0" :loading="!info" />
+            <CountBadge compact label="Complete" :value="info?.completeCount" :loading="!info" />
           </div>
         </div>
 
@@ -254,11 +264,6 @@ onMounted(refresh)
           title="No incomplete workflow with this id"
           description="It may have completed or been deleted - completed workflows are not shown in the console."
         />
-        <p v-else class="text-sm text-muted">
-          Showing the first {{ formatNumber(workflows.length) }}
-          <template v-if="incompleteCount !== null">of {{ formatNumber(incompleteCount) }}</template>
-          incomplete workflows. Sorting and filtering apply to these rows only - paste a full workflow id to find one that isn't listed.
-        </p>
 
         <UTable
           v-model:global-filter="globalFilter"

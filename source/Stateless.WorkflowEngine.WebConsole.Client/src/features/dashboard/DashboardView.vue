@@ -256,19 +256,19 @@ onMounted(() => {
         :actions="hasClaim(Claims.ConnectionAdd) ? [{ label: 'Add connection', icon: 'i-lucide-plus', onClick: () => openConnection() }] : []"
       />
 
-      <div v-else-if="layout === 'cards'" class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+      <div v-else-if="layout === 'cards'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
         <UCard
           v-for="connection in connections"
           :key="connection.id"
           :class="{ 'ring-error': infoFor(connection)?.connectionError }"
-          :ui="{ body: 'space-y-4' }"
+          :ui="{ body: 'space-y-3 p-3 sm:p-4' }"
         >
           <div class="flex items-start justify-between gap-2">
-            <RouterLink :to="{ name: 'store', params: { connectionId: connection.id } }" class="flex items-center gap-3 min-w-0 group">
-              <UIcon name="i-lucide-database" class="size-8 shrink-0" :class="infoFor(connection)?.connectionError ? 'text-error' : 'text-primary'" />
+            <RouterLink :to="{ name: 'store', params: { connectionId: connection.id } }" class="flex items-center gap-2 min-w-0 group">
+              <UIcon name="i-lucide-database" class="size-6 shrink-0" :class="infoFor(connection)?.connectionError ? 'text-error' : 'text-primary'" />
               <div class="min-w-0">
-                <div class="font-semibold truncate group-hover:text-primary">{{ connection.database }}</div>
-                <div class="text-sm text-muted truncate">{{ connection.host }}:{{ connection.port }} · {{ connection.workflowStoreType }}</div>
+                <div class="text-sm font-semibold truncate group-hover:text-primary">{{ connection.database }}</div>
+                <div class="text-xs text-muted truncate">{{ connection.host }}:{{ connection.port }} · {{ connection.workflowStoreType }}</div>
               </div>
             </RouterLink>
             <UDropdownMenu v-if="connectionMenu(connection).length" :items="connectionMenu(connection)">
@@ -286,9 +286,9 @@ onMounted(() => {
             :ui="{ description: 'line-clamp-3 break-all' }"
           />
           <div v-else class="grid grid-cols-3 gap-2">
-            <CountBadge label="Active" :value="infoFor(connection)?.activeCount" :warning-threshold="ActiveWarningThreshold" :error-threshold="ActiveErrorThreshold" :loading="isLoading(connection) && !infoFor(connection)" />
-            <CountBadge label="Suspended" :value="infoFor(connection)?.suspendedCount" :error-threshold="0" :loading="isLoading(connection) && !infoFor(connection)" />
-            <CountBadge label="Complete" :value="infoFor(connection)?.completeCount" :loading="isLoading(connection) && !infoFor(connection)" />
+            <CountBadge compact label="Active" :value="infoFor(connection)?.activeCount" :warning-threshold="ActiveWarningThreshold" :error-threshold="ActiveErrorThreshold" :loading="isLoading(connection) && !infoFor(connection)" />
+            <CountBadge compact label="Suspended" :value="infoFor(connection)?.suspendedCount" :error-threshold="0" :loading="isLoading(connection) && !infoFor(connection)" />
+            <CountBadge compact label="Complete" :value="infoFor(connection)?.completeCount" :loading="isLoading(connection) && !infoFor(connection)" />
           </div>
         </UCard>
       </div>
