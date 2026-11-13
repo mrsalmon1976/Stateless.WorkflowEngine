@@ -21,7 +21,9 @@ const emit = defineEmits(['close'])
 
 const { hasClaim } = useAuth()
 const { getWorkflow } = useWorkflows(props.connectionId)
-const { copy, copied } = useClipboard()
+// legacy: navigator.clipboard only exists in secure contexts (https or localhost); the console is often reached over plain http
+// by machine name or LAN address, where without the execCommand fallback copy() silently does nothing
+const { copy, copied } = useClipboard({ legacy: true })
 
 const loading = ref(true)
 const error = ref('')

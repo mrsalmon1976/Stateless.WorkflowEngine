@@ -4,6 +4,11 @@
 # --- client ---
 FROM node:22-alpine AS client
 WORKDIR /src/Stateless.WorkflowEngine.WebConsole.Client
+# Extra CA certificates trusted by node/npm. Behind a TLS-inspecting firewall (e.g. Fortinet) the registry presents the
+# firewall's CA, which the image doesn't trust, so npm fails with SELF_SIGNED_CERT_IN_CHAIN. Put that CA (PEM) in
+# source/certs/ (see certs/README.md); the folder is empty on machines without such a firewall.
+COPY certs/ /certs/
+ENV NODE_EXTRA_CA_CERTS=/certs/corp-root-ca.crt
 COPY Stateless.WorkflowEngine.WebConsole.Client/package.json Stateless.WorkflowEngine.WebConsole.Client/package-lock.json ./
 RUN npm ci
 COPY Stateless.WorkflowEngine.WebConsole.Client/ ./

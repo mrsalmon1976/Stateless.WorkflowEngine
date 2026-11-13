@@ -28,3 +28,6 @@ source/Stateless.WorkflowEngine.WebConsole/Data/
 
 # benchmark working files (benchmarks/src/Benchmark.Runner)
 /benchmarks/.work/
+
+# TLS-inspection CA exported for Docker builds (see source/certs/README.md)
+/source/certs/*.crt
